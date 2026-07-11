@@ -78,6 +78,9 @@ public static class DependencyInjection
         services.AddSingleton<IAIProvider, GeminiProvider>();
         services.AddSingleton<AIProviderFactory>();
 
+        // Proposal Generator
+        services.AddScoped<IProposalGeneratorService, ProposalGeneratorService>();
+
         return services;
     }
 }

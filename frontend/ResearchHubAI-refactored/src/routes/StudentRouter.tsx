@@ -7,6 +7,7 @@ import StudentChapterVersions from "../pages/student/StudentChapterVersions";
 import StudentDashboard from "../pages/student/StudentDashboard";
 import StudentGuideComments from "../pages/student/StudentGuideComments";
 import StudentLiterature from "../pages/student/StudentLiterature";
+import ProposalGenerator from "../pages/student/ProposalGenerator";
 import StudentMeetings from "../pages/student/StudentMeetings";
 import StudentMyResearch from "../pages/student/StudentMyResearch";
 import StudentProfile from "../pages/student/StudentProfile";
@@ -26,6 +27,7 @@ export default function StudentRouter() {
     case "thesis-upload": return <StudentThesisUpload/>;
     case "chapter-versions": return <StudentChapterVersions/>;
     case "ai-assistant": return <StudentAIAssistant/>;
+    case "proposal-generator": return <ProposalGenerator/>;
     case "literature": return <StudentLiterature/>;
     case "meetings": return <StudentMeetings/>;
     case "guide-comments": return <StudentGuideComments/>;

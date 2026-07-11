@@ -44,6 +44,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<GlobalAnnouncement> GlobalAnnouncements => Set<GlobalAnnouncement>();
+    public DbSet<AIProposal> AIProposals => Set<AIProposal>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -240,6 +241,12 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<GlobalAnnouncement>(entity =>
         {
             entity.HasOne(a => a.CreatedByUser).WithMany().HasForeignKey(a => a.CreatedByUserId).OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<AIProposal>(entity =>
+        {
+            entity.HasOne(p => p.Student).WithMany().HasForeignKey(p => p.StudentId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasIndex(p => p.StudentId);
         });
     }
 }

@@ -2,6 +2,7 @@ import AccessDenied from "../components/common/AccessDenied";
 import { useApp } from "../context/AppContext";
 import AdminAcademicYears from "../pages/admin/AdminAcademicYears";
 import AdminAIConfig from "../pages/admin/AdminAIConfig";
+import AIPlayground from "../pages/admin/AIPlayground";
 import AdminAnalytics from "../pages/admin/AdminAnalytics";
 import AdminAuditLogs from "../pages/admin/AdminAuditLogs";
 import AdminBackupRestore from "../pages/admin/AdminBackupRestore";
@@ -33,6 +34,7 @@ export default function AdminRouter() {
     case "department-mgmt": return <AdminDepartmentMgmt/>;
     case "university-mgmt": return <AdminUniversityMgmt/>;
     case "research-topics": return <AdminResearchTopics/>;
+    case "ai-playground": return <AIPlayground/>;
     case "ai-config": return <AdminAIConfig/>;
     case "analytics": return <AdminAnalytics/>;
     case "audit-logs": return <AdminAuditLogs/>;

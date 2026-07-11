@@ -92,7 +92,8 @@ export const ENDPOINTS = {
   },
   ai: {
     chat: "/ai/chat",
-    review: "/ai/review",
+    stream: "/ai/stream",
+    providers: "/ai/providers",
   },
   admin: {
     dashboard: "/admin/dashboard",
