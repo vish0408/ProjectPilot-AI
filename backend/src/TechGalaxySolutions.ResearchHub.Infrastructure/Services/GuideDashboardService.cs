@@ -22,34 +22,34 @@ public class GuideDashboardService : IGuideDashboardService
 
     public async Task<GuideDashboardResponse> GetDashboardAsync(Guid userId)
     {
-        var assignedStudents = await _context.Set<StudentProfile>()
+        var assignedStudents = await _context.Set<StudentProfile>().AsNoTracking()
             .Include(s => s.User)
             .Where(s => s.GuideId == userId && !s.IsDeleted)
             .ToListAsync();
 
         var studentUserIds = assignedStudents.Select(s => s.UserId).ToList();
 
-        var projects = await _context.Projects
+        var projects = await _context.Projects.AsNoTracking()
             .Include(p => p.Student)
             .Where(p => studentUserIds.Contains(p.StudentId) && !p.IsDeleted)
             .ToListAsync();
 
         var projectIds = projects.Select(p => p.Id).ToList();
 
-        var pendingReviews = await _context.Set<Review>()
+        var pendingReviews = await _context.Set<Review>().AsNoTracking()
             .Include(r => r.Project)
             .Include(r => r.Project.Student)
             .Where(r => r.GuideId == userId && r.Status == ReviewStatus.Pending && !r.IsDeleted)
             .ToListAsync();
 
-        var upcomingMeetings = await _context.Set<Meeting>()
+        var upcomingMeetings = await _context.Set<Meeting>().AsNoTracking()
             .Include(m => m.Participants).ThenInclude(p => p.User)
             .Where(m => m.GuideId == userId && m.Status == MeetingStatus.Scheduled && m.ScheduledAt > DateTime.UtcNow && !m.IsDeleted)
             .OrderBy(m => m.ScheduledAt)
             .Take(5)
             .ToListAsync();
 
-        var recentNotifications = await _context.Set<Domain.Entities.Notification>()
+        var recentNotifications = await _context.Set<Domain.Entities.Notification>().AsNoTracking()
             .Where(n => n.UserId == userId && !n.IsDeleted)
             .OrderByDescending(n => n.CreatedAt)
             .Take(10)

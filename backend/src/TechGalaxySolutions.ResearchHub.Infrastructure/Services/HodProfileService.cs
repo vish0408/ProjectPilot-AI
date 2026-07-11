@@ -20,7 +20,7 @@ public class HodProfileService : IHodProfileService
 
     public async Task<HodProfileResponse> GetProfileAsync(Guid userId)
     {
-        var profile = await _context.Set<DepartmentProfile>()
+        var profile = await _context.Set<DepartmentProfile>().AsNoTracking()
             .Include(d => d.HodUser)
             .FirstOrDefaultAsync(d => d.HodUserId == userId && !d.IsDeleted);
 

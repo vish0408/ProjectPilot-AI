@@ -20,7 +20,7 @@ public class DashboardService : IDashboardService
 
     public async Task<DashboardResponse> GetStudentDashboardAsync(Guid userId)
     {
-        var project = await _context.Projects
+        var project = await _context.Projects.AsNoTracking()
             .Include(p => p.Milestones)
             .Include(p => p.Documents).ThenInclude(d => d.Uploader)
             .Include(p => p.Tasks)
@@ -28,7 +28,7 @@ public class DashboardService : IDashboardService
             .OrderByDescending(p => p.CreatedAt)
             .FirstOrDefaultAsync();
 
-        var notifications = await _context.Notifications
+        var notifications = await _context.Notifications.AsNoTracking()
             .Where(n => n.UserId == userId)
             .OrderByDescending(n => n.CreatedAt)
             .Take(10)

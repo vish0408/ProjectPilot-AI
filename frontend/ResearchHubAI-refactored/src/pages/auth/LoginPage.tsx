@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   AlertCircle,
-  ArrowRight,
   Eye,
   FlaskConical,
   GraduationCap,
@@ -29,18 +28,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setLoading(true);
     try {
       await onLogin(email, password);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const quickLogin = async (em: string, pw: string) => {
-    setError("");
-    setLoading(true);
-    try {
-      await onLogin(em, pw);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -89,18 +76,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             <button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all hover:shadow-lg hover:shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed">{loading ? "Signing in..." : "Sign In"}</button>
           </form>
 
-          <div className="mt-6">
-            <div className="relative flex items-center gap-3 mb-4"><div className="flex-1 border-t border-border"/><span className="text-xs text-muted-foreground font-medium">Quick Demo Login</span><div className="flex-1 border-t border-border"/></div>
-            <div className="flex flex-col gap-2">
-              {[{role:"Student",email:"student@iitb.ac.in",pw:"Student@123",desc:"Priya Sharma · PhD Scholar",c:"border-blue-200 hover:bg-blue-50 dark:border-blue-800 dark:hover:bg-blue-950/30",b:"bg-blue-600",icon:GraduationCap},{role:"Research Guide",email:"guide@iitb.ac.in",pw:"Guide@123",desc:"Dr. Rajesh Mehta · Guide",c:"border-indigo-200 hover:bg-indigo-50 dark:border-indigo-800 dark:hover:bg-indigo-950/30",b:"bg-indigo-600",icon:UserCheck},{role:"Administrator",email:"superadmin@researchhub.com",pw:"Admin@123",desc:"Super Admin",c:"border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/50",b:"bg-slate-700",icon:Shield}].map((u,i)=>(
-                <button key={i} onClick={()=>quickLogin(u.email, u.pw)} disabled={loading} className={`flex items-center gap-3 w-full border-2 rounded-xl px-3.5 py-3 transition-all text-left ${u.c} disabled:opacity-50`}>
-                  <div className={`w-8 h-8 ${u.b} rounded-lg flex items-center justify-center flex-shrink-0`}><u.icon className="w-4 h-4 text-white"/></div>
-                  <div className="flex-1"><p className="text-sm font-bold text-foreground">{u.role}</p><p className="text-xs text-muted-foreground">{u.desc}</p></div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground"/>
-                </button>
-              ))}
-            </div>
-          </div>
+
         </div>
       </div>
     </div>

@@ -31,17 +31,21 @@ export default function HodResearchTopics() {
   useEffect(() => { fetchData(); }, [selectedCat]);
 
   const handleCreateCat = async () => {
-    await hodService.createCategory(catForm);
-    setShowCatForm(false);
-    setCatForm({ name: "", description: "" });
-    fetchData();
+    try {
+      await hodService.createCategory(catForm);
+      setShowCatForm(false);
+      setCatForm({ name: "", description: "" });
+      fetchData();
+    } catch {}
   };
 
   const handleCreateTopic = async () => {
-    await hodService.createTopic(topicForm);
-    setShowTopicForm(false);
-    setTopicForm({ title: "", description: "", categoryId: "" });
-    fetchData();
+    try {
+      await hodService.createTopic(topicForm);
+      setShowTopicForm(false);
+      setTopicForm({ title: "", description: "", categoryId: "" });
+      fetchData();
+    } catch {}
   };
 
   if (loading) {

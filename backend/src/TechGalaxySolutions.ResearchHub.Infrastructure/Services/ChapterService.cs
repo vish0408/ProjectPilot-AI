@@ -21,7 +21,7 @@ public class ChapterService : IChapterService
 
     public async Task<List<ChapterResponse>> GetProjectChaptersAsync(Guid projectId)
     {
-        var chapters = await _context.Set<Chapter>()
+        var chapters = await _context.Set<Chapter>().AsNoTracking()
             .Include(c => c.Comments).ThenInclude(c => c.User)
             .Where(c => c.ProjectId == projectId && !c.IsDeleted)
             .OrderBy(c => c.Order)
@@ -32,7 +32,7 @@ public class ChapterService : IChapterService
 
     public async Task<ChapterResponse> GetByIdAsync(Guid chapterId)
     {
-        var chapter = await _context.Set<Chapter>()
+        var chapter = await _context.Set<Chapter>().AsNoTracking()
             .Include(c => c.Comments).ThenInclude(c => c.User)
             .FirstOrDefaultAsync(c => c.Id == chapterId && !c.IsDeleted)
             ?? throw new KeyNotFoundException("Chapter not found");

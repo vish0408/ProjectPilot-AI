@@ -81,10 +81,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [theme]);
 
   useEffect(() => {
+    let mounted = true;
     restoreSession().then((restoredUser) => {
-      setUser(restoredUser);
-      setIsLoading(false);
+      if (mounted) {
+        setUser(restoredUser);
+        setIsLoading(false);
+      }
+    }).catch(() => {
+      if (mounted) setIsLoading(false);
     });
+    return () => { mounted = false; };
   }, []);
 
   return (

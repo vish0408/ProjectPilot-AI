@@ -21,19 +21,32 @@ public class HodGuideService : IHodGuideService
 
     public async Task<List<GuideSummaryResponse>> GetGuidesAsync(Guid userId)
     {
-        var guides = await _context.Set<GuideProfile>()
+        var guides = await _context.Set<GuideProfile>().AsNoTracking()
             .Include(g => g.User)
             .Where(g => !g.IsDeleted)
             .ToListAsync();
 
+        var guideIds = guides.Select(g => g.UserId).ToList();
+
+        var studentCounts = await _context.Set<StudentProfile>().AsNoTracking()
+            .Where(s => s.GuideId.HasValue && guideIds.Contains(s.GuideId.Value) && !s.IsDeleted)
+            .GroupBy(s => s.GuideId!.Value)
+            .Select(g => new { GuideId = g.Key, Count = g.Count() })
+            .ToListAsync();
+        var studentCountLookup = studentCounts.ToDictionary(x => x.GuideId, x => x.Count);
+
+        var completedProjects = await _context.Projects.AsNoTracking()
+            .Where(p => guideIds.Contains(p.StudentId) && !p.IsDeleted && p.Status == ProjectStatus.Completed)
+            .GroupBy(p => p.StudentId)
+            .Select(g => new { StudentId = g.Key, Count = g.Count() })
+            .ToListAsync();
+        var completedProjectLookup = completedProjects.ToDictionary(x => x.StudentId, x => x.Count);
+
         var result = new List<GuideSummaryResponse>();
         foreach (var guide in guides)
         {
-            var assignedCount = await _context.Set<StudentProfile>()
-                .CountAsync(s => s.GuideId == guide.UserId && !s.IsDeleted);
-
-            var completedCount = await _context.Projects
-                .CountAsync(p => p.StudentId == guide.UserId && !p.IsDeleted && p.Status == ProjectStatus.Completed);
+            var assignedCount = studentCountLookup.GetValueOrDefault(guide.UserId, 0);
+            var completedCount = completedProjectLookup.GetValueOrDefault(guide.UserId, 0);
 
             result.Add(new GuideSummaryResponse
             {

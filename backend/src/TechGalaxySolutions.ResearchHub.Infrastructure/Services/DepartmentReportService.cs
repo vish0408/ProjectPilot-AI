@@ -22,7 +22,7 @@ public class DepartmentReportService : IDepartmentReportService
 
     public async Task<List<DepartmentReportResponse>> GetReportsAsync(Guid userId)
     {
-        var reports = await _context.Set<DepartmentReport>()
+        var reports = await _context.Set<DepartmentReport>().AsNoTracking()
             .Include(r => r.GeneratedByUser)
             .Where(r => !r.IsDeleted)
             .OrderByDescending(r => r.GeneratedAt)
@@ -33,7 +33,7 @@ public class DepartmentReportService : IDepartmentReportService
 
     public async Task<DepartmentReportResponse> GenerateReportAsync(Guid userId, string reportType, string title)
     {
-        var deptProfile = await _context.Set<DepartmentProfile>()
+        var deptProfile = await _context.Set<DepartmentProfile>().AsNoTracking()
             .FirstOrDefaultAsync(d => d.HodUserId == userId && !d.IsDeleted)
             ?? throw new InvalidOperationException("Department profile not found. Set up your HOD profile first.");
 
@@ -76,7 +76,7 @@ public class DepartmentReportService : IDepartmentReportService
 
     private async Task<object> GenerateStudentProgressReport()
     {
-        var students = await _context.Set<StudentProfile>()
+        var students = await _context.Set<StudentProfile>().AsNoTracking()
             .Include(s => s.User)
             .Include(s => s.Guide)
             .Where(s => !s.IsDeleted)
@@ -95,7 +95,7 @@ public class DepartmentReportService : IDepartmentReportService
 
     private async Task<object> GenerateGuidePerformanceReport()
     {
-        var guides = await _context.Set<GuideProfile>()
+        var guides = await _context.Set<GuideProfile>().AsNoTracking()
             .Include(g => g.User)
             .Where(g => !g.IsDeleted)
             .Select(g => new
@@ -113,10 +113,10 @@ public class DepartmentReportService : IDepartmentReportService
 
     private async Task<object> GenerateDepartmentAnalytics()
     {
-        var totalStudents = await _context.Set<StudentProfile>().CountAsync(s => !s.IsDeleted);
-        var totalGuides = await _context.Set<GuideProfile>().CountAsync(g => !g.IsDeleted);
-        var activeProjects = await _context.Projects.CountAsync(p => !p.IsDeleted && p.Status == ProjectStatus.InProgress);
-        var completedProjects = await _context.Projects.CountAsync(p => !p.IsDeleted && p.Status == ProjectStatus.Completed);
+        var totalStudents = await _context.Set<StudentProfile>().AsNoTracking().CountAsync(s => !s.IsDeleted);
+        var totalGuides = await _context.Set<GuideProfile>().AsNoTracking().CountAsync(g => !g.IsDeleted);
+        var activeProjects = await _context.Projects.AsNoTracking().CountAsync(p => !p.IsDeleted && p.Status == ProjectStatus.InProgress);
+        var completedProjects = await _context.Projects.AsNoTracking().CountAsync(p => !p.IsDeleted && p.Status == ProjectStatus.Completed);
 
         return new
         {
@@ -128,7 +128,7 @@ public class DepartmentReportService : IDepartmentReportService
 
     private async Task<object> GenerateProjectCompletionReport()
     {
-        var projects = await _context.Projects
+        var projects = await _context.Projects.AsNoTracking()
             .Include(p => p.Student)
             .Where(p => !p.IsDeleted)
             .Select(p => new

@@ -22,7 +22,7 @@ public class DocumentService : IDocumentService
     {
         await VerifyProjectAccess(projectId, userId);
 
-        var documents = await _context.ProjectDocuments
+        var documents = await _context.ProjectDocuments.AsNoTracking()
             .Include(d => d.Uploader)
             .Where(d => d.ProjectId == projectId && !d.IsDeleted)
             .OrderByDescending(d => d.UploadedAt)
@@ -63,7 +63,7 @@ public class DocumentService : IDocumentService
 
     private async Task VerifyProjectAccess(Guid projectId, Guid userId)
     {
-        var project = await _context.Projects
+        var project = await _context.Projects.AsNoTracking()
             .Include(p => p.Members)
             .FirstOrDefaultAsync(p => p.Id == projectId && !p.IsDeleted)
             ?? throw new KeyNotFoundException("Project not found");

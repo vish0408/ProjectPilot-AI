@@ -20,7 +20,7 @@ public class ApprovalHistoryService : IApprovalHistoryService
 
     public async Task<List<ApprovalHistoryResponse>> GetProjectHistoryAsync(Guid projectId)
     {
-        var history = await _context.Set<ApprovalHistory>()
+        var history = await _context.Set<ApprovalHistory>().AsNoTracking()
             .Include(h => h.Project)
             .Include(h => h.Chapter)
             .Include(h => h.Guide)
@@ -33,7 +33,7 @@ public class ApprovalHistoryService : IApprovalHistoryService
 
     public async Task<List<ApprovalHistoryResponse>> GetChapterHistoryAsync(Guid chapterId)
     {
-        var history = await _context.Set<ApprovalHistory>()
+        var history = await _context.Set<ApprovalHistory>().AsNoTracking()
             .Include(h => h.Project)
             .Include(h => h.Chapter)
             .Include(h => h.Guide)

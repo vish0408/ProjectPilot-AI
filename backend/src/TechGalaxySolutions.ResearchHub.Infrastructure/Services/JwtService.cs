@@ -25,7 +25,7 @@ public class JwtService : ITokenService
     public string GenerateAccessToken(User user)
     {
         var key = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+            Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key is not configured")));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new[]
@@ -38,8 +38,8 @@ public class JwtService : ITokenService
         };
 
         var token = new JwtSecurityToken(
-            issuer: _configuration["Jwt:Issuer"],
-            audience: _configuration["Jwt:Audience"],
+            issuer: _configuration["Jwt:Issuer"] ?? throw new InvalidOperationException("JWT Issuer is not configured"),
+            audience: _configuration["Jwt:Audience"] ?? throw new InvalidOperationException("JWT Audience is not configured"),
             claims: claims,
             expires: DateTime.UtcNow.AddMinutes(15),
             signingCredentials: credentials);
@@ -58,7 +58,7 @@ public class JwtService : ITokenService
     public ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
     {
         var key = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+            Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key is not configured")));
 
         var tokenValidationParameters = new TokenValidationParameters
         {
@@ -66,8 +66,8 @@ public class JwtService : ITokenService
             ValidateAudience = true,
             ValidateLifetime = false,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = _configuration["Jwt:Issuer"],
-            ValidAudience = _configuration["Jwt:Audience"],
+            ValidIssuer = _configuration["Jwt:Issuer"] ?? throw new InvalidOperationException("JWT Issuer is not configured"),
+            ValidAudience = _configuration["Jwt:Audience"] ?? throw new InvalidOperationException("JWT Audience is not configured"),
             IssuerSigningKey = key,
         };
 
@@ -110,7 +110,7 @@ public class JwtService : ITokenService
 
     public async Task<RefreshToken?> ValidateRefreshTokenAsync(string token)
     {
-        return await _context.RefreshTokens
+        return await _context.RefreshTokens.AsNoTracking()
             .FirstOrDefaultAsync(rt =>
                 rt.Token == token &&
                 !rt.IsUsed &&

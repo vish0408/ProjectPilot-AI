@@ -21,7 +21,7 @@ public class MeetingService : IMeetingService
 
     public async Task<List<MeetingResponse>> GetMyMeetingsAsync(Guid userId)
     {
-        var meetings = await _context.Set<Meeting>()
+        var meetings = await _context.Set<Meeting>().AsNoTracking()
             .Include(m => m.Guide)
             .Include(m => m.Participants).ThenInclude(p => p.User)
             .Where(m => (m.GuideId == userId || m.Participants.Any(p => p.UserId == userId)) && !m.IsDeleted)
@@ -33,7 +33,7 @@ public class MeetingService : IMeetingService
 
     public async Task<MeetingResponse> GetByIdAsync(Guid meetingId)
     {
-        var meeting = await _context.Set<Meeting>()
+        var meeting = await _context.Set<Meeting>().AsNoTracking()
             .Include(m => m.Guide)
             .Include(m => m.Participants).ThenInclude(p => p.User)
             .FirstOrDefaultAsync(m => m.Id == meetingId && !m.IsDeleted)

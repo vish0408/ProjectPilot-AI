@@ -14,8 +14,8 @@ import { STUDENT_NAV } from "../utils/navigation";
 export default function Topbar({ nav, onMenu }: { nav: typeof STUDENT_NAV; onMenu:()=>void }) {
   const { user, screen, setScreen, theme, setTheme, logout } = useApp();
   const label = nav.find(n=>n.id===screen)?.label || "Dashboard";
-  const rc: Record<Role,string> = { student:"text-blue-600", guide:"text-indigo-600", admin:"text-slate-600" };
-  const rl: Record<Role,string> = { student:"PhD Student", guide:"Research Guide", admin:"Administrator" };
+  const rc: Record<Role,string> = { student:"text-blue-600", guide:"text-indigo-600", admin:"text-slate-600", hod:"text-cyan-600" };
+  const rl: Record<Role,string> = { student:"PhD Student", guide:"Research Guide", admin:"Administrator", hod:"HOD" };
   return (
     <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 sm:px-5 gap-3 flex-shrink-0">
       <div className="flex items-center gap-3">

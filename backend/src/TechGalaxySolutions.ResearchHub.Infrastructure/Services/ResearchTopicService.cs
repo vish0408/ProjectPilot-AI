@@ -20,7 +20,7 @@ public class ResearchTopicService : IResearchTopicService
 
     public async Task<List<ResearchTopicResponse>> GetTopicsAsync(Guid? categoryId)
     {
-        var query = _context.Set<ResearchTopic>()
+        var query = _context.Set<ResearchTopic>().AsNoTracking()
             .Include(t => t.Category)
             .Include(t => t.CreatedByUser)
             .Where(t => !t.IsDeleted);
@@ -34,7 +34,7 @@ public class ResearchTopicService : IResearchTopicService
 
     public async Task<ResearchTopicResponse> CreateTopicAsync(Guid userId, CreateResearchTopicRequest request)
     {
-        var deptProfile = await _context.Set<DepartmentProfile>()
+        var deptProfile = await _context.Set<DepartmentProfile>().AsNoTracking()
             .FirstOrDefaultAsync(d => d.HodUserId == userId && !d.IsDeleted)
             ?? throw new InvalidOperationException("Department profile not found. Set up your HOD profile first.");
 
@@ -50,7 +50,7 @@ public class ResearchTopicService : IResearchTopicService
         _context.Set<ResearchTopic>().Add(topic);
         await _context.SaveChangesAsync();
 
-        var saved = await _context.Set<ResearchTopic>()
+        var saved = await _context.Set<ResearchTopic>().AsNoTracking()
             .Include(t => t.Category)
             .Include(t => t.CreatedByUser)
             .FirstAsync(t => t.Id == topic.Id);

@@ -20,7 +20,7 @@ public class GuideProfileService : IGuideProfileService
 
     public async Task<GuideProfileResponse> GetProfileAsync(Guid userId)
     {
-        var profile = await _context.Set<GuideProfile>()
+        var profile = await _context.Set<GuideProfile>().AsNoTracking()
             .Include(p => p.User)
             .FirstOrDefaultAsync(p => p.UserId == userId && !p.IsDeleted);
 

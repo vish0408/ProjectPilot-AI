@@ -1,0 +1,26 @@
+Using launch settings from C:\Projects\ResearchHubAI\backend\src\TechGalaxySolutions.ResearchHub.Api\Properties\launchSettings.json...
+Building...
+C:\Projects\ResearchHubAI\backend\src\TechGalaxySolutions.ResearchHub.Application\TechGalaxySolutions.ResearchHub.Application.csproj : warning NU1903: Package 'AutoMapper' 12.0.1 has a known high severity vulnerability, https://github.com/advisories/GHSA-rvv3-g6hj-g44x [C:\Projects\ResearchHubAI\backend\src\TechGalaxySolutions.ResearchHub.Api\TechGalaxySolutions.ResearchHub.Api.csproj]
+C:\Projects\ResearchHubAI\backend\src\TechGalaxySolutions.ResearchHub.Api\TechGalaxySolutions.ResearchHub.Api.csproj : warning NU1903: Package 'AutoMapper' 12.0.1 has a known high severity vulnerability, https://github.com/advisories/GHSA-rvv3-g6hj-g44x
+C:\Projects\ResearchHubAI\backend\src\TechGalaxySolutions.ResearchHub.Infrastructure\TechGalaxySolutions.ResearchHub.Infrastructure.csproj : warning NU1903: Package 'AutoMapper' 12.0.1 has a known high severity vulnerability, https://github.com/advisories/GHSA-rvv3-g6hj-g44x [C:\Projects\ResearchHubAI\backend\src\TechGalaxySolutions.ResearchHub.Api\TechGalaxySolutions.ResearchHub.Api.csproj]
+C:\Projects\ResearchHubAI\backend\src\TechGalaxySolutions.ResearchHub.Api\TechGalaxySolutions.ResearchHub.Api.csproj : warning NU1903: Package 'AutoMapper' 12.0.1 has a known high severity vulnerability, https://github.com/advisories/GHSA-rvv3-g6hj-g44x
+C:\Projects\ResearchHubAI\backend\src\TechGalaxySolutions.ResearchHub.Application\TechGalaxySolutions.ResearchHub.Application.csproj : warning NU1903: Package 'AutoMapper' 12.0.1 has a known high severity vulnerability, https://github.com/advisories/GHSA-rvv3-g6hj-g44x
+C:\Projects\ResearchHubAI\backend\src\TechGalaxySolutions.ResearchHub.Infrastructure\TechGalaxySolutions.ResearchHub.Infrastructure.csproj : warning NU1903: Package 'AutoMapper' 12.0.1 has a known high severity vulnerability, https://github.com/advisories/GHSA-rvv3-g6hj-g44x
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (34ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT CASE
+          WHEN EXISTS (
+              SELECT 1
+              FROM [Roles] AS [r]) THEN CAST(1 AS bit)
+          ELSE CAST(0 AS bit)
+      END
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:5168
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: C:\Projects\ResearchHubAI\backend\src\TechGalaxySolutions.ResearchHub.Api
+warn: Microsoft.AspNetCore.HttpsPolicy.HttpsRedirectionMiddleware[3]
+      Failed to determine the https port for redirect.

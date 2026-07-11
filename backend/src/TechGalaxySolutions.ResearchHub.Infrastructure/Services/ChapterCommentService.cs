@@ -20,7 +20,7 @@ public class ChapterCommentService : IChapterCommentService
 
     public async Task<List<ChapterCommentResponse>> GetChapterCommentsAsync(Guid chapterId)
     {
-        var comments = await _context.Set<ChapterComment>()
+        var comments = await _context.Set<ChapterComment>().AsNoTracking()
             .Include(c => c.User)
             .Where(c => c.ChapterId == chapterId && !c.IsDeleted)
             .OrderBy(c => c.CreatedAt)

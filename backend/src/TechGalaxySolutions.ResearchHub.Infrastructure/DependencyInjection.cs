@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using TechGalaxySolutions.ResearchHub.Application.Configuration;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
+using TechGalaxySolutions.ResearchHub.Infrastructure.AI;
 using TechGalaxySolutions.ResearchHub.Infrastructure.Persistence;
 using TechGalaxySolutions.ResearchHub.Infrastructure.Services;
 
@@ -49,6 +51,32 @@ public static class DependencyInjection
         services.AddScoped<IResearchTopicService, ResearchTopicService>();
         services.AddScoped<IAnnouncementService, AnnouncementService>();
         services.AddScoped<IDepartmentReportService, DepartmentReportService>();
+
+        // Admin Workspace
+        services.AddScoped<ICollegeService, CollegeService>();
+        services.AddScoped<IAdminDepartmentService, AdminDepartmentService>();
+        services.AddScoped<IAcademicYearService, AcademicYearService>();
+        services.AddScoped<ISemesterService, SemesterService>();
+        services.AddScoped<IFacultyService, FacultyService>();
+        services.AddScoped<IUserManagementService, UserManagementService>();
+        services.AddScoped<IRoleService, RoleService>();
+        services.AddScoped<IPermissionService, PermissionService>();
+        services.AddScoped<IAdminDashboardService, AdminDashboardService>();
+        services.AddScoped<IAdminAnnouncementService, AdminAnnouncementService>();
+        services.AddScoped<IAuditLogService, AuditLogService>();
+        services.AddScoped<ISystemSettingService, SystemSettingService>();
+
+        // AI Providers
+        var aiSettings = new AISettings();
+        configuration.GetSection("AI").Bind(aiSettings);
+        services.AddSingleton(aiSettings);
+
+        services.AddHttpClient();
+
+        services.AddSingleton<IAIProvider, OpenAIProvider>();
+        services.AddSingleton<IAIProvider, AnthropicProvider>();
+        services.AddSingleton<IAIProvider, GeminiProvider>();
+        services.AddSingleton<AIProviderFactory>();
 
         return services;
     }

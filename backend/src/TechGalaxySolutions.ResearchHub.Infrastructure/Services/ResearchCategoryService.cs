@@ -20,7 +20,7 @@ public class ResearchCategoryService : IResearchCategoryService
 
     public async Task<List<ResearchCategoryResponse>> GetCategoriesAsync()
     {
-        var categories = await _context.Set<ResearchCategory>()
+        var categories = await _context.Set<ResearchCategory>().AsNoTracking()
             .Include(c => c.ResearchTopics)
             .Where(c => !c.IsDeleted)
             .OrderBy(c => c.Name)

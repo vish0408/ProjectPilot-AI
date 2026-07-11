@@ -6,7 +6,7 @@ namespace TechGalaxySolutions.ResearchHub.Api.Controllers;
 
 [ApiController]
 [Route("dashboard/guide")]
-[Authorize]
+[Authorize(Roles = "Guide")]
 public class GuideDashboardController : ControllerBase
 {
     private readonly IGuideDashboardService _dashboardService;

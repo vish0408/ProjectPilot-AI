@@ -7,7 +7,7 @@ namespace TechGalaxySolutions.ResearchHub.Api.Controllers;
 
 [ApiController]
 [Route("guide/profile")]
-[Authorize]
+[Authorize(Roles = "Guide")]
 public class GuideProfileController : ControllerBase
 {
     private readonly IGuideProfileService _guideProfileService;

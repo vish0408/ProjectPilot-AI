@@ -25,7 +25,7 @@ public class AuthService : IAuthService
 
     public async Task<TokenResponse> LoginAsync(LoginRequest request)
     {
-        var user = await _context.Users
+        var user = await _context.Users.AsNoTracking()
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Email == request.Email && !u.IsDeleted);
 
@@ -44,7 +44,7 @@ public class AuthService : IAuthService
 
     public async Task RegisterAsync(RegisterRequest request)
     {
-        var existingUser = await _context.Users
+        var existingUser = await _context.Users.AsNoTracking()
             .FirstOrDefaultAsync(u => u.Email == request.Email && !u.IsDeleted);
 
         if (existingUser != null)
@@ -52,7 +52,7 @@ public class AuthService : IAuthService
             throw new InvalidOperationException("A user with this email already exists");
         }
 
-        var role = await _context.Roles
+        var role = await _context.Roles.AsNoTracking()
             .FirstOrDefaultAsync(r => r.Name == request.Role && !r.IsDeleted);
 
         if (role == null)
@@ -81,7 +81,7 @@ public class AuthService : IAuthService
             throw new UnauthorizedAccessException("Invalid or expired refresh token");
         }
 
-        var user = await _context.Users
+        var user = await _context.Users.AsNoTracking()
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Id == storedRefreshToken.UserId && !u.IsDeleted);
 
@@ -97,7 +97,7 @@ public class AuthService : IAuthService
 
     public async Task<CurrentUserResponse> GetCurrentUserAsync(Guid userId)
     {
-        var user = await _context.Users
+        var user = await _context.Users.AsNoTracking()
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
 

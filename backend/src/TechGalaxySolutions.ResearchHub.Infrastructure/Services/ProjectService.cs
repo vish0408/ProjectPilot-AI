@@ -21,7 +21,7 @@ public class ProjectService : IProjectService
 
     public async Task<List<ProjectResponse>> GetMyProjectsAsync(Guid userId)
     {
-        var projects = await _context.Projects
+        var projects = await _context.Projects.AsNoTracking()
             .Include(p => p.Student)
             .Include(p => p.Members).ThenInclude(m => m.User)
             .Where(p => p.StudentId == userId && !p.IsDeleted)
@@ -33,7 +33,7 @@ public class ProjectService : IProjectService
 
     public async Task<ProjectResponse> GetByIdAsync(Guid projectId, Guid userId)
     {
-        var project = await _context.Projects
+        var project = await _context.Projects.AsNoTracking()
             .Include(p => p.Student)
             .Include(p => p.Members).ThenInclude(m => m.User)
             .FirstOrDefaultAsync(p => p.Id == projectId && !p.IsDeleted)

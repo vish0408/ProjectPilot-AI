@@ -21,12 +21,12 @@ public class AnnouncementService : IAnnouncementService
 
     public async Task<List<DepartmentAnnouncementResponse>> GetAnnouncementsAsync(Guid userId)
     {
-        var department = await _context.Set<DepartmentProfile>()
+        var department = await _context.Set<DepartmentProfile>().AsNoTracking()
             .FirstOrDefaultAsync(d => d.HodUserId == userId && !d.IsDeleted);
 
         if (department == null) return new List<DepartmentAnnouncementResponse>();
 
-        var announcements = await _context.Set<DepartmentAnnouncement>()
+        var announcements = await _context.Set<DepartmentAnnouncement>().AsNoTracking()
             .Include(a => a.CreatedByUser)
             .Where(a => a.DepartmentProfileId == department.Id && !a.IsDeleted)
             .OrderByDescending(a => a.CreatedAt)
@@ -37,7 +37,7 @@ public class AnnouncementService : IAnnouncementService
 
     public async Task<DepartmentAnnouncementResponse> CreateAnnouncementAsync(Guid userId, CreateAnnouncementRequest request)
     {
-        var department = await _context.Set<DepartmentProfile>()
+        var department = await _context.Set<DepartmentProfile>().AsNoTracking()
             .FirstOrDefaultAsync(d => d.HodUserId == userId && !d.IsDeleted)
             ?? throw new KeyNotFoundException("Department profile not found. Set up your profile first.");
 

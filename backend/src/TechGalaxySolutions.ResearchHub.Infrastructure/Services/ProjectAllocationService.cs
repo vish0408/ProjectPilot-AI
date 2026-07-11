@@ -21,7 +21,7 @@ public class ProjectAllocationService : IProjectAllocationService
 
     public async Task<List<ProjectAllocationResponse>> GetAllocationsAsync(Guid userId)
     {
-        var allocations = await _context.Set<ProjectAllocation>()
+        var allocations = await _context.Set<ProjectAllocation>().AsNoTracking()
             .Include(a => a.Student)
             .Include(a => a.Guide)
             .Include(a => a.Project)
@@ -47,7 +47,7 @@ public class ProjectAllocationService : IProjectAllocationService
         _context.Set<ProjectAllocation>().Add(allocation);
         await _context.SaveChangesAsync();
 
-        var saved = await _context.Set<ProjectAllocation>()
+        var saved = await _context.Set<ProjectAllocation>().AsNoTracking()
             .Include(a => a.Student)
             .Include(a => a.Guide)
             .Include(a => a.Project)

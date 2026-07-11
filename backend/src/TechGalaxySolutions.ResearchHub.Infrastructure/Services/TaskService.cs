@@ -23,7 +23,7 @@ public class TaskService : ITaskService
     {
         await VerifyProjectAccess(projectId, userId);
 
-        var tasks = await _context.TaskItems
+        var tasks = await _context.TaskItems.AsNoTracking()
             .Include(t => t.AssignedTo)
             .Where(t => t.ProjectId == projectId && !t.IsDeleted)
             .OrderByDescending(t => t.CreatedAt)
@@ -34,7 +34,7 @@ public class TaskService : ITaskService
 
     public async Task<TaskItemResponse> GetByIdAsync(Guid taskId, Guid userId)
     {
-        var task = await _context.TaskItems
+        var task = await _context.TaskItems.AsNoTracking()
             .Include(t => t.AssignedTo)
             .FirstOrDefaultAsync(t => t.Id == taskId && !t.IsDeleted)
             ?? throw new KeyNotFoundException("Task not found");
@@ -100,7 +100,7 @@ public class TaskService : ITaskService
 
     private async Task VerifyProjectAccess(Guid projectId, Guid userId)
     {
-        var project = await _context.Projects
+        var project = await _context.Projects.AsNoTracking()
             .Include(p => p.Members)
             .FirstOrDefaultAsync(p => p.Id == projectId && !p.IsDeleted)
             ?? throw new KeyNotFoundException("Project not found");

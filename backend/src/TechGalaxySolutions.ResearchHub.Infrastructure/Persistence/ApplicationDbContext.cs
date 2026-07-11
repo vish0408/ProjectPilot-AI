@@ -34,6 +34,16 @@ public class ApplicationDbContext : DbContext
     public DbSet<ProjectAllocation> ProjectAllocations => Set<ProjectAllocation>();
     public DbSet<DepartmentAnnouncement> DepartmentAnnouncements => Set<DepartmentAnnouncement>();
     public DbSet<DepartmentReport> DepartmentReports => Set<DepartmentReport>();
+    public DbSet<College> Colleges => Set<College>();
+    public DbSet<Department> Departments => Set<Department>();
+    public DbSet<AcademicYear> AcademicYears => Set<AcademicYear>();
+    public DbSet<Semester> Semesters => Set<Semester>();
+    public DbSet<FacultyMember> FacultyMembers => Set<FacultyMember>();
+    public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Permission> Permissions => Set<Permission>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+    public DbSet<GlobalAnnouncement> GlobalAnnouncements => Set<GlobalAnnouncement>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -54,7 +64,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<StudentProfile>(entity =>
         {
             entity.HasIndex(sp => sp.UserId).IsUnique();
-            entity.HasOne(sp => sp.User).WithMany().HasForeignKey(sp => sp.UserId);
+            entity.HasOne(sp => sp.User).WithMany().HasForeignKey(sp => sp.UserId).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(sp => sp.Guide).WithMany().HasForeignKey(sp => sp.GuideId).OnDelete(DeleteBehavior.NoAction);
         });
 
@@ -95,7 +105,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<GuideProfile>(entity =>
         {
             entity.HasIndex(g => g.UserId).IsUnique();
-            entity.HasOne(g => g.User).WithMany().HasForeignKey(g => g.UserId);
+            entity.HasOne(g => g.User).WithMany().HasForeignKey(g => g.UserId).OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<Domain.Entities.Review>(entity =>
@@ -128,7 +138,7 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<ApprovalHistory>(entity =>
         {
-            entity.HasOne(a => a.Project).WithMany().HasForeignKey(a => a.ProjectId);
+            entity.HasOne(a => a.Project).WithMany().HasForeignKey(a => a.ProjectId).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(a => a.Chapter).WithMany().HasForeignKey(a => a.ChapterId).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(a => a.Guide).WithMany().HasForeignKey(a => a.GuideId).OnDelete(DeleteBehavior.NoAction);
         });
@@ -174,6 +184,62 @@ public class ApplicationDbContext : DbContext
         {
             entity.HasOne(r => r.DepartmentProfile).WithMany().HasForeignKey(r => r.DepartmentProfileId);
             entity.HasOne(r => r.GeneratedByUser).WithMany().HasForeignKey(r => r.GeneratedByUserId).OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<College>(entity =>
+        {
+            entity.HasIndex(c => c.Code).IsUnique();
+        });
+
+        modelBuilder.Entity<Department>(entity =>
+        {
+            entity.HasIndex(d => d.Code).IsUnique();
+            entity.HasOne(d => d.College).WithMany(c => c.Departments).HasForeignKey(d => d.CollegeId).OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<AcademicYear>(entity =>
+        {
+            entity.HasIndex(a => a.Name).IsUnique();
+        });
+
+        modelBuilder.Entity<Semester>(entity =>
+        {
+            entity.HasOne(s => s.AcademicYear).WithMany(a => a.Semesters).HasForeignKey(s => s.AcademicYearId).OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<FacultyMember>(entity =>
+        {
+            entity.HasIndex(f => f.UserId).IsUnique();
+            entity.HasOne(f => f.User).WithMany().HasForeignKey(f => f.UserId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(f => f.Department).WithMany(d => d.FacultyMembers).HasForeignKey(f => f.DepartmentId).OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<SystemSetting>(entity =>
+        {
+            entity.HasIndex(s => s.Key).IsUnique();
+        });
+
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.HasOne(a => a.User).WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(a => a.Timestamp);
+        });
+
+        modelBuilder.Entity<Permission>(entity =>
+        {
+            entity.HasIndex(p => p.Name).IsUnique();
+        });
+
+        modelBuilder.Entity<RolePermission>(entity =>
+        {
+            entity.HasIndex(rp => new { rp.RoleId, rp.PermissionId }).IsUnique();
+            entity.HasOne(rp => rp.Role).WithMany().HasForeignKey(rp => rp.RoleId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(rp => rp.Permission).WithMany().HasForeignKey(rp => rp.PermissionId).OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<GlobalAnnouncement>(entity =>
+        {
+            entity.HasOne(a => a.CreatedByUser).WithMany().HasForeignKey(a => a.CreatedByUserId).OnDelete(DeleteBehavior.NoAction);
         });
     }
 }

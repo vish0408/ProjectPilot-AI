@@ -19,8 +19,8 @@ public class NotificationService : INotificationService
 
     public async Task<List<NotificationResponse>> GetMyNotificationsAsync(Guid userId)
     {
-        var notifications = await _context.Notifications
-            .Where(n => n.UserId == userId)
+        var notifications = await _context.Notifications.AsNoTracking()
+            .Where(n => n.UserId == userId && !n.IsDeleted)
             .OrderByDescending(n => n.CreatedAt)
             .Take(50)
             .ToListAsync();
@@ -30,14 +30,14 @@ public class NotificationService : INotificationService
 
     public async Task<int> GetUnreadCountAsync(Guid userId)
     {
-        return await _context.Notifications
-            .CountAsync(n => n.UserId == userId && !n.IsRead);
+        return await _context.Notifications.AsNoTracking()
+            .CountAsync(n => n.UserId == userId && !n.IsRead && !n.IsDeleted);
     }
 
     public async Task MarkAsReadAsync(Guid userId, MarkReadRequest request)
     {
         var notifications = await _context.Notifications
-            .Where(n => n.UserId == userId && request.NotificationIds.Contains(n.Id))
+            .Where(n => n.UserId == userId && request.NotificationIds.Contains(n.Id) && !n.IsDeleted)
             .ToListAsync();
 
         foreach (var notification in notifications)
@@ -51,7 +51,7 @@ public class NotificationService : INotificationService
     public async Task MarkAllAsReadAsync(Guid userId)
     {
         var notifications = await _context.Notifications
-            .Where(n => n.UserId == userId && !n.IsRead)
+            .Where(n => n.UserId == userId && !n.IsRead && !n.IsDeleted)
             .ToListAsync();
 
         foreach (var notification in notifications)

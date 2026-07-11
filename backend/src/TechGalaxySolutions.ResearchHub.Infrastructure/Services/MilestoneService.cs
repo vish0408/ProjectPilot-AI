@@ -22,7 +22,7 @@ public class MilestoneService : IMilestoneService
     {
         await VerifyProjectAccess(projectId, userId);
 
-        var milestones = await _context.Milestones
+        var milestones = await _context.Milestones.AsNoTracking()
             .Where(m => m.ProjectId == projectId && !m.IsDeleted)
             .OrderBy(m => m.TargetDate)
             .ToListAsync();
@@ -81,7 +81,7 @@ public class MilestoneService : IMilestoneService
 
     private async Task VerifyProjectAccess(Guid projectId, Guid userId)
     {
-        var project = await _context.Projects
+        var project = await _context.Projects.AsNoTracking()
             .Include(p => p.Members)
             .FirstOrDefaultAsync(p => p.Id == projectId && !p.IsDeleted)
             ?? throw new KeyNotFoundException("Project not found");

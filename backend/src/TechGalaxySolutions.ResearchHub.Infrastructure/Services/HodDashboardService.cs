@@ -23,17 +23,17 @@ public class HodDashboardService : IHodDashboardService
 
     public async Task<HodDashboardResponse> GetDashboardAsync(Guid userId)
     {
-        var department = await _context.Set<DepartmentProfile>()
+        var department = await _context.Set<DepartmentProfile>().AsNoTracking()
             .FirstOrDefaultAsync(d => d.HodUserId == userId && !d.IsDeleted);
 
-        var totalStudents = await _context.Set<StudentProfile>().CountAsync(s => !s.IsDeleted);
-        var totalGuides = await _context.Set<GuideProfile>().CountAsync(g => !g.IsDeleted);
-        var activeProjects = await _context.Projects.CountAsync(p => !p.IsDeleted && p.Status == ProjectStatus.InProgress);
-        var completedProjects = await _context.Projects.CountAsync(p => !p.IsDeleted && p.Status == ProjectStatus.Completed);
-        var pendingReviews = await _context.Set<Review>().CountAsync(r => !r.IsDeleted && r.Status == ReviewStatus.Pending);
+        var totalStudents = await _context.Set<StudentProfile>().AsNoTracking().CountAsync(s => !s.IsDeleted);
+        var totalGuides = await _context.Set<GuideProfile>().AsNoTracking().CountAsync(g => !g.IsDeleted);
+        var activeProjects = await _context.Projects.AsNoTracking().CountAsync(p => !p.IsDeleted && p.Status == ProjectStatus.InProgress);
+        var completedProjects = await _context.Projects.AsNoTracking().CountAsync(p => !p.IsDeleted && p.Status == ProjectStatus.Completed);
+        var pendingReviews = await _context.Set<Review>().AsNoTracking().CountAsync(r => !r.IsDeleted && r.Status == ReviewStatus.Pending);
 
         var announcements = department != null
-            ? await _context.Set<DepartmentAnnouncement>()
+            ? await _context.Set<DepartmentAnnouncement>().AsNoTracking()
                 .Include(a => a.CreatedByUser)
                 .Where(a => a.DepartmentProfileId == department.Id && !a.IsDeleted && a.Status == AnnouncementStatus.Published)
                 .OrderByDescending(a => a.PublishedAt)
@@ -41,12 +41,12 @@ public class HodDashboardService : IHodDashboardService
                 .ToListAsync()
             : new List<DepartmentAnnouncement>();
 
-        var totalTopics = await _context.Set<ResearchTopic>().CountAsync(t => !t.IsDeleted);
-        var activeTopics = await _context.Set<ResearchTopic>().CountAsync(t => !t.IsDeleted && t.IsActive);
-        var totalCategories = await _context.Set<ResearchCategory>().CountAsync(c => !c.IsDeleted);
-        var allocatedProjects = await _context.Set<ProjectAllocation>().CountAsync(a => !a.IsDeleted && a.Status == AllocationStatus.Active);
+        var totalTopics = await _context.Set<ResearchTopic>().AsNoTracking().CountAsync(t => !t.IsDeleted);
+        var activeTopics = await _context.Set<ResearchTopic>().AsNoTracking().CountAsync(t => !t.IsDeleted && t.IsActive);
+        var totalCategories = await _context.Set<ResearchCategory>().AsNoTracking().CountAsync(c => !c.IsDeleted);
+        var allocatedProjects = await _context.Set<ProjectAllocation>().AsNoTracking().CountAsync(a => !a.IsDeleted && a.Status == AllocationStatus.Active);
 
-        var recentNotifications = await _context.Set<Domain.Entities.Notification>()
+        var recentNotifications = await _context.Set<Domain.Entities.Notification>().AsNoTracking()
             .Where(n => n.UserId == userId && !n.IsDeleted)
             .OrderByDescending(n => n.CreatedAt)
             .Take(10)

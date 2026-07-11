@@ -23,20 +23,26 @@ export default function HodAnnouncements() {
   useEffect(() => { fetch(); }, []);
 
   const handleCreate = async () => {
-    await hodService.createAnnouncement(form);
-    setShowForm(false);
-    setForm({ title: "", content: "", priority: "Normal" });
-    fetch();
+    try {
+      await hodService.createAnnouncement(form);
+      setShowForm(false);
+      setForm({ title: "", content: "", priority: "Normal" });
+      fetch();
+    } catch {}
   };
 
   const handlePublish = async (id: string) => {
-    await hodService.publishAnnouncement(id);
-    fetch();
+    try {
+      await hodService.publishAnnouncement(id);
+      fetch();
+    } catch {}
   };
 
   const handleExpire = async (id: string) => {
-    await hodService.expireAnnouncement(id);
-    fetch();
+    try {
+      await hodService.expireAnnouncement(id);
+      fetch();
+    } catch {}
   };
 
   if (loading) {

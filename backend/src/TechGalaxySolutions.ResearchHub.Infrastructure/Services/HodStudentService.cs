@@ -20,7 +20,7 @@ public class HodStudentService : IHodStudentService
 
     public async Task<List<StudentSummaryResponse>> GetStudentsAsync(Guid userId, string? search, string? sortBy, string? filterStatus)
     {
-        var query = _context.Set<StudentProfile>()
+        var query = _context.Set<StudentProfile>().AsNoTracking()
             .Include(s => s.User)
             .Include(s => s.Guide)
             .Where(s => !s.IsDeleted);
@@ -35,12 +35,16 @@ public class HodStudentService : IHodStudentService
 
         var students = await query.OrderByDescending(s => s.CreatedAt).ToListAsync();
 
+        var studentIds = students.Select(s => s.UserId).ToList();
+        var studentProjects = await _context.Set<Project>().AsNoTracking()
+            .Where(p => studentIds.Contains(p.StudentId) && !p.IsDeleted)
+            .ToListAsync();
+        var projectLookup = studentProjects.ToLookup(p => p.StudentId);
+
         var result = new List<StudentSummaryResponse>();
         foreach (var student in students)
         {
-            var project = await _context.Projects
-                .Where(p => p.StudentId == student.UserId && !p.IsDeleted)
-                .FirstOrDefaultAsync();
+            var project = projectLookup[student.UserId].FirstOrDefault();
 
             result.Add(new StudentSummaryResponse
             {

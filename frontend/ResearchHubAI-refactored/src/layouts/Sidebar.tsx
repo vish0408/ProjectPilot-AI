@@ -10,8 +10,8 @@ import { STUDENT_NAV } from "../utils/navigation";
 
 export default function Sidebar({ nav, collapsed, setCollapsed }: { nav: typeof STUDENT_NAV; collapsed:boolean; setCollapsed:(v:boolean)=>void }) {
   const { screen, setScreen, user } = useApp();
-  const rc: Record<Role,string> = { student:"from-blue-600 to-indigo-600", guide:"from-indigo-600 to-violet-600", admin:"from-slate-700 to-slate-900" };
-  const rl: Record<Role,string> = { student:"PhD Scholar", guide:"Research Guide", admin:"Administrator" };
+  const rc: Record<Role,string> = { student:"from-blue-600 to-indigo-600", guide:"from-indigo-600 to-violet-600", admin:"from-slate-700 to-slate-900", hod:"from-cyan-600 to-blue-700" };
+  const rl: Record<Role,string> = { student:"PhD Scholar", guide:"Research Guide", admin:"Administrator", hod:"HOD" };
 
   return (
     <aside className={`flex flex-col bg-sidebar border-r border-sidebar-border h-full transition-all duration-300 ${collapsed?"w-[62px]":"w-[220px]"} flex-shrink-0`}>

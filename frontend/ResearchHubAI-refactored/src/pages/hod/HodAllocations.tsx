@@ -23,10 +23,12 @@ export default function HodAllocations() {
   useEffect(() => { fetch(); }, []);
 
   const handleCreate = async () => {
-    await hodService.createAllocation(form);
-    setShowForm(false);
-    setForm({ studentId: "", guideId: "", remarks: "" });
-    fetch();
+    try {
+      await hodService.createAllocation(form);
+      setShowForm(false);
+      setForm({ studentId: "", guideId: "", remarks: "" });
+      fetch();
+    } catch {}
   };
 
   const handleRevoke = async (id: string) => {

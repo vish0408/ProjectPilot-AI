@@ -21,7 +21,7 @@ public class ReviewService : IReviewService
 
     public async Task<List<ReviewResponse>> GetProjectReviewsAsync(Guid projectId)
     {
-        var reviews = await _context.Set<Review>()
+        var reviews = await _context.Set<Review>().AsNoTracking()
             .Include(r => r.Project)
             .Include(r => r.Guide)
             .Where(r => r.ProjectId == projectId && !r.IsDeleted)
@@ -33,7 +33,7 @@ public class ReviewService : IReviewService
 
     public async Task<List<ReviewResponse>> GetMyReviewsAsync(Guid guideId)
     {
-        var reviews = await _context.Set<Review>()
+        var reviews = await _context.Set<Review>().AsNoTracking()
             .Include(r => r.Project)
             .Include(r => r.Guide)
             .Where(r => r.GuideId == guideId && !r.IsDeleted)
@@ -76,7 +76,7 @@ public class ReviewService : IReviewService
 
         await _context.SaveChangesAsync();
 
-        var saved = await _context.Set<Review>()
+        var saved = await _context.Set<Review>().AsNoTracking()
             .Include(r => r.Project)
             .Include(r => r.Guide)
             .FirstAsync(r => r.Id == review.Id);

@@ -8,6 +8,7 @@ export interface ApiResponse<T> {
 
 class ApiClient {
   private baseUrl: string;
+  private _refreshing: Promise<boolean> | null = null;
 
   constructor(baseUrl: string = BASE_URL) {
     this.baseUrl = baseUrl;
@@ -65,25 +66,27 @@ class ApiClient {
   }
 
   private async tryRefreshToken(): Promise<boolean> {
+    if (this._refreshing) return this._refreshing;
+    this._refreshing = this._doRefresh();
+    try { return await this._refreshing; }
+    finally { this._refreshing = null; }
+  }
+
+  private async _doRefresh(): Promise<boolean> {
     const refreshToken = this.getRefreshToken();
     if (!refreshToken) return false;
-
     try {
       const response = await fetch(`${this.baseUrl}/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refreshToken }),
       });
-
       if (!response.ok) return false;
-
       const data = await response.json();
       localStorage.setItem("accessToken", data.accessToken);
       localStorage.setItem("refreshToken", data.refreshToken);
       return true;
-    } catch {
-      return false;
-    }
+    } catch { return false; }
   }
 
   private clearTokens(): void {
@@ -102,43 +105,63 @@ class ApiClient {
 
   async get<T>(path: string): Promise<ApiResponse<T>> {
     return this.autoRetryOnExpiry(async () => {
-      const response = await fetch(`${this.baseUrl}${path}`, {
-        method: "GET",
-        headers: this.getHeaders(),
-      });
-      return this.handleResponse<T>(response);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
+      try {
+        const response = await fetch(`${this.baseUrl}${path}`, {
+          method: "GET",
+          headers: this.getHeaders(),
+          signal: controller.signal,
+        });
+        return this.handleResponse<T>(response);
+      } finally { clearTimeout(timeout); }
     });
   }
 
   async post<T>(path: string, body?: unknown): Promise<ApiResponse<T>> {
     return this.autoRetryOnExpiry(async () => {
-      const response = await fetch(`${this.baseUrl}${path}`, {
-        method: "POST",
-        headers: this.getHeaders(),
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      return this.handleResponse<T>(response);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
+      try {
+        const response = await fetch(`${this.baseUrl}${path}`, {
+          method: "POST",
+          headers: this.getHeaders(),
+          body: body ? JSON.stringify(body) : undefined,
+          signal: controller.signal,
+        });
+        return this.handleResponse<T>(response);
+      } finally { clearTimeout(timeout); }
     });
   }
 
   async put<T>(path: string, body?: unknown): Promise<ApiResponse<T>> {
     return this.autoRetryOnExpiry(async () => {
-      const response = await fetch(`${this.baseUrl}${path}`, {
-        method: "PUT",
-        headers: this.getHeaders(),
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      return this.handleResponse<T>(response);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
+      try {
+        const response = await fetch(`${this.baseUrl}${path}`, {
+          method: "PUT",
+          headers: this.getHeaders(),
+          body: body ? JSON.stringify(body) : undefined,
+          signal: controller.signal,
+        });
+        return this.handleResponse<T>(response);
+      } finally { clearTimeout(timeout); }
     });
   }
 
   async delete<T>(path: string): Promise<ApiResponse<T>> {
     return this.autoRetryOnExpiry(async () => {
-      const response = await fetch(`${this.baseUrl}${path}`, {
-        method: "DELETE",
-        headers: this.getHeaders(),
-      });
-      return this.handleResponse<T>(response);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
+      try {
+        const response = await fetch(`${this.baseUrl}${path}`, {
+          method: "DELETE",
+          headers: this.getHeaders(),
+          signal: controller.signal,
+        });
+        return this.handleResponse<T>(response);
+      } finally { clearTimeout(timeout); }
     });
   }
 }

@@ -22,6 +22,45 @@ namespace TechGalaxySolutions.ResearchHub.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.AcademicYear", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsCurrent")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("AcademicYears");
+                });
+
             modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.ApprovalHistory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -66,6 +105,60 @@ namespace TechGalaxySolutions.ResearchHub.Infrastructure.Migrations
                     b.HasIndex("ProjectId");
 
                     b.ToTable("ApprovalHistories");
+                });
+
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.AuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EntityId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EntityName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IpAddress")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("NewValues")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OldValues")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AuditLogs");
                 });
 
             modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.Chapter", b =>
@@ -142,6 +235,99 @@ namespace TechGalaxySolutions.ResearchHub.Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("ChapterComments");
+                });
+
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.College", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Website")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("Colleges");
+                });
+
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.Department", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<Guid>("CollegeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("CollegeId");
+
+                    b.ToTable("Departments");
                 });
 
             modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.DepartmentAnnouncement", b =>
@@ -328,6 +514,95 @@ namespace TechGalaxySolutions.ResearchHub.Infrastructure.Migrations
                     b.HasIndex("DepartmentProfileId");
 
                     b.ToTable("DepartmentSettings");
+                });
+
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.FacultyMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("DepartmentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Designation")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("JoiningDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Specialization")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DepartmentId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("FacultyMembers");
+                });
+
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.GlobalAnnouncement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.ToTable("GlobalAnnouncements");
                 });
 
             modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.GuideProfile", b =>
@@ -540,6 +815,44 @@ namespace TechGalaxySolutions.ResearchHub.Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.Permission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Group")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Permissions");
                 });
 
             modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.Project", b =>
@@ -890,6 +1203,13 @@ namespace TechGalaxySolutions.ResearchHub.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
@@ -903,6 +1223,81 @@ namespace TechGalaxySolutions.ResearchHub.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Roles");
+                });
+
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.RolePermission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("PermissionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PermissionId");
+
+                    b.HasIndex("RoleId", "PermissionId")
+                        .IsUnique();
+
+                    b.ToTable("RolePermissions");
+                });
+
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.Semester", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AcademicYearId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsCurrent")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AcademicYearId");
+
+                    b.ToTable("Semesters");
                 });
 
             modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.StudentProfile", b =>
@@ -949,6 +1344,48 @@ namespace TechGalaxySolutions.ResearchHub.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("StudentProfiles");
+                });
+
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.SystemSetting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Group")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.ToTable("SystemSettings");
                 });
 
             modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.TaskItem", b =>
@@ -1067,6 +1504,16 @@ namespace TechGalaxySolutions.ResearchHub.Infrastructure.Migrations
                     b.Navigation("Project");
                 });
 
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.AuditLog", b =>
+                {
+                    b.HasOne("TechGalaxySolutions.ResearchHub.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.Chapter", b =>
                 {
                     b.HasOne("TechGalaxySolutions.ResearchHub.Domain.Entities.Project", "Project")
@@ -1095,6 +1542,17 @@ namespace TechGalaxySolutions.ResearchHub.Infrastructure.Migrations
                     b.Navigation("Chapter");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.Department", b =>
+                {
+                    b.HasOne("TechGalaxySolutions.ResearchHub.Domain.Entities.College", "College")
+                        .WithMany("Departments")
+                        .HasForeignKey("CollegeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("College");
                 });
 
             modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.DepartmentAnnouncement", b =>
@@ -1154,6 +1612,36 @@ namespace TechGalaxySolutions.ResearchHub.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("DepartmentProfile");
+                });
+
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.FacultyMember", b =>
+                {
+                    b.HasOne("TechGalaxySolutions.ResearchHub.Domain.Entities.Department", "Department")
+                        .WithMany("FacultyMembers")
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("TechGalaxySolutions.ResearchHub.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Department");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.GlobalAnnouncement", b =>
+                {
+                    b.HasOne("TechGalaxySolutions.ResearchHub.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
                 });
 
             modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.GuideProfile", b =>
@@ -1369,6 +1857,36 @@ namespace TechGalaxySolutions.ResearchHub.Infrastructure.Migrations
                     b.Navigation("Project");
                 });
 
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.RolePermission", b =>
+                {
+                    b.HasOne("TechGalaxySolutions.ResearchHub.Domain.Entities.Permission", "Permission")
+                        .WithMany()
+                        .HasForeignKey("PermissionId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("TechGalaxySolutions.ResearchHub.Domain.Entities.Role", "Role")
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Permission");
+
+                    b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.Semester", b =>
+                {
+                    b.HasOne("TechGalaxySolutions.ResearchHub.Domain.Entities.AcademicYear", "AcademicYear")
+                        .WithMany("Semesters")
+                        .HasForeignKey("AcademicYearId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AcademicYear");
+                });
+
             modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.StudentProfile", b =>
                 {
                     b.HasOne("TechGalaxySolutions.ResearchHub.Domain.Entities.User", "Guide")
@@ -1416,9 +1934,24 @@ namespace TechGalaxySolutions.ResearchHub.Infrastructure.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.AcademicYear", b =>
+                {
+                    b.Navigation("Semesters");
+                });
+
             modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.Chapter", b =>
                 {
                     b.Navigation("Comments");
+                });
+
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.College", b =>
+                {
+                    b.Navigation("Departments");
+                });
+
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.Department", b =>
+                {
+                    b.Navigation("FacultyMembers");
                 });
 
             modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.Meeting", b =>
