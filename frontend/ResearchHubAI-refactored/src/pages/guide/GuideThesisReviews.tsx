@@ -1,0 +1,176 @@
+import { useEffect, useState } from "react";
+import {
+  CheckCircle,
+  Clock,
+  RefreshCw,
+  Search,
+  Send,
+  X
+} from "lucide-react";
+import Badge from "../../components/common/Badge";
+import Card from "../../components/common/Card";
+import ProgressBar from "../../components/common/ProgressBar";
+import { guideService } from "../../services/GuideService";
+import { GuideDashboardData, AssignedStudentSummary, Chapter } from "../../types/Guide";
+
+export default function GuideThesisReviews() {
+  const [dashboard, setDashboard] = useState<GuideDashboardData | null>(null);
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [activeStudentIdx, setActiveStudentIdx] = useState(0);
+  const [activeChapterIdx, setActiveChapterIdx] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [comment, setComment] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const fetchDashboard = async () => {
+    try {
+      const d = await guideService.getDashboard();
+      setDashboard(d);
+      return d;
+    } catch (e) {
+      console.error("Failed to load dashboard", e);
+      return null;
+    }
+  };
+
+  const fetchChapters = async (student: AssignedStudentSummary) => {
+    try {
+      const projectId = (student as any).projectId;
+      if (projectId) {
+        const ch = await guideService.getProjectChapters(projectId);
+        setChapters(ch);
+        setActiveChapterIdx(0);
+      }
+    } catch (e) {
+      console.error("Failed to load chapters", e);
+      setChapters([]);
+    }
+  };
+
+  useEffect(() => {
+    (async () => {
+      const d = await fetchDashboard();
+      if (d?.assignedStudents.length) {
+        await fetchChapters(d.assignedStudents[0]);
+      }
+      setLoading(false);
+    })();
+  }, []);
+
+  const handleStudentClick = async (idx: number, student: AssignedStudentSummary) => {
+    setActiveStudentIdx(idx);
+    setLoading(true);
+    await fetchChapters(student);
+    setLoading(false);
+  };
+
+  const handleStatusUpdate = async (chapterId: string, status: string) => {
+    try {
+      await guideService.updateChapterStatus(chapterId, { status, comment: comment || undefined });
+      const student = dashboard?.assignedStudents[activeStudentIdx];
+      if (student) await fetchChapters(student);
+    } catch (e) {
+      console.error("Failed to update chapter status", e);
+    }
+  };
+
+  const handleAddComment = async (chapterId: string) => {
+    if (!comment.trim()) return;
+    setSending(true);
+    try {
+      await guideService.addChapterComment(chapterId, { content: comment.trim() });
+      setComment("");
+      const student = dashboard?.assignedStudents[activeStudentIdx];
+      if (student) await fetchChapters(student);
+    } catch (e) {
+      console.error("Failed to add comment", e);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const students = dashboard?.assignedStudents ?? [];
+  const activeChapter = chapters[activeChapterIdx];
+  const projectTitle = students[activeStudentIdx]?.projectTitle || "Project";
+
+  if (loading && !dashboard) {
+    return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
+  if (!students.length) {
+    return <div className="text-center text-muted-foreground py-10">No assigned students found.</div>;
+  }
+
+  return (
+    <div className="flex gap-5 h-[calc(100vh-9rem)]">
+      <div className="w-72 flex-shrink-0 flex flex-col gap-2">
+        <div className="relative mb-2"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground"/><input className="w-full bg-muted border border-border rounded-xl pl-9 pr-3 py-2 text-sm outline-none focus:border-primary" placeholder="Search reviews…"/></div>
+        {students.map((s,i)=>(
+          <button key={s.userId} onClick={()=>handleStudentClick(i,s)} className={`w-full text-left p-3.5 rounded-xl border transition-all ${activeStudentIdx===i?"border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30":"border-border hover:bg-muted"}`}>
+            <div className="flex items-center justify-between mb-1.5"><span className="text-xs font-bold text-foreground">{s.fullName}</span><Badge variant={s.completionPercentage>70?"success":s.completionPercentage>40?"warning":"danger"}>{s.completionPercentage}%</Badge></div>
+            <p className="text-xs text-muted-foreground truncate">{s.researchTopic}</p>
+            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1"><Clock className="w-3 h-3"/>{s.projectStatus||"In Progress"}</p>
+          </button>
+        ))}
+      </div>
+
+      <div className="flex-1 flex flex-col gap-4">
+        {chapters.length > 0 && (
+          <div className="flex gap-2 flex-wrap">
+            {chapters.map((ch,i)=>(
+              <button key={ch.id} onClick={()=>setActiveChapterIdx(i)} className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition-all ${activeChapterIdx===i?"border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300":"border-border text-muted-foreground hover:bg-muted"}`}>
+                {ch.title}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {activeChapter ? (
+          <Card className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <div>
+                <p className="font-bold text-foreground">{activeChapter.title}</p>
+                <p className="text-xs text-muted-foreground">{projectTitle}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant={activeChapter.status==="approved"?"success":activeChapter.status==="submitted"?"warning":activeChapter.status==="revision_required"?"danger":"default"}>{activeChapter.status}</Badge>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
+              <div className="bg-muted/50 rounded-xl p-4 text-sm leading-relaxed text-muted-foreground border border-border whitespace-pre-wrap">{activeChapter.content}</div>
+              {activeChapter.comments.length > 0 && (
+                <div className="mt-4 flex flex-col gap-2">
+                  <p className="text-xs font-bold text-muted-foreground">Comments ({activeChapter.comments.length})</p>
+                  {activeChapter.comments.map(c=>(
+                    <div key={c.id} className="bg-muted/30 rounded-xl p-3 border border-border">
+                      <div className="flex items-center justify-between mb-1"><span className="text-xs font-bold text-foreground">{c.userName}</span><span className="text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</span></div>
+                      <p className="text-xs text-muted-foreground">{c.content}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="border-t border-border px-5 py-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-bold text-muted-foreground">Actions</p>
+                <div className="flex gap-2">
+                  <button onClick={()=>handleStatusUpdate(activeChapter.id,"approved")} className="bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-green-700 flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5"/>Approve</button>
+                  <button onClick={()=>handleStatusUpdate(activeChapter.id,"revision_required")} className="bg-amber-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-amber-600 flex items-center gap-1.5"><RefreshCw className="w-3.5 h-3.5"/>Revise</button>
+                  <button onClick={()=>handleStatusUpdate(activeChapter.id,"rejected")} className="bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-red-700 flex items-center gap-1.5"><X className="w-3.5 h-3.5"/>Reject</button>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <textarea className="flex-1 bg-muted border border-border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-primary resize-none" rows={2} placeholder="Add review comments..." value={comment} onChange={e=>setComment(e.target.value)}/>
+                <button disabled={sending||!comment.trim()} onClick={()=>handleAddComment(activeChapter.id)} className="bg-indigo-600 text-white px-4 rounded-xl hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center self-stretch"><Send className="w-4 h-4"/></button>
+              </div>
+            </div>
+          </Card>
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm border border-dashed border-border rounded-2xl">
+            <p>No chapters available for this project. Ensure the project has chapters with content.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

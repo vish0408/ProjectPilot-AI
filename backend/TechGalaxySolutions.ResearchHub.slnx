@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TechGalaxySolutions.ResearchHub.Api/TechGalaxySolutions.ResearchHub.Api.csproj" />
+    <Project Path="src/TechGalaxySolutions.ResearchHub.Application/TechGalaxySolutions.ResearchHub.Application.csproj" />
+    <Project Path="src/TechGalaxySolutions.ResearchHub.Domain/TechGalaxySolutions.ResearchHub.Domain.csproj" />
+    <Project Path="src/TechGalaxySolutions.ResearchHub.Infrastructure/TechGalaxySolutions.ResearchHub.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TechGalaxySolutions.ResearchHub.Tests/TechGalaxySolutions.ResearchHub.Tests.csproj" />
+  </Folder>
+</Solution>
