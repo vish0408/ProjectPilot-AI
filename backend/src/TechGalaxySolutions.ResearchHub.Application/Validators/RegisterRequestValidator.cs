@@ -26,7 +26,7 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
 
         RuleFor(x => x.Role)
             .NotEmpty().WithMessage("Role is required")
-            .Must(r => r is "Admin" or "Guide" or "Student" or "HOD")
-            .WithMessage("Role must be Admin, Guide, Student, or HOD");
+            .Must(r => r is "SuperAdmin" or "CollegeAdmin" or "Guide" or "Student" or "HOD")
+            .WithMessage("Role must be SuperAdmin, CollegeAdmin, Guide, Student, or HOD");
     }
 }

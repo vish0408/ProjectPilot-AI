@@ -13,9 +13,10 @@ import {
 
 interface LoginPageProps {
   onLogin: (email: string, password: string) => Promise<void>;
+  onForgotPassword?: () => void;
 }
 
-export default function LoginPage({ onLogin }: LoginPageProps) {
+export default function LoginPage({ onLogin, onForgotPassword }: LoginPageProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -44,7 +45,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           <h2 className="text-4xl font-bold text-white mb-4 leading-tight">Enterprise Research Management — Role-Based Access</h2>
           <p className="text-blue-200/70 text-base leading-relaxed mb-10">Three distinct intelligent experiences — automatically assigned based on your institutional role.</p>
           <div className="grid grid-cols-1 gap-4">
-            {[{role:"Student",desc:"Personal thesis management, AI assistant, progress tracking",icon:GraduationCap,c:"from-blue-600/30 to-blue-700/20"},{role:"Research Guide",desc:"Student supervision, chapter reviews, approval workflows",icon:UserCheck,c:"from-indigo-600/30 to-indigo-700/20"},{role:"Administrator",desc:"Full platform control, analytics, user & system management",icon:Shield,c:"from-slate-600/40 to-slate-700/30"}].map((r,i)=>(
+            {[{role:"Student",desc:"Personal thesis management, AI assistant, progress tracking",icon:GraduationCap,c:"from-blue-600/30 to-blue-700/20"},{role:"Research Guide",desc:"Student supervision, chapter reviews, approval workflows",icon:UserCheck,c:"from-indigo-600/30 to-indigo-700/20"},{role:"College Admin",desc:"Full platform control, analytics, user & system management",icon:Shield,c:"from-slate-600/40 to-slate-700/30"}].map((r,i)=>(
               <div key={i} className={`flex items-center gap-3 bg-gradient-to-r ${r.c} border border-white/10 rounded-xl px-4 py-3.5`}>
                 <div className="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center flex-shrink-0"><r.icon className="w-4 h-4 text-white"/></div>
                 <div><p className="text-white font-bold text-sm">{r.role}</p><p className="text-blue-200/60 text-xs">{r.desc}</p></div>
@@ -69,7 +70,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             <div><label className="block text-sm font-semibold text-foreground mb-1.5">Institutional Email</label>
               <div className="relative"><Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"/><input value={email} onChange={e=>setEmail(e.target.value)} className="w-full bg-input-background border border-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all" placeholder="you@university.edu"/></div>
             </div>
-            <div><div className="flex items-center justify-between mb-1.5"><label className="block text-sm font-semibold text-foreground">Password</label><a href="#" className="text-xs text-blue-600 hover:underline">Forgot?</a></div>
+            <div><div className="flex items-center justify-between mb-1.5"><label className="block text-sm font-semibold text-foreground">Password</label><button type="button" onClick={onForgotPassword} className="text-xs text-blue-600 hover:underline">Forgot?</button></div>
               <div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"/><input type={showPwd?"text":"password"} value={password} onChange={e=>setPassword(e.target.value)} className="w-full bg-input-background border border-border rounded-xl pl-10 pr-10 py-2.5 text-sm text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all" placeholder="••••••••"/><button type="button" onClick={()=>setShowPwd(!showPwd)} className="absolute right-3 top-1/2 -translate-y-1/2"><Eye className="w-4 h-4 text-muted-foreground"/></button></div>
             </div>
             {error&&<div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-700 dark:text-red-300"><AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5"/>{error}</div>}

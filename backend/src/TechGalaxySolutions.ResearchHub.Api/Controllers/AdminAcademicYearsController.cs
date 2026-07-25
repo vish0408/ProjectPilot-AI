@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.AcademicYear;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
@@ -7,7 +7,7 @@ namespace TechGalaxySolutions.ResearchHub.Api.Controllers;
 
 [ApiController]
 [Route("admin/academic-years")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "CollegeAdmin,SuperAdmin")]
 public class AdminAcademicYearsController : ControllerBase
 {
     private readonly IAcademicYearService _academicYearService;
@@ -59,3 +59,4 @@ public class AdminAcademicYearsController : ControllerBase
         return NoContent();
     }
 }
+

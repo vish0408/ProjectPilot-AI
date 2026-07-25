@@ -53,9 +53,9 @@ public class HodGuideService : IHodGuideService
                 UserId = guide.UserId,
                 FullName = guide.User.FullName,
                 Email = guide.User.Email,
-                Department = guide.Department,
-                Specialization = guide.Specialization,
-                Designation = guide.Designation,
+                Department = guide.Department ?? "",
+                Specialization = guide.Specialization ?? "",
+                Designation = guide.Designation ?? "",
                 IsAvailable = guide.IsAvailable,
                 AssignedStudents = assignedCount,
                 CompletedProjects = completedCount,
@@ -63,6 +63,69 @@ public class HodGuideService : IHodGuideService
         }
 
         return result;
+    }
+
+    public async Task<GuideDetailResponse> GetGuideDetailAsync(Guid userId, Guid guideUserId)
+    {
+        var guide = await _context.Set<GuideProfile>().AsNoTracking()
+            .Include(g => g.User)
+            .FirstOrDefaultAsync(g => g.UserId == guideUserId && !g.IsDeleted)
+            ?? throw new KeyNotFoundException("Guide not found");
+
+        var assignedStudents = await _context.Set<StudentProfile>().AsNoTracking()
+            .Include(s => s.User)
+            .Where(s => s.GuideId == guideUserId && !s.IsDeleted)
+            .ToListAsync();
+
+        var assignedStudentIds = assignedStudents.Select(s => s.UserId).ToList();
+
+        var projects = await _context.Projects.AsNoTracking()
+            .Where(p => assignedStudentIds.Contains(p.StudentId) && !p.IsDeleted)
+            .ToListAsync();
+        var projectLookup = projects.ToLookup(p => p.StudentId);
+
+        var completedCount = projects.Count(p => p.Status == ProjectStatus.Completed);
+        var activeCount = projects.Count(p => p.Status == ProjectStatus.InProgress);
+
+        var pendingReviews = await _context.Set<Domain.Entities.Review>().AsNoTracking()
+            .CountAsync(r => r.GuideId == guideUserId && !r.IsDeleted && r.Status == ReviewStatus.Pending);
+
+        var students = new List<GuidedStudentItem>();
+        foreach (var s in assignedStudents)
+        {
+            var proj = projectLookup[s.UserId].FirstOrDefault();
+            students.Add(new GuidedStudentItem
+            {
+                UserId = s.UserId,
+                FullName = s.User.FullName,
+                Email = s.User.Email,
+                ResearchTopic = s.ResearchTopic ?? "",
+                ProjectStatus = proj?.Status.ToString() ?? "No Project",
+                CompletionPercentage = proj?.CompletionPercentage ?? 0,
+            });
+        }
+
+        return new GuideDetailResponse
+        {
+            UserId = guide.UserId,
+            FullName = guide.User.FullName,
+            Email = guide.User.Email,
+            PhoneNumber = guide.User.PhoneNumber ?? "",
+            Department = guide.Department ?? "",
+            College = guide.User.College ?? "",
+            Specialization = guide.Specialization ?? "",
+            Designation = guide.Designation ?? "",
+            Bio = guide.Bio ?? "",
+            Institution = guide.Institution ?? "",
+            IsAvailable = guide.IsAvailable,
+            AssignedStudents = assignedStudents.Count,
+            MaxCapacity = 10,
+            CompletedProjects = completedCount,
+            ActiveProjects = activeCount,
+            PendingReviews = pendingReviews,
+            Students = students,
+            CreatedAt = guide.CreatedAt,
+        };
     }
 
     public async Task AssignGuideAsync(Guid userId, AssignGuideRequest request)
@@ -74,7 +137,6 @@ public class HodGuideService : IHodGuideService
         var guideUser = await _context.Users.FindAsync(request.GuideId)
             ?? throw new KeyNotFoundException("Guide not found");
 
-        // Create allocation record
         var allocation = new ProjectAllocation
         {
             StudentId = request.StudentId,
@@ -85,7 +147,6 @@ public class HodGuideService : IHodGuideService
         };
         _context.Set<ProjectAllocation>().Add(allocation);
 
-        // Update student's guide
         studentProfile.GuideId = request.GuideId;
         studentProfile.UpdatedAt = DateTime.UtcNow;
 

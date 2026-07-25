@@ -1,5 +1,6 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TechGalaxySolutions.ResearchHub.Application.DTOs.Common;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.Department;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
 
@@ -7,7 +8,7 @@ namespace TechGalaxySolutions.ResearchHub.Api.Controllers;
 
 [ApiController]
 [Route("admin/departments")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "SuperAdmin")]
 public class AdminDepartmentsController : ControllerBase
 {
     private readonly IAdminDepartmentService _departmentService;
@@ -18,9 +19,16 @@ public class AdminDepartmentsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetAll([FromQuery] PagedRequest request, [FromQuery] Guid? collegeId)
     {
-        var result = await _departmentService.GetDepartmentsAsync();
+        var result = await _departmentService.GetDepartmentsAsync(request, collegeId);
+        return Ok(result);
+    }
+
+    [HttpGet("all")]
+    public async Task<IActionResult> GetAllDepartments([FromQuery] Guid? collegeId)
+    {
+        var result = await _departmentService.GetAllDepartmentsAsync(collegeId);
         return Ok(result);
     }
 

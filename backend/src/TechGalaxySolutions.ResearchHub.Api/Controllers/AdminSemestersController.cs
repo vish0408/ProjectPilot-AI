@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.Semester;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
@@ -7,7 +7,7 @@ namespace TechGalaxySolutions.ResearchHub.Api.Controllers;
 
 [ApiController]
 [Route("admin/semesters")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "CollegeAdmin,SuperAdmin")]
 public class AdminSemestersController : ControllerBase
 {
     private readonly ISemesterService _semesterService;
@@ -66,3 +66,4 @@ public class AdminSemestersController : ControllerBase
         return NoContent();
     }
 }
+

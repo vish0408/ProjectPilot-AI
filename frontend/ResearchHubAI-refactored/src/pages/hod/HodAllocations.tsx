@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ClipboardList, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import Badge from "../../components/common/Badge";
 import Card from "../../components/common/Card";
 import SectionHead from "../../components/common/SectionHead";
@@ -11,12 +11,13 @@ export default function HodAllocations() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ studentId: "", guideId: "", remarks: "" });
+  const [error, setError] = useState<string | null>(null);
 
   const fetch = async () => {
     try {
       const data = await hodService.getAllocations();
       setAllocations(data);
-    } catch {}
+    } catch (e) { if (e instanceof Error) setError(e.message); }
     finally { setLoading(false); }
   };
 
@@ -28,7 +29,7 @@ export default function HodAllocations() {
       setShowForm(false);
       setForm({ studentId: "", guideId: "", remarks: "" });
       fetch();
-    } catch {}
+    } catch (e) { if (e instanceof Error) setError(e.message); }
   };
 
   const handleRevoke = async (id: string) => {
@@ -46,6 +47,11 @@ export default function HodAllocations() {
 
   return (
     <div className="flex flex-col gap-5">
+      {error && (
+        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 mb-4">
+          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-foreground">Project Allocations</h2>
         <button onClick={() => setShowForm(!showForm)}

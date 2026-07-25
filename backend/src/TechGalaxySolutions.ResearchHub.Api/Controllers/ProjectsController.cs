@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TechGalaxySolutions.ResearchHub.Application.DTOs.Common;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.Project;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
 
@@ -18,11 +19,11 @@ public class ProjectsController : ControllerBase
     }
 
     [HttpGet("my")]
-    public async Task<IActionResult> GetMyProjects()
+    public async Task<IActionResult> GetMyProjects([FromQuery] PagedRequest request)
     {
         var userId = User.GetUserId();
-        var projects = await _projectService.GetMyProjectsAsync(userId);
-        return Ok(projects);
+        var result = await _projectService.GetMyProjectsAsync(userId, request);
+        return Ok(result);
     }
 
     [HttpGet("{id:guid}")]
@@ -55,6 +56,21 @@ public class ProjectsController : ControllerBase
         var userId = User.GetUserId();
         await _projectService.DeleteAsync(id, userId);
         return NoContent();
+    }
+
+    [HttpPost("{id:guid}/submit-final")]
+    public async Task<IActionResult> SubmitFinalThesis(Guid id)
+    {
+        var userId = User.GetUserId();
+        try
+        {
+            var project = await _projectService.SubmitFinalThesisAsync(id, userId);
+            return Ok(project);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPost("{id:guid}/members")]

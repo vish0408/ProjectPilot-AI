@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TechGalaxySolutions.ResearchHub.Application.DTOs.Common;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.Review;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
 
@@ -18,18 +19,18 @@ public class ReviewsController : ControllerBase
     }
 
     [HttpGet("my")]
-    public async Task<IActionResult> GetMyReviews()
+    public async Task<IActionResult> GetMyReviews([FromQuery] PagedRequest request)
     {
         var userId = User.GetUserId();
-        var reviews = await _reviewService.GetMyReviewsAsync(userId);
-        return Ok(reviews);
+        var result = await _reviewService.GetMyReviewsAsync(userId, request);
+        return Ok(result);
     }
 
     [HttpGet("project/{projectId:guid}")]
-    public async Task<IActionResult> GetProjectReviews(Guid projectId)
+    public async Task<IActionResult> GetProjectReviews(Guid projectId, [FromQuery] PagedRequest request)
     {
-        var reviews = await _reviewService.GetProjectReviewsAsync(projectId);
-        return Ok(reviews);
+        var result = await _reviewService.GetProjectReviewsAsync(projectId, request);
+        return Ok(result);
     }
 
     [HttpPost("project/{projectId:guid}")]

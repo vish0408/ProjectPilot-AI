@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TechGalaxySolutions.ResearchHub.Application.DTOs.Common;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.Notification;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
 
@@ -18,11 +19,11 @@ public class NotificationsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetNotifications()
+    public async Task<IActionResult> GetNotifications([FromQuery] PagedRequest request)
     {
         var userId = User.GetUserId();
-        var notifications = await _notificationService.GetMyNotificationsAsync(userId);
-        return Ok(notifications);
+        var result = await _notificationService.GetMyNotificationsAsync(userId, request);
+        return Ok(result);
     }
 
     [HttpGet("unread-count")]
@@ -31,6 +32,14 @@ public class NotificationsController : ControllerBase
         var userId = User.GetUserId();
         var count = await _notificationService.GetUnreadCountAsync(userId);
         return Ok(new { count });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateNotificationRequest request)
+    {
+        var userId = User.GetUserId();
+        var notification = await _notificationService.CreateNotificationAsync(userId, request.Title, request.Message, request.Type);
+        return Ok(notification);
     }
 
     [HttpPut("mark-read")]
@@ -47,5 +56,13 @@ public class NotificationsController : ControllerBase
         var userId = User.GetUserId();
         await _notificationService.MarkAllAsReadAsync(userId);
         return Ok();
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var userId = User.GetUserId();
+        await _notificationService.DeleteNotificationAsync(userId, id);
+        return NoContent();
     }
 }

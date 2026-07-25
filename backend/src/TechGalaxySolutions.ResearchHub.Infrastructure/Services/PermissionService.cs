@@ -52,4 +52,32 @@ public class PermissionService : IPermissionService
 
         return _mapper.Map<PermissionResponse>(permission);
     }
+
+    public async Task<PermissionResponse> UpdatePermissionAsync(Guid id, UpdatePermissionRequest request)
+    {
+        var permission = await _context.Set<Permission>()
+            .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted)
+            ?? throw new KeyNotFoundException("Permission not found");
+
+        permission.Name = request.Name;
+        permission.Description = request.Description;
+        permission.Group = request.Group;
+        permission.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return _mapper.Map<PermissionResponse>(permission);
+    }
+
+    public async Task DeletePermissionAsync(Guid id)
+    {
+        var permission = await _context.Set<Permission>()
+            .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted)
+            ?? throw new KeyNotFoundException("Permission not found");
+
+        permission.IsDeleted = true;
+        permission.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+    }
 }

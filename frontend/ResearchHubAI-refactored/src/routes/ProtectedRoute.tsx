@@ -1,8 +1,9 @@
 import { useApp } from "../context/AppContext";
 import AuthLayout from "../layouts/AuthLayout";
+import ChangePasswordPage from "../pages/auth/ChangePasswordPage";
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useApp();
+  const { user, isLoading, requiresPasswordChange, setRequiresPasswordChange } = useApp();
 
   if (isLoading) {
     return (
@@ -16,5 +17,18 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   }
 
   if (!user) return <AuthLayout />;
+
+  if (window.location.pathname === "/activate" || window.location.pathname.startsWith("/reset-password") || window.location.pathname.startsWith("/forgot-password")) return <AuthLayout />;
+
+  if (requiresPasswordChange) {
+    return (
+      <ChangePasswordPage
+        onSuccess={() => {
+          setRequiresPasswordChange(false);
+        }}
+      />
+    );
+  }
+
   return <>{children}</>;
 }

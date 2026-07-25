@@ -6,6 +6,10 @@ export interface LoginPayload {
   accessToken: string;
   refreshToken: string;
   expiresAt: string;
+  requiresPasswordChange?: boolean;
+  fullName?: string;
+  email?: string;
+  role?: string;
 }
 
 export interface BackendCurrentUser {
@@ -14,6 +18,9 @@ export interface BackendCurrentUser {
   fullName: string;
   role: string;
   isActive: boolean;
+  isFirstLogin?: boolean;
+  emailVerified?: boolean;
+  accountStatus?: string;
 }
 
 export class AuthService {
@@ -44,27 +51,79 @@ export class AuthService {
     return this.mapToCurrentUser(response.data);
   }
 
-  async register(
-    fullName: string,
-    email: string,
-    password: string,
-    confirmPassword: string,
-    role: string
-  ): Promise<void> {
-    const response = await apiClient.post(ENDPOINTS.auth.register, {
-      fullName,
-      email,
-      password,
-      confirmPassword,
-      role,
+  async changePassword(currentPassword: string, newPassword: string, confirmNewPassword: string): Promise<void> {
+    const response = await apiClient.post("/auth/change-password", {
+      currentPassword,
+      newPassword,
+      confirmNewPassword,
     });
     if (!response.success) {
-      throw new Error(response.message || "Registration failed");
+      throw new Error(response.message || "Failed to change password");
+    }
+  }
+
+  async activateAccount(token: string, password: string, confirmPassword: string): Promise<void> {
+    const response = await apiClient.post(ENDPOINTS.auth.activate, {
+      token,
+      password,
+      confirmPassword,
+    });
+    if (!response.success) {
+      throw new Error(response.message || "Failed to activate account");
+    }
+  }
+
+  async validateActivationToken(token: string): Promise<{ valid: boolean; expired?: boolean; fullName?: string }> {
+    const response = await apiClient.post<{ valid: boolean; expired?: boolean; fullName?: string }>(ENDPOINTS.auth.activateValidate, { token });
+    if (!response.success || !response.data) {
+      throw new Error(response.message || "Failed to validate token");
+    }
+    return response.data;
+  }
+
+  async validatePasswordResetToken(token: string): Promise<{ valid: boolean; expired?: boolean; fullName?: string }> {
+    const response = await apiClient.post<{ valid: boolean; expired?: boolean; fullName?: string }>(ENDPOINTS.auth.resetPasswordValidate, { token });
+    if (!response.success || !response.data) {
+      throw new Error(response.message || "Failed to validate reset token");
+    }
+    return response.data;
+  }
+
+  async forgotPassword(email: string): Promise<void> {
+    const response = await apiClient.post(ENDPOINTS.auth.forgotPassword, { email });
+    if (!response.success) {
+      throw new Error(response.message || "Failed to send reset email");
+    }
+  }
+
+  async resetPassword(token: string, email: string, newPassword: string, confirmNewPassword: string): Promise<void> {
+    const response = await apiClient.post(ENDPOINTS.auth.resetPassword, {
+      token,
+      email,
+      newPassword,
+      confirmNewPassword,
+    });
+    if (!response.success) {
+      throw new Error(response.message || "Failed to reset password");
+    }
+  }
+
+  async resendInvitation(userId: string): Promise<void> {
+    const response = await apiClient.post(ENDPOINTS.auth.resendWelcome(userId));
+    if (!response.success) {
+      throw new Error(response.message || "Failed to resend invitation");
     }
   }
 
   private mapToCurrentUser(backendUser: BackendCurrentUser): CurrentUser {
-    const role = backendUser.role.toLowerCase() as CurrentUser["role"];
+    const roleMap: Record<string, CurrentUser["role"]> = {
+      superadmin: "superadmin",
+      admin: "collegeadmin",
+      guide: "guide",
+      student: "student",
+      hod: "hod",
+    };
+    const role = roleMap[backendUser.role.toLowerCase()] ?? "collegeadmin";
     return {
       name: backendUser.fullName,
       email: backendUser.email,
@@ -77,7 +136,34 @@ export class AuthService {
         .join("")
         .toUpperCase()
         .slice(0, 2),
+      isFirstLogin: backendUser.isFirstLogin,
     };
+  }
+
+  saveRequiresPasswordChange(flag: boolean): void {
+    if (flag) {
+      localStorage.setItem("requiresPasswordChange", "true");
+    } else {
+      localStorage.removeItem("requiresPasswordChange");
+    }
+  }
+
+  getRequiresPasswordChange(): boolean {
+    return localStorage.getItem("requiresPasswordChange") === "true";
+  }
+
+  clearRequiresPasswordChange(): void {
+    localStorage.removeItem("requiresPasswordChange");
+  }
+
+  register(
+    fullName: string,
+    email: string,
+    password: string,
+    confirmPassword: string,
+    role: string
+  ): Promise<void> {
+    throw new Error("Registration is not available. Users are created by administrators.");
   }
 
   saveTokens(accessToken: string, refreshToken: string): void {
@@ -89,6 +175,7 @@ export class AuthService {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");
+    localStorage.removeItem("requiresPasswordChange");
   }
 
   getStoredAccessToken(): string | null {

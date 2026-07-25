@@ -5,6 +5,12 @@ export const ENDPOINTS = {
     me: "/auth/me",
     register: "/auth/register",
     refresh: "/auth/refresh",
+    activate: "/auth/activate",
+    activateValidate: "/auth/activate/validate",
+    forgotPassword: "/auth/forgot-password",
+    resetPassword: "/auth/reset-password",
+    resetPasswordValidate: "/auth/reset-password/validate",
+    resendWelcome: (id: string) => `/admin/users/${id}/resend-invitation`,
   },
   student: {
     profile: "/student/profile",

@@ -8,11 +8,15 @@
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.5.1" />
+    <PackageReference Include="MailKit" Version="4.17.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.9">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="MimeKit" Version="4.17.0" />
+    <PackageReference Include="PdfPig" Version="0.1.16-alpha-20260704-52376" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,4 +24,9 @@
     <ProjectReference Include="..\TechGalaxySolutions.ResearchHub.Domain\TechGalaxySolutions.ResearchHub.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Templates\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 </Project>

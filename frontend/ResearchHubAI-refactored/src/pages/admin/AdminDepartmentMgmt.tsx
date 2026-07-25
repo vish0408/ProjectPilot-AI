@@ -1,34 +1,101 @@
-import { useState, useEffect } from "react";
-import { Building, Edit2, Eye, GraduationCap, TrendingUp, UserCheck, Plus, Trash2 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Building, Edit2, UserCheck, Plus, Trash2, Search, X, Check } from "lucide-react";
 import StatCard from "../../components/cards/StatCard";
 import Badge from "../../components/common/Badge";
 import Card from "../../components/common/Card";
-import ProgressBar from "../../components/common/ProgressBar";
 import SectionHead from "../../components/common/SectionHead";
+import Pagination from "../../components/common/Pagination";
 import { adminService } from "../../services/AdminService";
-import type { DepartmentResponse } from "../../types/Admin";
+import type { DepartmentResponse, CollegeResponse, CreateDepartmentRequest, UpdateDepartmentRequest } from "../../types/Admin";
 
 export default function AdminDepartmentMgmt() {
-  const [departments, setDepartments] = useState<DepartmentResponse[]>([]);
+  const [response, setResponse] = useState<{ items: DepartmentResponse[]; pageNumber: number; pageSize: number; totalCount: number }>({ items: [], pageNumber: 1, pageSize: 10, totalCount: 0 });
+  const [colleges, setColleges] = useState<CollegeResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<DepartmentResponse | null>(null);
+  const [search, setSearch] = useState("");
+  const [filterCollege, setFilterCollege] = useState("");
+  const [sortField, setSortField] = useState("departmentname");
+  const [sortDirection, setSortDirection] = useState("asc");
+  const [form, setForm] = useState({ departmentName: "", departmentCode: "", shortName: "", description: "", collegeId: "" });
+  const [saving, setSaving] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async (page?: number) => {
+    setLoading(true);
     try {
-      const data = await adminService.getDepartments();
-      setDepartments(data);
-    } catch {}
+      const [deptRes, colls] = await Promise.all([
+        adminService.getDepartmentsPaged(
+          {
+            pageNumber: page ?? response.pageNumber,
+            pageSize: response.pageSize,
+            searchTerm: search || undefined,
+            sortField,
+            sortDirection,
+            statusFilter: undefined,
+          },
+          filterCollege || undefined
+        ),
+        adminService.getColleges(),
+      ]);
+      setResponse(deptRes);
+      setColleges(colls);
+    } catch (e) { if (e instanceof Error) setError(e.message); }
     finally { setLoading(false); }
+  }, [search, filterCollege, sortField, sortDirection, response.pageNumber, response.pageSize]);
+
+  useEffect(() => { fetchData(1); }, []);
+
+  const resetForm = () => {
+    setForm({ departmentName: "", departmentCode: "", shortName: "", description: "", collegeId: "" });
+    setEditing(null);
+    setShowForm(false);
   };
 
-  useEffect(() => { fetchData(); }, []);
+  const openEdit = (d: DepartmentResponse) => {
+    setEditing(d);
+    setForm({
+      departmentName: d.departmentName,
+      departmentCode: d.departmentCode,
+      shortName: d.shortName || "",
+      description: d.description,
+      collegeId: d.collegeId
+    });
+    setShowForm(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.departmentName.trim()) { setError("Department name is required"); return; }
+    if (!form.departmentCode.trim()) { setError("Department code is required"); return; }
+    if (!form.collegeId) { setError("Please select a college"); return; }
+    setSaving(true);
+    try {
+      if (editing) {
+        const updated = await adminService.updateDepartment(editing.id, form as UpdateDepartmentRequest);
+        setResponse(prev => ({ ...prev, items: prev.items.map(d => d.id === editing.id ? updated : d) }));
+      } else {
+        await adminService.createDepartment(form as CreateDepartmentRequest);
+        await fetchData(1);
+      }
+      resetForm();
+    } catch (e) { if (e instanceof Error) setError(e.message); }
+    finally { setSaving(false); }
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this department?")) return;
-    try { await adminService.deleteDepartment(id); fetchData(); }
-    catch {}
+    try {
+      await adminService.deleteDepartment(id);
+      setResponse(prev => ({ ...prev, items: prev.items.filter(d => d.id !== id), totalCount: prev.totalCount - 1 }));
+    } catch (e) { if (e instanceof Error) setError(e.message); }
   };
 
-  if (loading) {
+  const totalPages = Math.ceil(response.totalCount / response.pageSize);
+
+  const handleSearch = () => { fetchData(1); };
+
+  if (loading && !response.items.length) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -38,58 +105,161 @@ export default function AdminDepartmentMgmt() {
 
   return (
     <div className="flex flex-col gap-5">
+      {error && (
+        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 flex items-center justify-between">
+          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+          <button onClick={() => setError(null)}><X className="w-4 h-4 text-red-500" /></button>
+        </div>
+      )}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard label="Departments" value={`${departments.length}`} icon={Building} color="bg-blue-500"/>
-        <StatCard label="Total Faculty" value={`${departments.reduce((s, d) => s + d.facultyCount, 0)}`} icon={UserCheck} color="bg-indigo-500"/>
+        <StatCard label="Departments" value={`${response.totalCount}`} icon={Building} color="bg-blue-500"/>
+        <StatCard label="Total Faculty" value={`${response.items.reduce((s, d) => s + d.facultyCount, 0)}`} icon={UserCheck} color="bg-indigo-500"/>
       </div>
       <SectionHead title="Departments" desc="Manage departments across colleges"
         action={
-          <button className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+          <button onClick={() => { resetForm(); setShowForm(true); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
             <Plus className="w-4 h-4" /> Add Department
           </button>
         }
       />
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {departments.map((d) => (
-          <Card key={d.id}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white text-xs font-bold">{d.code}</div>
-                <div>
-                  <p className="font-bold text-sm text-foreground">{d.name}</p>
-                  <p className="text-xs text-muted-foreground">{d.collegeName}</p>
-                </div>
-              </div>
-              <Badge variant="success">active</Badge>
+
+      {showForm && (
+        <Card>
+          <SectionHead title={editing ? "Edit Department" : "Add Department"} action={
+            <button onClick={resetForm} className="text-xs text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+          } />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1">Department Name *</label>
+              <input value={form.departmentName} onChange={e => setForm({...form, departmentName: e.target.value})} placeholder="e.g. Computer Science"
+                className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary" />
             </div>
-            <p className="text-xs text-muted-foreground mb-3 line-clamp-1">{d.description}</p>
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              <div className="bg-muted/60 rounded-xl p-2 text-center">
-                <p className="text-sm font-bold text-foreground">{d.facultyCount}</p>
-                <p className="text-xs text-muted-foreground">Faculty</p>
-              </div>
-              <div className="bg-muted/60 rounded-xl p-2 text-center">
-                <p className="text-sm font-bold text-foreground">{d.code}</p>
-                <p className="text-xs text-muted-foreground">Code</p>
-              </div>
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1">Department Code *</label>
+              <input value={form.departmentCode} onChange={e => setForm({...form, departmentCode: e.target.value})} placeholder="e.g. CS"
+                className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary" />
             </div>
-            <div className="flex gap-1.5">
-              <button className="flex-1 border border-border text-xs font-medium text-muted-foreground py-1.5 rounded-lg hover:bg-muted flex items-center justify-center gap-1">
-                <Eye className="w-3.5 h-3.5" />View
-              </button>
-              <button className="flex-1 border border-border text-xs font-medium text-muted-foreground py-1.5 rounded-lg hover:bg-muted flex items-center justify-center gap-1">
-                <Edit2 className="w-3.5 h-3.5" />Edit
-              </button>
-              <button onClick={() => handleDelete(d.id)} className="px-2 border border-border text-xs font-medium text-red-500 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1">Short Name</label>
+              <input value={form.shortName} onChange={e => setForm({...form, shortName: e.target.value})} placeholder="e.g. CSE"
+                className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary" />
             </div>
-          </Card>
-        ))}
-        {!departments.length && (
-          <Card><p className="text-sm text-muted-foreground text-center py-8">No departments found</p></Card>
-        )}
-      </div>
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1">College *</label>
+              <select value={form.collegeId} onChange={e => setForm({...form, collegeId: e.target.value})}
+                className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary">
+                <option value="">Select a college</option>
+                {colleges.filter(c => c.isActive).map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
+              </select>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-semibold text-foreground mb-1">Description</label>
+              <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="Department description" rows={2}
+                className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary resize-none" />
+            </div>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <button onClick={handleSave} disabled={saving}
+              className="flex items-center gap-1.5 bg-blue-600 text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-blue-700 disabled:opacity-50">
+              {saving ? "Saving..." : <><Check className="w-4 h-4" /> {editing ? "Update" : "Create"}</>}
+            </button>
+            <button onClick={resetForm} className="border border-border text-sm font-medium px-4 py-2 rounded-xl hover:bg-muted">Cancel</button>
+          </div>
+        </Card>
+      )}
+
+      <Card>
+        <div className="flex items-center gap-3 px-1 pb-4 flex-wrap">
+          <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+            <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+            <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSearch()} placeholder="Search departments..."
+              className="flex-1 bg-transparent text-sm outline-none text-foreground placeholder:text-muted-foreground" />
+            {search && <button onClick={() => { setSearch(""); fetchData(1); }}><X className="w-4 h-4 text-muted-foreground" /></button>}
+          </div>
+          <select value={filterCollege} onChange={e => { setFilterCollege(e.target.value); fetchData(1); }}
+            className="bg-input-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none focus:border-primary">
+            <option value="">All Colleges</option>
+            {colleges.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select value={sortField} onChange={e => setSortField(e.target.value)}
+            className="bg-input-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none focus:border-primary">
+            <option value="departmentname">Name</option>
+            <option value="departmentcode">Code</option>
+            <option value="collegename">College</option>
+            <option value="isactive">Status</option>
+            <option value="createdat">Created</option>
+          </select>
+          <button onClick={() => { setSortDirection(d => d === "asc" ? "desc" : "asc"); fetchData(1); }}
+            className="border border-border rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted">
+            {sortDirection === "asc" ? "↑ Asc" : "↓ Desc"}
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-3 px-3 text-xs font-semibold text-muted-foreground">Department</th>
+                <th className="text-left py-3 px-3 text-xs font-semibold text-muted-foreground">Code</th>
+                <th className="text-left py-3 px-3 text-xs font-semibold text-muted-foreground">College</th>
+                <th className="text-center py-3 px-3 text-xs font-semibold text-muted-foreground">Faculty</th>
+                <th className="text-center py-3 px-3 text-xs font-semibold text-muted-foreground">Status</th>
+                <th className="text-right py-3 px-3 text-xs font-semibold text-muted-foreground">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {response.items.map((d) => (
+                <tr key={d.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                  <td className="py-3 px-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0">
+                        {d.shortName || d.departmentCode?.slice(0, 2)}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm text-foreground">{d.departmentName}</p>
+                        <p className="text-[11px] text-muted-foreground">{d.shortName || "—"}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-3 px-3 text-xs text-muted-foreground">{d.departmentCode}</td>
+                  <td className="py-3 px-3 text-xs text-muted-foreground">{d.collegeName}</td>
+                  <td className="py-3 px-3 text-center text-xs font-semibold">{d.facultyCount}</td>
+                  <td className="py-3 px-3 text-center">
+                    <Badge variant={d.isActive ? "success" : "outline"}>{d.isActive ? "Active" : "Inactive"}</Badge>
+                  </td>
+                  <td className="py-3 px-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => openEdit(d)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Edit">
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => handleDelete(d.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 text-muted-foreground hover:text-red-500 transition-colors" title="Delete">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {!response.items.length && (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                    {search || filterCollege ? "No departments match your filters" : "No departments found. Add your first department above."}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <Pagination
+          pageNumber={response.pageNumber}
+          totalPages={totalPages}
+          totalCount={response.totalCount}
+          hasNextPage={response.pageNumber < totalPages}
+          hasPreviousPage={response.pageNumber > 1}
+          onPageChange={p => fetchData(p)}
+          pageSize={response.pageSize}
+          onPageSizeChange={size => setResponse(prev => ({ ...prev, pageSize: size }))}
+        />
+      </Card>
     </div>
   );
 }

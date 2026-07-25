@@ -12,6 +12,8 @@ export interface AppContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
+  requiresPasswordChange: boolean;
+  setRequiresPasswordChange: (v: boolean) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -23,6 +25,8 @@ export const AppContext = createContext<AppContextType>({
   login: async () => {},
   logout: async () => {},
   isLoading: true,
+  requiresPasswordChange: false,
+  setRequiresPasswordChange: () => {},
 });
 
 export const useApp = () => useContext(AppContext);
@@ -51,6 +55,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("light");
   const [screen, setScreen] = useState("dashboard");
   const [isLoading, setIsLoading] = useState(true);
+  const [requiresPasswordChange, setRequiresPasswordChange] = useState(false);
 
   const setTheme = (t: Theme) => {
     setThemeState(t);
@@ -60,6 +65,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     const payload = await authService.login(email, password);
     authService.saveTokens(payload.accessToken, payload.refreshToken);
+    if (payload.requiresPasswordChange) {
+      authService.saveRequiresPasswordChange(true);
+      setRequiresPasswordChange(true);
+    }
     const currentUser = await authService.getCurrentUser();
     authService.saveUser(currentUser);
     setUser(currentUser);
@@ -73,6 +82,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     authService.clearTokens();
     setUser(null);
+    setRequiresPasswordChange(false);
     setScreen("dashboard");
   };
 
@@ -82,6 +92,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    setRequiresPasswordChange(authService.getRequiresPasswordChange());
     restoreSession().then((restoredUser) => {
       if (mounted) {
         setUser(restoredUser);
@@ -104,6 +115,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         login,
         logout,
         isLoading,
+        requiresPasswordChange,
+        setRequiresPasswordChange,
       }}
     >
       {children}

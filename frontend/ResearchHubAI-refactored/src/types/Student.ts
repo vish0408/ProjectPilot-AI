@@ -65,6 +65,10 @@ export interface ProjectDocument {
   uploaderId: string;
   uploaderName: string;
   uploadedAt: string;
+  status?: string;
+  reviewComment?: string;
+  reviewScore?: number;
+  reviewedAt?: string;
 }
 
 export interface AppNotification {
@@ -106,4 +110,17 @@ export interface DocumentSummary {
   fileType: string;
   uploadedAt: string;
   uploaderName: string;
+}
+
+export interface DocumentComment {
+  id: string;
+  documentId: string;
+  userId: string;
+  userName: string;
+  content: string;
+  parentCommentId: string | null;
+  isEdited: boolean;
+  createdAt: string;
+  updatedAt: string | null;
+  replies: DocumentComment[];
 }

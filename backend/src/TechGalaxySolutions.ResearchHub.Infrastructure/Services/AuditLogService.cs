@@ -37,4 +37,21 @@ public class AuditLogService : IAuditLogService
 
         return _mapper.Map<AuditLogResponse>(log);
     }
+
+    public async Task LogAsync(Guid userId, string action, string entityType, string entityId, string? previousState, string? newState)
+    {
+        var log = new AuditLog
+        {
+            UserId = userId,
+            Action = action,
+            EntityName = entityType,
+            EntityId = entityId,
+            OldValues = previousState ?? string.Empty,
+            NewValues = newState ?? string.Empty,
+            Timestamp = DateTime.UtcNow,
+        };
+
+        _context.Set<AuditLog>().Add(log);
+        await _context.SaveChangesAsync();
+    }
 }

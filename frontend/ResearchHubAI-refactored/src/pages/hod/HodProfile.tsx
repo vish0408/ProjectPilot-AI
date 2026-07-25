@@ -12,11 +12,12 @@ export default function HodProfile() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Partial<HodProfileDto>>({});
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     hodService.getProfile()
       .then(p => { setProfile(p); setForm(p); })
-      .catch(() => {})
+      .catch((e) => { if (e instanceof Error) setError(e.message); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -28,7 +29,7 @@ export default function HodProfile() {
       setProfile(updated);
       setForm(updated);
       setEditing(false);
-    } catch {}
+    } catch (e) { if (e instanceof Error) setError(e.message); }
     finally { setSaving(false); }
   };
 
@@ -42,6 +43,11 @@ export default function HodProfile() {
 
   return (
     <div className="flex flex-col gap-6">
+      {error && (
+        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 mb-4">
+          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+        </div>
+      )}
       <div className="bg-gradient-to-r from-cyan-600 to-blue-700 rounded-2xl p-6 text-white">
         <div className="flex items-center gap-5">
           <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center text-2xl font-bold">

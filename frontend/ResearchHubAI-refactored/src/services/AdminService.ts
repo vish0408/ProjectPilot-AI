@@ -1,4 +1,5 @@
 import { apiClient } from "../api/client";
+import type { PagedRequest, PagedResponse } from "../types/Pagination";
 import type {
   CollegeResponse, CreateCollegeRequest, UpdateCollegeRequest,
   DepartmentResponse, CreateDepartmentRequest, UpdateDepartmentRequest,
@@ -7,11 +8,14 @@ import type {
   FacultyResponse, CreateFacultyRequest, UpdateFacultyRequest,
   UserResponse, CreateUserRequest, UpdateUserRequest,
   RoleResponse, CreateRoleRequest, UpdateRoleRequest,
-  PermissionResponse, CreatePermissionRequest,
+  PermissionResponse, CreatePermissionRequest, UpdatePermissionRequest,
   AdminDashboardResponse,
   GlobalAnnouncementResponse, CreateGlobalAnnouncementRequest, UpdateGlobalAnnouncementRequest,
   AuditLogResponse,
   SystemSettingResponse, UpdateSystemSettingRequest,
+  ResearchTopicResponse, CreateResearchTopicRequest, UpdateResearchTopicRequest,
+  BackupRecordResponse,
+  HodResponse, CreateHodRequest, UpdateHodRequest,
 } from "../types/Admin";
 
 export class AdminService {
@@ -53,8 +57,24 @@ export class AdminService {
   }
 
   // Departments
-  async getDepartments(): Promise<DepartmentResponse[]> {
-    const res = await apiClient.get<DepartmentResponse[]>("/admin/departments");
+  async getDepartmentsPaged(request?: PagedRequest, collegeId?: string): Promise<PagedResponse<DepartmentResponse>> {
+    const params = new URLSearchParams();
+    if (request?.pageNumber) params.set("pageNumber", String(request.pageNumber));
+    if (request?.pageSize) params.set("pageSize", String(request.pageSize));
+    if (request?.searchTerm) params.set("searchTerm", request.searchTerm);
+    if (request?.sortField) params.set("sortField", request.sortField);
+    if (request?.sortDirection) params.set("sortDirection", request.sortDirection);
+    if (request?.statusFilter) params.set("statusFilter", request.statusFilter);
+    if (collegeId) params.set("collegeId", collegeId);
+    const qs = params.toString();
+    const res = await apiClient.get<PagedResponse<DepartmentResponse>>(`/admin/departments${qs ? `?${qs}` : ""}`);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed");
+    return res.data;
+  }
+
+  async getAllDepartments(collegeId?: string): Promise<DepartmentResponse[]> {
+    const path = collegeId ? `/admin/departments/all?collegeId=${collegeId}` : "/admin/departments/all";
+    const res = await apiClient.get<DepartmentResponse[]>(path);
     if (!res.success || !res.data) throw new Error(res.message || "Failed");
     return res.data;
   }
@@ -263,8 +283,19 @@ export class AdminService {
 
   async createPermission(data: CreatePermissionRequest): Promise<PermissionResponse> {
     const res = await apiClient.post<PermissionResponse>("/admin/permissions", data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to create permission");
     return res.data;
+  }
+
+  async updatePermission(id: string, data: UpdatePermissionRequest): Promise<PermissionResponse> {
+    const res = await apiClient.put<PermissionResponse>(`/admin/permissions/${id}`, data);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to update permission");
+    return res.data;
+  }
+
+  async deletePermission(id: string): Promise<void> {
+    const res = await apiClient.delete(`/admin/permissions/${id}`);
+    if (!res.success) throw new Error(res.message || "Failed to delete permission");
   }
 
   // Announcements
@@ -338,6 +369,112 @@ export class AdminService {
     const res = await apiClient.put<SystemSettingResponse>(`/admin/settings/${id}`, data);
     if (!res.success || !res.data) throw new Error(res.message || "Failed");
     return res.data;
+  }
+
+  // Research Topics
+  async getResearchCategories(): Promise<import("../types/Hod").ResearchCategory[]> {
+    const res = await apiClient.get<import("../types/Hod").ResearchCategory[]>("/hod/research-categories");
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to get research categories");
+    return res.data;
+  }
+
+  async getResearchTopics(categoryId?: string): Promise<ResearchTopicResponse[]> {
+    const path = categoryId ? `/hod/research-topics?categoryId=${categoryId}` : "/hod/research-topics";
+    const res = await apiClient.get<ResearchTopicResponse[]>(path);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to get research topics");
+    return res.data;
+  }
+
+  async createResearchTopic(data: CreateResearchTopicRequest): Promise<ResearchTopicResponse> {
+    const res = await apiClient.post<ResearchTopicResponse>("/hod/research-topics", data);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to create research topic");
+    return res.data;
+  }
+
+  async updateResearchTopic(id: string, data: UpdateResearchTopicRequest): Promise<ResearchTopicResponse> {
+    const res = await apiClient.put<ResearchTopicResponse>(`/hod/research-topics/${id}`, data);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to update research topic");
+    return res.data;
+  }
+
+  async deleteResearchTopic(id: string): Promise<void> {
+    const res = await apiClient.delete(`/hod/research-topics/${id}`);
+    if (!res.success) throw new Error(res.message || "Failed to delete research topic");
+  }
+
+  // Backup (stub - no backend implementation)
+  async getBackupHistory(): Promise<BackupRecordResponse[]> {
+    return [];
+  }
+
+  async createBackup(): Promise<void> {
+    throw new Error("Backup feature is not implemented in this version");
+  }
+
+  async deleteBackup(id: string): Promise<void> {
+    throw new Error("Backup feature is not implemented in this version");
+  }
+
+  // Resend Invitation
+  async resendInvitation(userId: string): Promise<void> {
+    const res = await apiClient.post(`/admin/users/${userId}/resend-invitation`);
+    if (!res.success) throw new Error(res.message || "Failed to resend invitation");
+  }
+
+  // Send Invitation (new endpoint)
+  async sendInvitation(userId: string): Promise<void> {
+    const res = await apiClient.post(`/admin/users/${userId}/send-invitation`);
+    if (!res.success) throw new Error(res.message || "Failed to send invitation");
+  }
+
+  // HOD Management
+  async getHodsPaged(request?: PagedRequest, collegeId?: string, departmentId?: string): Promise<PagedResponse<HodResponse>> {
+    const params = new URLSearchParams();
+    if (request?.pageNumber) params.set("pageNumber", String(request.pageNumber));
+    if (request?.pageSize) params.set("pageSize", String(request.pageSize));
+    if (request?.searchTerm) params.set("searchTerm", request.searchTerm);
+    if (request?.sortField) params.set("sortField", request.sortField);
+    if (request?.sortDirection) params.set("sortDirection", request.sortDirection);
+    if (request?.statusFilter) params.set("statusFilter", request.statusFilter);
+    if (collegeId) params.set("collegeId", collegeId);
+    if (departmentId) params.set("departmentId", departmentId);
+    const qs = params.toString();
+    const res = await apiClient.get<PagedResponse<HodResponse>>(`/admin/hods${qs ? `?${qs}` : ""}`);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed");
+    return res.data;
+  }
+
+  async getAllHods(collegeId?: string, departmentId?: string): Promise<HodResponse[]> {
+    const params = new URLSearchParams();
+    if (collegeId) params.set("collegeId", collegeId);
+    if (departmentId) params.set("departmentId", departmentId);
+    const qs = params.toString();
+    const res = await apiClient.get<HodResponse[]>(`/admin/hods/all${qs ? `?${qs}` : ""}`);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed");
+    return res.data;
+  }
+
+  async getHod(id: string): Promise<HodResponse> {
+    const res = await apiClient.get<HodResponse>(`/admin/hods/${id}`);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed");
+    return res.data;
+  }
+
+  async createHod(data: CreateHodRequest): Promise<HodResponse> {
+    const res = await apiClient.post<HodResponse>("/admin/hods", data);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed");
+    return res.data;
+  }
+
+  async updateHod(id: string, data: UpdateHodRequest): Promise<HodResponse> {
+    const res = await apiClient.put<HodResponse>(`/admin/hods/${id}`, data);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed");
+    return res.data;
+  }
+
+  async deleteHod(id: string): Promise<void> {
+    const res = await apiClient.delete(`/admin/hods/${id}`);
+    if (!res.success) throw new Error(res.message || "Failed");
   }
 }
 

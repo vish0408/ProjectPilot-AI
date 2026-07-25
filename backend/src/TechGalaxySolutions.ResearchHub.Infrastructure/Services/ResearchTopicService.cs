@@ -75,4 +75,15 @@ public class ResearchTopicService : IResearchTopicService
         await _context.SaveChangesAsync();
         return _mapper.Map<ResearchTopicResponse>(topic);
     }
+
+    public async Task DeleteTopicAsync(Guid id)
+    {
+        var topic = await _context.Set<ResearchTopic>()
+            .FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted)
+            ?? throw new KeyNotFoundException("Topic not found");
+
+        topic.IsDeleted = true;
+        topic.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+    }
 }

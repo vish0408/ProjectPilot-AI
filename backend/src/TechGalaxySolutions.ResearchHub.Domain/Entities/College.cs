@@ -16,5 +16,11 @@ public class College : BaseEntity
 
     public bool IsActive { get; set; } = true;
 
+    public string Status { get; set; } = "Active";
+
+    public Guid? SubscriptionId { get; set; }
+
+    public long StorageLimitBytes { get; set; } = 1073741824;
+
     public ICollection<Department> Departments { get; set; } = new List<Department>();
 }

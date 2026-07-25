@@ -3,7 +3,7 @@ import {
   Brain, Send, Loader2, FileDown, Save, Trash2, RefreshCw,
   WandSparkles, Shrink, Expand, SpellCheck, Quote, Pencil,
   Check, X, ChevronLeft, ChevronRight, BookOpen, Sparkles,
-  ClipboardList, RotateCcw, FileText,
+  ClipboardList, FileText,
 } from "lucide-react";
 import Card from "../../components/common/Card";
 import SectionHead from "../../components/common/SectionHead";
@@ -46,8 +46,8 @@ export default function ProposalGenerator() {
   ];
 
   useEffect(() => {
-    proposalService.getTemplates().then(setTemplates).catch(() => {});
-    proposalService.getMyProposals().then(setSavedProposals).catch(() => {});
+    proposalService.getTemplates().then(setTemplates).catch((e) => { if (e instanceof Error) setError(e.message); });
+    proposalService.getMyProposals().then(setSavedProposals).catch((e) => { if (e instanceof Error) setError(e.message); });
   }, []);
 
   const applyTemplate = (t: ProposalTemplate) => {
@@ -210,7 +210,7 @@ export default function ProposalGenerator() {
     try {
       await proposalService.delete(id);
       setSavedProposals(prev => prev.filter(p => p.id !== id));
-    } catch {}
+    } catch (e) { if (e instanceof Error) setError(e.message); }
   };
 
   const renderStep1 = () => (

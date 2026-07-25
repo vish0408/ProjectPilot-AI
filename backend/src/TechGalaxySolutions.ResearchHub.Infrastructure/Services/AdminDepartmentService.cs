@@ -1,6 +1,8 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using TechGalaxySolutions.ResearchHub.Application.DTOs.Common;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.Department;
+using TechGalaxySolutions.ResearchHub.Application.Exceptions;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
 using TechGalaxySolutions.ResearchHub.Domain.Entities;
 using TechGalaxySolutions.ResearchHub.Infrastructure.Persistence;
@@ -18,12 +20,78 @@ public class AdminDepartmentService : IAdminDepartmentService
         _mapper = mapper;
     }
 
-    public async Task<List<DepartmentResponse>> GetDepartmentsAsync()
+    public async Task<PagedResponse<DepartmentResponse>> GetDepartmentsAsync(PagedRequest request, Guid? collegeId = null)
     {
-        var departments = await _context.Set<Department>().AsNoTracking()
+        var query = _context.Set<Department>().AsNoTracking()
             .Include(d => d.College)
-            .Where(d => !d.IsDeleted)
-            .OrderBy(d => d.Name)
+            .Include(d => d.Hod)
+            .Where(d => !d.IsDeleted);
+
+        if (collegeId.HasValue)
+            query = query.Where(d => d.CollegeId == collegeId.Value);
+
+        if (!string.IsNullOrWhiteSpace(request.SearchTerm))
+        {
+            var term = request.SearchTerm.ToLower();
+            query = query.Where(d =>
+                d.DepartmentName.ToLower().Contains(term) ||
+                d.DepartmentCode.ToLower().Contains(term) ||
+                d.ShortName.ToLower().Contains(term) ||
+                d.College.Name.ToLower().Contains(term));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.StatusFilter))
+        {
+            if (bool.TryParse(request.StatusFilter, out var isActive))
+                query = query.Where(d => d.IsActive == isActive);
+        }
+
+        query = (request.SortField?.ToLower()) switch
+        {
+            "departmentname" => request.SortDirection == "desc" ? query.OrderByDescending(d => d.DepartmentName) : query.OrderBy(d => d.DepartmentName),
+            "departmentcode" => request.SortDirection == "desc" ? query.OrderByDescending(d => d.DepartmentCode) : query.OrderBy(d => d.DepartmentCode),
+            "collegename" => request.SortDirection == "desc" ? query.OrderByDescending(d => d.College.Name) : query.OrderBy(d => d.College.Name),
+            "isactive" => request.SortDirection == "desc" ? query.OrderByDescending(d => d.IsActive) : query.OrderBy(d => d.IsActive),
+            "createdat" => request.SortDirection == "desc" ? query.OrderByDescending(d => d.CreatedAt) : query.OrderBy(d => d.CreatedAt),
+            _ => query.OrderBy(d => d.DepartmentName)
+        };
+
+        var totalCount = await query.CountAsync();
+        var departments = await query
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToListAsync();
+
+        var facultyCounts = await _context.Set<FacultyMember>().AsNoTracking()
+            .Where(f => !f.IsDeleted)
+            .GroupBy(f => f.DepartmentId)
+            .ToDictionaryAsync(g => g.Key, g => g.Count());
+
+        var items = _mapper.Map<List<DepartmentResponse>>(departments);
+        foreach (var item in items)
+            item.FacultyCount = facultyCounts.GetValueOrDefault(item.Id);
+
+        return new PagedResponse<DepartmentResponse>
+        {
+            Items = items,
+            PageNumber = request.PageNumber,
+            PageSize = request.PageSize,
+            TotalCount = totalCount
+        };
+    }
+
+    public async Task<List<DepartmentResponse>> GetAllDepartmentsAsync(Guid? collegeId = null)
+    {
+        var query = _context.Set<Department>().AsNoTracking()
+            .Include(d => d.College)
+            .Include(d => d.Hod)
+            .Where(d => !d.IsDeleted);
+
+        if (collegeId.HasValue)
+            query = query.Where(d => d.CollegeId == collegeId.Value);
+
+        var departments = await query
+            .OrderBy(d => d.DepartmentName)
             .ToListAsync();
 
         var facultyCounts = await _context.Set<FacultyMember>().AsNoTracking()
@@ -33,9 +101,7 @@ public class AdminDepartmentService : IAdminDepartmentService
 
         var response = _mapper.Map<List<DepartmentResponse>>(departments);
         foreach (var item in response)
-        {
             item.FacultyCount = facultyCounts.GetValueOrDefault(item.Id);
-        }
 
         return response;
     }
@@ -44,6 +110,7 @@ public class AdminDepartmentService : IAdminDepartmentService
     {
         var department = await _context.Set<Department>().AsNoTracking()
             .Include(d => d.College)
+            .Include(d => d.Hod)
             .FirstOrDefaultAsync(d => d.Id == id && !d.IsDeleted)
             ?? throw new KeyNotFoundException("Department not found");
 
@@ -59,14 +126,24 @@ public class AdminDepartmentService : IAdminDepartmentService
     {
         var collegeExists = await _context.Set<College>().AsNoTracking()
             .AnyAsync(c => c.Id == request.CollegeId && !c.IsDeleted);
-
         if (!collegeExists)
             throw new KeyNotFoundException("College not found");
 
+        var nameExists = await _context.Set<Department>().AsNoTracking()
+            .AnyAsync(d => d.DepartmentName == request.DepartmentName && d.CollegeId == request.CollegeId && !d.IsDeleted);
+        if (nameExists)
+            throw new ConflictException("A department with this name already exists in the selected college");
+
+        var codeExists = await _context.Set<Department>().AsNoTracking()
+            .AnyAsync(d => d.DepartmentCode == request.DepartmentCode && d.CollegeId == request.CollegeId && !d.IsDeleted);
+        if (codeExists)
+            throw new ConflictException("A department with this code already exists in the selected college");
+
         var department = new Department
         {
-            Name = request.Name,
-            Code = request.Code,
+            DepartmentCode = request.DepartmentCode,
+            DepartmentName = request.DepartmentName,
+            ShortName = request.ShortName,
             Description = request.Description,
             CollegeId = request.CollegeId,
         };
@@ -86,8 +163,19 @@ public class AdminDepartmentService : IAdminDepartmentService
             .FirstOrDefaultAsync(d => d.Id == id && !d.IsDeleted)
             ?? throw new KeyNotFoundException("Department not found");
 
-        department.Name = request.Name;
-        department.Code = request.Code;
+        var nameExists = await _context.Set<Department>().AsNoTracking()
+            .AnyAsync(d => d.DepartmentName == request.DepartmentName && d.CollegeId == request.CollegeId && d.Id != id && !d.IsDeleted);
+        if (nameExists)
+            throw new ConflictException("A department with this name already exists in the selected college");
+
+        var codeExists = await _context.Set<Department>().AsNoTracking()
+            .AnyAsync(d => d.DepartmentCode == request.DepartmentCode && d.CollegeId == request.CollegeId && d.Id != id && !d.IsDeleted);
+        if (codeExists)
+            throw new ConflictException("A department with this code already exists in the selected college");
+
+        department.DepartmentCode = request.DepartmentCode;
+        department.DepartmentName = request.DepartmentName;
+        department.ShortName = request.ShortName;
         department.Description = request.Description;
         department.CollegeId = request.CollegeId;
         department.IsActive = request.IsActive;

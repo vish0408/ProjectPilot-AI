@@ -9,4 +9,5 @@ export interface CurrentUser {
   avatar: string;
   enrollment?: string;
   designation?: string;
+  isFirstLogin?: boolean;
 }

@@ -7,32 +7,17 @@ import SectionHead from "../../components/common/SectionHead";
 import { adminService } from "../../services/AdminService";
 import type { AdminDashboardResponse } from "../../types/Admin";
 
-const MONTHLY_DATA = [
-  { month: "Jan", submissions: 65, approvals: 40, meetings: 28 },
-  { month: "Feb", submissions: 78, approvals: 52, meetings: 32 },
-  { month: "Mar", submissions: 90, approvals: 61, meetings: 35 },
-  { month: "Apr", submissions: 82, approvals: 58, meetings: 30 },
-  { month: "May", submissions: 95, approvals: 70, meetings: 38 },
-  { month: "Jun", submissions: 110, approvals: 85, meetings: 42 },
-];
 
-const DEPT_DATA = [
-  { name: "CS", students: 42, completed: 28 },
-  { name: "EC", students: 31, completed: 18 },
-  { name: "ME", students: 27, completed: 16 },
-  { name: "CE", students: 18, completed: 12 },
-  { name: "CH", students: 14, completed: 8 },
-  { name: "EE", students: 22, completed: 16 },
-];
 
 export default function AdminAnalytics() {
   const [data, setData] = useState<AdminDashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     adminService.getDashboard()
       .then(setData)
-      .catch(() => {})
+      .catch((e) => { if (e instanceof Error) setError(e.message); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -46,6 +31,11 @@ export default function AdminAnalytics() {
 
   return (
     <div className="flex flex-col gap-6">
+      {error && (
+        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 mb-4">
+          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+        </div>
+      )}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard label="Total Users" value={`${data?.totalUsers || 0}`} icon={TrendingUp} color="bg-green-500"/>
         <StatCard label="Students" value={`${data?.totalStudents || 0}`} icon={Clock} color="bg-blue-500"/>
@@ -56,7 +46,7 @@ export default function AdminAnalytics() {
         <Card>
           <SectionHead title="Monthly Activity"/>
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={MONTHLY_DATA}>
+            <LineChart data={data?.monthlyActivity ?? []}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)"/>
               <XAxis dataKey="month" tick={{fontSize:11,fill:"var(--muted-foreground)"}} axisLine={false} tickLine={false}/>
               <YAxis tick={{fontSize:11,fill:"var(--muted-foreground)"}} axisLine={false} tickLine={false}/>
@@ -71,7 +61,7 @@ export default function AdminAnalytics() {
         <Card>
           <SectionHead title="Department Performance"/>
           <ResponsiveContainer width="100%" height={220}>
-            <RechartsBar data={DEPT_DATA} barSize={14}>
+            <RechartsBar data={data?.departmentStats ?? []} barSize={14}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)"/>
               <XAxis dataKey="name" tick={{fontSize:11,fill:"var(--muted-foreground)"}} axisLine={false} tickLine={false}/>
               <YAxis tick={{fontSize:11,fill:"var(--muted-foreground)"}} axisLine={false} tickLine={false}/>

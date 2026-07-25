@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.ResearchCategory;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
@@ -7,7 +7,7 @@ namespace TechGalaxySolutions.ResearchHub.Api.Controllers;
 
 [ApiController]
 [Route("hod/research-categories")]
-[Authorize(Roles = "HOD")]
+[Authorize(Roles = "HOD,CollegeAdmin,SuperAdmin")]
 public class ResearchCategoriesController : ControllerBase
 {
     private readonly IResearchCategoryService _categoryService;
@@ -38,3 +38,4 @@ public class ResearchCategoriesController : ControllerBase
         return Ok(category);
     }
 }
+

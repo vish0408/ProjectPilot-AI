@@ -25,6 +25,14 @@ public class HodGuidesController : ControllerBase
         return Ok(guides);
     }
 
+    [HttpGet("{guideUserId:guid}")]
+    public async Task<IActionResult> GetGuideDetail(Guid guideUserId)
+    {
+        var userId = User.GetUserId();
+        var guide = await _guideService.GetGuideDetailAsync(userId, guideUserId);
+        return Ok(guide);
+    }
+
     [HttpPost("assign")]
     public async Task<IActionResult> AssignGuide([FromBody] AssignGuideRequest request)
     {

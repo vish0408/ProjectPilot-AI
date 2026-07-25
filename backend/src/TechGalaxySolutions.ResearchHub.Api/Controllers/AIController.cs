@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +10,7 @@ namespace TechGalaxySolutions.ResearchHub.Api.Controllers;
 
 [ApiController]
 [Route("ai")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "CollegeAdmin,SuperAdmin")]
 public class AIController : ControllerBase
 {
     private readonly AIProviderFactory _providerFactory;
@@ -90,6 +90,11 @@ public class AIController : ControllerBase
             var error = JsonSerializer.Serialize(new { error = ex.Message, retryAfter = ex.RetryAfter?.TotalSeconds }, JsonOptions);
             await Response.WriteAsync($"data: {error}\n\n", HttpContext.RequestAborted);
         }
+        catch (AiTimeoutException ex)
+        {
+            var error = JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions);
+            await Response.WriteAsync($"data: {error}\n\n", HttpContext.RequestAborted);
+        }
         catch (AiException ex)
         {
             var error = JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions);
@@ -104,7 +109,8 @@ public class AIController : ControllerBase
     {
         AIProviderType.OpenAI => "gpt-4o",
         AIProviderType.Anthropic => "claude-3-opus-20240229",
-        AIProviderType.Gemini => "gemini-1.5-pro",
+        AIProviderType.Gemini => "gemini-2.0-flash",
         _ => "unknown",
     };
 }
+

@@ -7,8 +7,10 @@ public class CreateDepartmentRequestValidator : AbstractValidator<CreateDepartme
 {
     public CreateDepartmentRequestValidator()
     {
-        RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.Code).NotEmpty().MaximumLength(20);
+        RuleFor(x => x.DepartmentName).NotEmpty().MaximumLength(100);
+        RuleFor(x => x.DepartmentCode).NotEmpty().MaximumLength(20);
+        RuleFor(x => x.ShortName).MaximumLength(20);
         RuleFor(x => x.CollegeId).NotEmpty();
+        RuleFor(x => x.Description).MaximumLength(1000);
     }
 }

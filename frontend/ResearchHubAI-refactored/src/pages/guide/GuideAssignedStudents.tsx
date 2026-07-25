@@ -50,7 +50,8 @@ export default function GuideAssignedStudents() {
   }
 
   const activeCount = data.assignedStudents.filter(s => s.completionPercentage > 0 && s.completionPercentage < 100).length;
-  const avgProgress = Math.round(data.assignedStudents.reduce((a, s) => a + s.completionPercentage, 0) / data.assignedStudents.length);
+  const avgProgress = data.assignedStudents.length > 0 ? Math.round(data.assignedStudents.reduce((a, s) => a + s.completionPercentage, 0) / data.assignedStudents.length) : 0;
+  const graduatingSoon = data.assignedStudents.filter(s => s.completionPercentage >= 90).length;
 
   return (
     <div className="flex flex-col gap-5">
@@ -58,7 +59,7 @@ export default function GuideAssignedStudents() {
         <StatCard label="Total Assigned" value={data.totalAssignedStudents.toString()} icon={GraduationCap} color="bg-indigo-500"/>
         <StatCard label="Active" value={activeCount.toString()} change="+1 this month" icon={FlaskConical} color="bg-blue-500" trend="up"/>
         <StatCard label="Avg Progress" value={`${avgProgress}%`} icon={TrendingUp} color="bg-green-500"/>
-        <StatCard label="Graduating Soon" value="3" sub="Within 6 months" icon={Award} color="bg-amber-500"/>
+        <StatCard label="Graduating Soon" value={graduatingSoon.toString()} sub="Near 100% completion" icon={Award} color="bg-amber-500"/>
       </div>
       <Card p={false}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">

@@ -1,7 +1,9 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using TechGalaxySolutions.ResearchHub.Application.DTOs.Common;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.Notification;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
+using TechGalaxySolutions.ResearchHub.Domain.Entities;
 using TechGalaxySolutions.ResearchHub.Infrastructure.Persistence;
 
 namespace TechGalaxySolutions.ResearchHub.Infrastructure.Services;
@@ -17,21 +19,51 @@ public class NotificationService : INotificationService
         _mapper = mapper;
     }
 
-    public async Task<List<NotificationResponse>> GetMyNotificationsAsync(Guid userId)
+    public async Task<PagedResponse<NotificationResponse>> GetMyNotificationsAsync(Guid userId, PagedRequest request)
     {
-        var notifications = await _context.Notifications.AsNoTracking()
-            .Where(n => n.UserId == userId && !n.IsDeleted)
+        var query = _context.Notifications.AsNoTracking()
+            .Where(n => n.UserId == userId && !n.IsDeleted);
+
+        var totalCount = await query.CountAsync();
+
+        var notifications = await query
             .OrderByDescending(n => n.CreatedAt)
-            .Take(50)
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
             .ToListAsync();
 
-        return _mapper.Map<List<NotificationResponse>>(notifications);
+        var items = _mapper.Map<List<NotificationResponse>>(notifications);
+
+        return new PagedResponse<NotificationResponse>
+        {
+            Items = items,
+            PageNumber = request.PageNumber,
+            PageSize = request.PageSize,
+            TotalCount = totalCount
+        };
     }
 
     public async Task<int> GetUnreadCountAsync(Guid userId)
     {
         return await _context.Notifications.AsNoTracking()
             .CountAsync(n => n.UserId == userId && !n.IsRead && !n.IsDeleted);
+    }
+
+    public async Task<NotificationResponse> CreateNotificationAsync(Guid userId, string title, string message, string type)
+    {
+        var notification = new Domain.Entities.Notification
+        {
+            UserId = userId,
+            Title = title,
+            Message = message,
+            Type = type,
+            IsRead = false
+        };
+
+        _context.Notifications.Add(notification);
+        await _context.SaveChangesAsync();
+
+        return _mapper.Map<NotificationResponse>(notification);
     }
 
     public async Task MarkAsReadAsync(Guid userId, MarkReadRequest request)
@@ -59,6 +91,16 @@ public class NotificationService : INotificationService
             notification.IsRead = true;
         }
 
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task DeleteNotificationAsync(Guid userId, Guid notificationId)
+    {
+        var notification = await _context.Notifications
+            .FirstOrDefaultAsync(n => n.Id == notificationId && n.UserId == userId && !n.IsDeleted)
+            ?? throw new KeyNotFoundException("Notification not found");
+
+        notification.IsDeleted = true;
         await _context.SaveChangesAsync();
     }
 }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TechGalaxySolutions.ResearchHub.Application.DTOs.Common;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.Meeting;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
 
@@ -18,11 +19,11 @@ public class MeetingsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetMyMeetings()
+    public async Task<IActionResult> GetMyMeetings([FromQuery] PagedRequest request)
     {
         var userId = User.GetUserId();
-        var meetings = await _meetingService.GetMyMeetingsAsync(userId);
-        return Ok(meetings);
+        var result = await _meetingService.GetMyMeetingsAsync(userId, request);
+        return Ok(result);
     }
 
     [HttpGet("{id:guid}")]

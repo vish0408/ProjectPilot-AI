@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.UserManagement;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
@@ -7,14 +7,16 @@ namespace TechGalaxySolutions.ResearchHub.Api.Controllers;
 
 [ApiController]
 [Route("admin/users")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "CollegeAdmin,SuperAdmin")]
 public class AdminUsersController : ControllerBase
 {
     private readonly IUserManagementService _userManagementService;
+    private readonly IAuthService _authService;
 
-    public AdminUsersController(IUserManagementService userManagementService)
+    public AdminUsersController(IUserManagementService userManagementService, IAuthService authService)
     {
         _userManagementService = userManagementService;
+        _authService = authService;
     }
 
     [HttpGet]
@@ -35,7 +37,7 @@ public class AdminUsersController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateUserRequest request)
     {
         var result = await _userManagementService.CreateUserAsync(request);
-        return Ok(result);
+        return Created(string.Empty, result);
     }
 
     [HttpPut("{id:guid}")]
@@ -50,5 +52,42 @@ public class AdminUsersController : ControllerBase
     {
         await _userManagementService.DeleteUserAsync(id);
         return NoContent();
+    }
+
+    [HttpPost("{id:guid}/resend-invitation")]
+    public async Task<IActionResult> ResendInvitation(Guid id)
+    {
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var currentUserId))
+        {
+            return Unauthorized();
+        }
+
+        await _authService.ResendInvitationAsync(id, currentUserId);
+        return Ok(new { message = "Invitation email resent successfully." });
+    }
+
+    [HttpPost("{id:guid}/send-invitation")]
+    public async Task<IActionResult> SendInvitation(Guid id)
+    {
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var currentUserId))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            await _authService.SendInvitationAsync(id, currentUserId);
+            return Ok(new { message = "Invitation email sent successfully." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(500, new { error = ex.Message, innerError = ex.InnerException?.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.GetType().Name, message = ex.Message, stackTrace = ex.StackTrace });
+        }
     }
 }

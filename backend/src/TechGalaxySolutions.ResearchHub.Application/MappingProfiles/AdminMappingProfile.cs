@@ -11,6 +11,7 @@ using TechGalaxySolutions.ResearchHub.Application.DTOs.Role;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.Semester;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.GlobalAnnouncement;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.SystemSetting;
+using TechGalaxySolutions.ResearchHub.Application.DTOs.HodManagement;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.UserManagement;
 using TechGalaxySolutions.ResearchHub.Domain.Entities;
 
@@ -25,7 +26,11 @@ public class AdminMappingProfile : Profile
 
         CreateMap<Department, DepartmentResponse>()
             .ForMember(dest => dest.CollegeName, opt => opt.MapFrom(src => src.College.Name))
-            .ForMember(dest => dest.FacultyCount, opt => opt.MapFrom(src => src.FacultyMembers.Count(f => !f.IsDeleted)));
+            .ForMember(dest => dest.HodName, opt => opt.MapFrom(src => src.Hod != null ? src.Hod.FullName : null))
+            .ForMember(dest => dest.FacultyCount, opt => opt.MapFrom(src => src.FacultyMembers.Count(f => !f.IsDeleted)))
+            .ForMember(dest => dest.DepartmentName, opt => opt.MapFrom(src => src.DepartmentName))
+            .ForMember(dest => dest.DepartmentCode, opt => opt.MapFrom(src => src.DepartmentCode))
+            .ForMember(dest => dest.ShortName, opt => opt.MapFrom(src => src.ShortName));
 
         CreateMap<AcademicYear, AcademicYearResponse>();
 
@@ -35,7 +40,7 @@ public class AdminMappingProfile : Profile
         CreateMap<FacultyMember, FacultyResponse>()
             .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.User.FullName))
             .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.User.Email))
-            .ForMember(dest => dest.DepartmentName, opt => opt.MapFrom(src => src.Department.Name));
+            .ForMember(dest => dest.DepartmentName, opt => opt.MapFrom(src => src.Department.DepartmentName));
 
         CreateMap<User, UserResponse>()
             .ForMember(dest => dest.RoleName, opt => opt.MapFrom(src => src.Role.Name));
@@ -55,5 +60,15 @@ public class AdminMappingProfile : Profile
 
         CreateMap<GlobalAnnouncement, GlobalAnnouncementResponse>()
             .ForMember(dest => dest.CreatedByName, opt => opt.MapFrom(src => src.CreatedByUser.FullName));
+
+        CreateMap<Hod, HodResponse>()
+            .ForMember(dest => dest.EmployeeId, opt => opt.MapFrom(src => src.User.EmployeeId))
+            .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.User.FullName))
+            .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.User.Email))
+            .ForMember(dest => dest.Phone, opt => opt.MapFrom(src => src.User.PhoneNumber))
+            .ForMember(dest => dest.Designation, opt => opt.MapFrom(src => src.User.Designation))
+            .ForMember(dest => dest.DepartmentName, opt => opt.MapFrom(src => src.Department.DepartmentName))
+            .ForMember(dest => dest.DepartmentCode, opt => opt.MapFrom(src => src.Department.DepartmentCode))
+            .ForMember(dest => dest.CollegeName, opt => opt.MapFrom(src => src.College.Name));
     }
 }

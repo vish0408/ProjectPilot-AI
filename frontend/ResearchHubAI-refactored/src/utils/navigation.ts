@@ -24,6 +24,7 @@ import {
   Rows3,
   Settings,
   ShieldCheck,
+  Sparkles,
   Target,
   Telescope,
   TrendingUp,
@@ -43,30 +44,32 @@ export const STUDENT_NAV = [
   { id: "ai-assistant",     label: "AI Assistant",      icon: Brain,           badge: "AI" },
   { id: "proposal-generator", label: "Proposal Generator", icon: FileText,       badge: "AI" },
   { id: "literature",       label: "Literature Review", icon: BookOpen,        badge: null },
-  { id: "meetings",         label: "Meeting Schedule",  icon: Calendar,        badge: "3"  },
-  { id: "guide-comments",   label: "Guide Comments",    icon: MessageCircle,   badge: "2"  },
+  { id: "ai-literature-review", label: "AI Literature Review", icon: Sparkles, badge: "AI" },
+  { id: "research-chat",      label: "Research Chat",       icon: MessageCircle, badge: "AI" },
+  { id: "meetings",         label: "Meeting Schedule",  icon: Calendar,        badge: null },
+  { id: "guide-comments",   label: "Guide Comments",    icon: MessageCircle,   badge: null },
   { id: "progress",         label: "Progress Tracker",  icon: Target,          badge: null },
-  { id: "notifications",    label: "Notifications",     icon: Bell,            badge: "4"  },
+  { id: "notifications",    label: "Notifications",     icon: Bell,            badge: null },
   { id: "profile",          label: "Profile",           icon: User,            badge: null },
   { id: "settings",         label: "Settings",          icon: Settings,        badge: null },
 ];
 
 export const GUIDE_NAV = [
   { id: "dashboard",         label: "Dashboard",           icon: LayoutDashboard, badge: null },
-  { id: "assigned-students", label: "Assigned Students",   icon: GraduationCap,   badge: "12" },
-  { id: "thesis-reviews",    label: "Thesis Reviews",      icon: FileCheck,       badge: "5"  },
-  { id: "pending-approvals", label: "Pending Approvals",   icon: ClipboardList,   badge: "3"  },
+  { id: "assigned-students", label: "Assigned Students",   icon: GraduationCap,   badge: null },
+  { id: "thesis-reviews",    label: "Thesis Reviews",      icon: FileCheck,       badge: null },
+  { id: "pending-approvals", label: "Pending Approvals",   icon: ClipboardList,   badge: null },
   { id: "ai-review",         label: "AI Review Assistant", icon: Brain,           badge: "AI" },
   { id: "meeting-scheduler", label: "Meeting Scheduler",   icon: Calendar,        badge: null },
-  { id: "guide-calendar",    label: "Calendar",            icon: Calendar,        badge: null },
+  { id: "guide-calendar",    label: "Calendar",            icon: CalendarDays,    badge: null },
   { id: "research-progress", label: "Research Progress",   icon: TrendingUp,      badge: null },
-  { id: "notifications",     label: "Notifications",       icon: Bell,            badge: "6"  },
+  { id: "notifications",     label: "Notifications",       icon: Bell,            badge: null  },
   { id: "reports",           label: "Reports",             icon: ChartNoAxesColumnIncreasing,       badge: null },
   { id: "profile",           label: "Profile",             icon: User,            badge: null },
   { id: "settings",          label: "Settings",            icon: Settings,        badge: null },
 ];
 
-export const ADMIN_NAV = [
+export const COLLEGE_ADMIN_NAV = [
   { id: "dashboard",          label: "Dashboard",           icon: LayoutDashboard, badge: null },
   { id: "user-management",    label: "User Management",     icon: Users,           badge: null },
   { id: "student-management", label: "Student Management",  icon: GraduationCap,   badge: null },
@@ -77,7 +80,7 @@ export const ADMIN_NAV = [
   { id: "ai-playground",      label: "AI Playground",       icon: Brain,           badge: null },
   { id: "ai-config",          label: "AI Configuration",    icon: Cpu,             badge: null },
   { id: "analytics",          label: "Reports & Analytics", icon: ChartNoAxesColumnIncreasing,       badge: null },
-  { id: "notifications",      label: "Notifications",       icon: Bell,            badge: "8"  },
+  { id: "notifications",      label: "Notifications",       icon: Bell,            badge: null },
   { id: "audit-logs",         label: "Audit Logs",          icon: ShieldCheck,     badge: null },
   { id: "backup-restore",     label: "Backup & Restore",    icon: ArchiveRestore,  badge: null },
   { id: "system-settings",    label: "System Settings",     icon: Wrench,          badge: null },
@@ -89,14 +92,33 @@ export const ADMIN_NAV = [
   { id: "profile",            label: "Profile",             icon: User,            badge: null },
 ];
 
+export const SUPER_ADMIN_NAV = [
+  { id: "dashboard",          label: "Dashboard",           icon: LayoutDashboard, badge: null },
+  { id: "university-mgmt",    label: "Colleges",            icon: Globe,           badge: null },
+  { id: "department-mgmt",    label: "Departments",         icon: Building,        badge: null },
+  { id: "hod-mgmt",           label: "HOD Management",     icon: GraduationCap,    badge: null },
+  { id: "user-management",    label: "User Management",     icon: Users,           badge: null },
+  { id: "analytics",          label: "Reports & Analytics", icon: ChartNoAxesColumnIncreasing, badge: null },
+  { id: "ai-config",          label: "AI Configuration",    icon: Cpu,             badge: null },
+  { id: "system-settings",    label: "System Settings",     icon: Wrench,          badge: null },
+  { id: "backup-restore",     label: "Backup & Restore",    icon: ArchiveRestore,  badge: null },
+  { id: "audit-logs",         label: "Audit Logs",          icon: ShieldCheck,     badge: null },
+  { id: "global-announcements", label: "Announcements",     icon: Megaphone,       badge: null },
+  { id: "notifications",      label: "Notifications",       icon: Bell,            badge: null },
+  { id: "profile",            label: "Profile",             icon: User,            badge: null },
+];
+
 export const HOD_NAV = [
   { id: "dashboard",          label: "Dashboard",           icon: LayoutDashboard, badge: null },
   { id: "students",           label: "Students",            icon: GraduationCap,   badge: null },
   { id: "guides",             label: "Guides",              icon: UserCheck,       badge: null },
   { id: "allocations",        label: "Allocations",         icon: ClipboardList,   badge: null },
   { id: "research-topics",    label: "Research Topics",     icon: Telescope,       badge: null },
+  { id: "proposals",          label: "Proposals",           icon: FileText,        badge: null },
+  { id: "meetings",           label: "Meetings",            icon: Calendar,        badge: null },
+  { id: "progress",           label: "Progress",            icon: TrendingUp,      badge: null },
   { id: "announcements",      label: "Announcements",       icon: Megaphone,       badge: null },
-  { id: "reports",            label: "Reports",             icon: ChartNoAxesColumnIncreasing,       badge: null },
+  { id: "reports",            label: "Reports",             icon: ChartNoAxesColumnIncreasing, badge: null },
   { id: "notifications",      label: "Notifications",       icon: Bell,            badge: null },
   { id: "profile",            label: "Profile",             icon: User,            badge: null },
 ];

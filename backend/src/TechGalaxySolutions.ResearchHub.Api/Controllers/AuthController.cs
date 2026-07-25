@@ -24,11 +24,46 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "CollegeAdmin,SuperAdmin")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
         await _authService.RegisterAsync(request);
         return Ok(new { message = "User registered successfully" });
+    }
+
+    [HttpPost("activate")]
+    public async Task<IActionResult> Activate([FromBody] ActivateAccountRequest request)
+    {
+        await _authService.ActivateAccountAsync(request);
+        return Ok(new { message = "Account activated successfully. You can now log in." });
+    }
+
+    [HttpPost("activate/validate")]
+    public async Task<IActionResult> ValidateActivationToken([FromBody] ValidateActivationTokenRequest request)
+    {
+        var result = await _authService.ValidateActivationTokenAsync(request.Token);
+        return Ok(result);
+    }
+
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        await _authService.ForgotPasswordAsync(request);
+        return Ok(new { message = "If the email exists, a password reset link has been sent." });
+    }
+
+    [HttpPost("reset-password/validate")]
+    public async Task<IActionResult> ValidatePasswordResetToken([FromBody] ValidateActivationTokenRequest request)
+    {
+        var result = await _authService.ValidatePasswordResetTokenAsync(request.Token);
+        return Ok(result);
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        await _authService.ResetPasswordAsync(request);
+        return Ok(new { message = "Password reset successfully. You can now log in with your new password." });
     }
 
     [HttpPost("refresh")]

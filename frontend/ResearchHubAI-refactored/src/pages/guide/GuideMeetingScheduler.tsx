@@ -10,6 +10,7 @@ import StatCard from "../../components/cards/StatCard";
 import Badge from "../../components/common/Badge";
 import Card from "../../components/common/Card";
 import SectionHead from "../../components/common/SectionHead";
+import Pagination from "../../components/common/Pagination";
 import { guideService } from "../../services/GuideService";
 import { Meeting } from "../../types/Guide";
 
@@ -20,16 +21,26 @@ export default function GuideMeetingScheduler() {
   const [loading, setLoading] = useState(true);
   const [sel, setSel] = useState<number | null>(null);
   const [title, setTitle] = useState("");
-  const [student, setStudent] = useState("");
   const [type, setType] = useState("Video Call");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPreviousPage, setHasPreviousPage] = useState(false);
+  const [pageSize, setPageSize] = useState(20);
 
-  const fetchMeetings = async () => {
+  const fetchMeetings = async (page: number, size: number) => {
     try {
-      const m = await guideService.getMyMeetings();
-      setMeetings(m);
+      const m = await guideService.getMyMeetings({ pageNumber: page, pageSize: size });
+      setMeetings(m.items);
+      setPageNumber(m.pageNumber);
+      setTotalPages(m.totalPages);
+      setTotalCount(m.totalCount);
+      setHasNextPage(m.hasNextPage);
+      setHasPreviousPage(m.hasPreviousPage);
     } catch (e) {
       console.error("Failed to load meetings", e);
     } finally {
@@ -37,7 +48,16 @@ export default function GuideMeetingScheduler() {
     }
   };
 
-  useEffect(() => { fetchMeetings(); }, []);
+  useEffect(() => { fetchMeetings(pageNumber, pageSize); }, []);
+
+  const handlePageChange = (page: number) => {
+    fetchMeetings(page, pageSize);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    fetchMeetings(1, size);
+  };
 
   const handleSchedule = async () => {
     if (!title.trim() || !date || !time) return;
@@ -50,7 +70,7 @@ export default function GuideMeetingScheduler() {
         participantIds: [],
       });
       setTitle(""); setDate(""); setTime("");
-      await fetchMeetings();
+      await fetchMeetings(pageNumber, pageSize);
     } catch (e) {
       console.error("Failed to create meeting", e);
     } finally {
@@ -80,9 +100,9 @@ export default function GuideMeetingScheduler() {
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard label="Today" value={meetings.filter(m => new Date(m.scheduledAt).toDateString() === now.toDateString()).length.toString()} icon={Calendar} color="bg-indigo-500"/>
-        <StatCard label="This Week" value={meetings.length.toString()} icon={Activity} color="bg-blue-500"/>
+        <StatCard label="This Page" value={meetings.length.toString()} icon={Activity} color="bg-blue-500"/>
         <StatCard label="Pending Requests" value={pendingRequests.toString()} icon={Clock} color="bg-amber-500"/>
-        <StatCard label="Total (Month)" value={meetings.length.toString()} icon={CheckCircle} color="bg-green-500"/>
+        <StatCard label="Total" value={totalCount.toString()} icon={CheckCircle} color="bg-green-500"/>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card>
@@ -112,6 +132,16 @@ export default function GuideMeetingScheduler() {
                 </div>
               </div>
             ))}
+            <Pagination
+              pageNumber={pageNumber}
+              totalPages={totalPages}
+              totalCount={totalCount}
+              hasNextPage={hasNextPage}
+              hasPreviousPage={hasPreviousPage}
+              onPageChange={handlePageChange}
+              pageSize={pageSize}
+              onPageSizeChange={handlePageSizeChange}
+            />
           </Card>
           <Card>
             <SectionHead title="Schedule New Meeting"/>

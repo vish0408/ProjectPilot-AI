@@ -17,4 +17,14 @@ public class ProjectDocument : BaseEntity
     public User Uploader { get; set; } = null!;
 
     public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
+
+    public byte[]? ContentData { get; set; }
+
+    public string? StoredFilePath { get; set; }
+
+    public string? DocumentStatus { get; set; }
+
+    public ICollection<DocumentReview> Reviews { get; set; } = new List<DocumentReview>();
+
+    public ICollection<DocumentComment> Comments { get; set; } = new List<DocumentComment>();
 }

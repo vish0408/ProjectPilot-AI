@@ -11,11 +11,13 @@ public class MilestoneService : IMilestoneService
 {
     private readonly ApplicationDbContext _context;
     private readonly IMapper _mapper;
+    private readonly IProjectService _projectService;
 
-    public MilestoneService(ApplicationDbContext context, IMapper mapper)
+    public MilestoneService(ApplicationDbContext context, IMapper mapper, IProjectService projectService)
     {
         _context = context;
         _mapper = mapper;
+        _projectService = projectService;
     }
 
     public async Task<List<MilestoneResponse>> GetProjectMilestonesAsync(Guid projectId, Guid userId)
@@ -46,6 +48,22 @@ public class MilestoneService : IMilestoneService
         _context.Milestones.Add(milestone);
         await _context.SaveChangesAsync();
 
+        await _projectService.RecalculateCompletionPercentageAsync(projectId);
+
+        var studentProfile = await _context.Set<StudentProfile>()
+            .FirstOrDefaultAsync(s => s.UserId == userId && !s.IsDeleted);
+        if (studentProfile?.GuideId != null)
+        {
+            _context.Notifications.Add(new Notification
+            {
+                UserId = studentProfile.GuideId.Value,
+                Title = "New Milestone Added",
+                Message = $"Student added milestone: '{request.Title}'.",
+                Type = "info",
+            });
+            await _context.SaveChangesAsync();
+        }
+
         return _mapper.Map<MilestoneResponse>(milestone);
     }
 
@@ -57,12 +75,32 @@ public class MilestoneService : IMilestoneService
 
         await VerifyProjectAccess(milestone.ProjectId, userId);
 
+        var wasCompleted = milestone.IsCompleted;
         milestone.Title = request.Title;
         milestone.Description = request.Description;
         milestone.TargetDate = request.TargetDate;
         milestone.IsCompleted = request.IsCompleted;
 
         await _context.SaveChangesAsync();
+
+        await _projectService.RecalculateCompletionPercentageAsync(milestone.ProjectId);
+
+        if (request.IsCompleted && !wasCompleted)
+        {
+            var studentProfile = await _context.Set<StudentProfile>()
+                .FirstOrDefaultAsync(s => s.UserId == userId && !s.IsDeleted);
+            if (studentProfile?.GuideId != null)
+            {
+                _context.Notifications.Add(new Notification
+                {
+                    UserId = studentProfile.GuideId.Value,
+                    Title = "Milestone Completed",
+                    Message = $"Student completed milestone: '{milestone.Title}'.",
+                    Type = "success",
+                });
+                await _context.SaveChangesAsync();
+            }
+        }
 
         return _mapper.Map<MilestoneResponse>(milestone);
     }
@@ -77,6 +115,8 @@ public class MilestoneService : IMilestoneService
 
         milestone.IsDeleted = true;
         await _context.SaveChangesAsync();
+
+        await _projectService.RecalculateCompletionPercentageAsync(milestone.ProjectId);
     }
 
     private async Task VerifyProjectAccess(Guid projectId, Guid userId)

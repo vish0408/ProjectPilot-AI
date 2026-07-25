@@ -55,6 +55,7 @@ public static class DependencyInjection
         // Admin Workspace
         services.AddScoped<ICollegeService, CollegeService>();
         services.AddScoped<IAdminDepartmentService, AdminDepartmentService>();
+        services.AddScoped<IHodManagementService, HodManagementService>();
         services.AddScoped<IAcademicYearService, AcademicYearService>();
         services.AddScoped<ISemesterService, SemesterService>();
         services.AddScoped<IFacultyService, FacultyService>();
@@ -65,6 +66,32 @@ public static class DependencyInjection
         services.AddScoped<IAdminAnnouncementService, AdminAnnouncementService>();
         services.AddScoped<IAuditLogService, AuditLogService>();
         services.AddScoped<ISystemSettingService, SystemSettingService>();
+
+        // Documents & Comments
+        services.AddScoped<IDocumentCommentService, DocumentCommentService>();
+        services.AddScoped<IFileStorageService, FileStorageService>();
+
+        // Thesis Review
+        services.AddScoped<IThesisReviewService, ThesisReviewService>();
+
+        // Literature Review
+        services.AddScoped<ILiteratureReviewService, LiteratureReviewService>();
+
+        // Chat / AI Research
+        services.AddScoped<IChatService, ChatService>();
+
+        // HOD Progress & Proposals
+        services.AddScoped<IHodProgressService, HodProgressService>();
+        services.AddScoped<IHodProposalService, HodProposalService>();
+
+        // Login History
+        services.AddScoped<ILoginHistoryService, LoginHistoryService>();
+
+        // Project Analytics
+        services.AddScoped<IProjectAnalyticsService, ProjectAnalyticsService>();
+
+        // Legacy Document Migration
+        services.AddScoped<ILegacyDocumentMigrationService, LegacyDocumentMigrationService>();
 
         // AI Providers
         var aiSettings = new AISettings();
@@ -80,6 +107,11 @@ public static class DependencyInjection
 
         // Proposal Generator
         services.AddScoped<IProposalGeneratorService, ProposalGeneratorService>();
+
+        // Email
+        services.Configure<SmtpSettings>(configuration.GetSection("Smtp"));
+        services.Configure<FrontendSettings>(configuration.GetSection("Frontend"));
+        services.AddScoped<IEmailService, EmailService>();
 
         return services;
     }

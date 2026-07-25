@@ -14,8 +14,8 @@ import { STUDENT_NAV } from "../utils/navigation";
 export default function Topbar({ nav, onMenu }: { nav: typeof STUDENT_NAV; onMenu:()=>void }) {
   const { user, screen, setScreen, theme, setTheme, logout } = useApp();
   const label = nav.find(n=>n.id===screen)?.label || "Dashboard";
-  const rc: Record<Role,string> = { student:"text-blue-600", guide:"text-indigo-600", admin:"text-slate-600", hod:"text-cyan-600" };
-  const rl: Record<Role,string> = { student:"PhD Student", guide:"Research Guide", admin:"Administrator", hod:"HOD" };
+  const rc: Record<Role,string> = { student:"text-blue-600", guide:"text-indigo-600", collegeadmin:"text-slate-600", hod:"text-cyan-600", superadmin:"text-red-600" };
+  const rl: Record<Role,string> = { student:"PhD Student", guide:"Research Guide", collegeadmin:"College Admin", hod:"HOD", superadmin:"Super Admin" };
   return (
     <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 sm:px-5 gap-3 flex-shrink-0">
       <div className="flex items-center gap-3">
@@ -35,7 +35,7 @@ export default function Topbar({ nav, onMenu }: { nav: typeof STUDENT_NAV; onMen
         <div className="w-px h-6 bg-border mx-1"/>
         <button onClick={()=>setScreen("profile")} className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-muted cursor-pointer transition-colors">
           <Avatar name={user?.name||"U"} size="sm"/>
-          <div className="hidden sm:block"><p className="text-xs font-bold text-foreground leading-none">{user?.name}</p><p className={`text-xs ${rc[user?.role||"student"]} leading-none mt-0.5 capitalize`}>{user?.role}</p></div>
+          <div className="hidden sm:block"><p className="text-xs font-bold text-foreground leading-none">{user?.name}</p><p className={`text-xs ${rc[user?.role||"student"]} leading-none mt-0.5`}>{rl[user?.role||"student"]}</p></div>
         </button>
         <button onClick={logout} className="w-9 h-9 rounded-xl hover:bg-muted flex items-center justify-center transition-colors" title="Sign Out"><LogOut className="w-4 h-4 text-muted-foreground"/></button>
       </div>

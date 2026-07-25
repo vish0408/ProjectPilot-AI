@@ -20,31 +20,54 @@ public class HodProfileService : IHodProfileService
 
     public async Task<HodProfileResponse> GetProfileAsync(Guid userId)
     {
-        var profile = await _context.Set<DepartmentProfile>().AsNoTracking()
+        var profile = await _context.Set<DepartmentProfile>()
             .Include(d => d.HodUser)
             .FirstOrDefaultAsync(d => d.HodUserId == userId && !d.IsDeleted);
 
         if (profile == null)
         {
-            var user = await _context.Users.FindAsync(userId)
-                ?? throw new KeyNotFoundException("User not found");
+            var deletedProfile = await _context.Set<DepartmentProfile>()
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(d => d.HodUserId == userId && d.IsDeleted);
 
-            profile = new DepartmentProfile
+            if (deletedProfile != null)
             {
-                DepartmentName = user.FullName + "'s Department",
-                Institution = "",
-                HodUserId = userId,
-            };
-            _context.Set<DepartmentProfile>().Add(profile);
+                deletedProfile.IsDeleted = false;
+                profile = deletedProfile;
+            }
+            else
+            {
+                var user = await _context.Users.FindAsync(userId)
+                    ?? throw new KeyNotFoundException("User not found");
 
-            var settings = new DepartmentSettings
-            {
-                DepartmentProfileId = profile.Id,
-            };
-            _context.Set<DepartmentSettings>().Add(settings);
+                var deptName = $"{user.FullName}'s Department";
+                var existingNames = await _context.Set<DepartmentProfile>()
+                    .IgnoreQueryFilters()
+                    .Where(d => d.DepartmentName!.StartsWith(deptName))
+                    .Select(d => d.DepartmentName)
+                    .ToListAsync();
+                if (existingNames.Count > 0)
+                    deptName = $"{user.FullName}'s Department ({userId.ToString("N")[..8]})";
+
+                profile = new DepartmentProfile
+                {
+                    DepartmentName = deptName,
+                    Institution = "",
+                    HodUserId = userId,
+                };
+                _context.Set<DepartmentProfile>().Add(profile);
+
+                var settings = new DepartmentSettings
+                {
+                    DepartmentProfileId = profile.Id,
+                };
+                _context.Set<DepartmentSettings>().Add(settings);
+            }
 
             await _context.SaveChangesAsync();
-            profile.HodUser = user;
+
+            if (profile.HodUser == null)
+                profile.HodUser = await _context.Users.FindAsync(userId);
         }
 
         return _mapper.Map<HodProfileResponse>(profile);

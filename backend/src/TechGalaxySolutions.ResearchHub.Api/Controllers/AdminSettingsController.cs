@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.SystemSetting;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
@@ -7,7 +7,7 @@ namespace TechGalaxySolutions.ResearchHub.Api.Controllers;
 
 [ApiController]
 [Route("admin/settings")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "CollegeAdmin,SuperAdmin")]
 public class AdminSettingsController : ControllerBase
 {
     private readonly ISystemSettingService _settingService;
@@ -45,3 +45,4 @@ public class AdminSettingsController : ControllerBase
         return Ok(result);
     }
 }
+

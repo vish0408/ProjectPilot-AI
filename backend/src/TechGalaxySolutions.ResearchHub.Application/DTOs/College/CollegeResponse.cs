@@ -10,6 +10,9 @@ public class CollegeResponse
     public string Email { get; set; } = string.Empty;
     public string Website { get; set; } = string.Empty;
     public bool IsActive { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public Guid? SubscriptionId { get; set; }
+    public long StorageLimitBytes { get; set; }
     public int DepartmentCount { get; set; }
     public DateTime CreatedAt { get; set; }
 }

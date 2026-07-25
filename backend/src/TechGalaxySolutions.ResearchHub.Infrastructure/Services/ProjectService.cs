@@ -1,5 +1,6 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using TechGalaxySolutions.ResearchHub.Application.DTOs.Common;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.Project;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
 using TechGalaxySolutions.ResearchHub.Domain.Entities;
@@ -19,16 +20,30 @@ public class ProjectService : IProjectService
         _mapper = mapper;
     }
 
-    public async Task<List<ProjectResponse>> GetMyProjectsAsync(Guid userId)
+    public async Task<PagedResponse<ProjectResponse>> GetMyProjectsAsync(Guid userId, PagedRequest request)
     {
-        var projects = await _context.Projects.AsNoTracking()
+        var query = _context.Projects.AsNoTracking()
             .Include(p => p.Student)
             .Include(p => p.Members).ThenInclude(m => m.User)
-            .Where(p => p.StudentId == userId && !p.IsDeleted)
+            .Where(p => p.StudentId == userId && !p.IsDeleted);
+
+        var totalCount = await query.CountAsync();
+
+        var projects = await query
             .OrderByDescending(p => p.CreatedAt)
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
             .ToListAsync();
 
-        return _mapper.Map<List<ProjectResponse>>(projects);
+        var items = _mapper.Map<List<ProjectResponse>>(projects);
+
+        return new PagedResponse<ProjectResponse>
+        {
+            Items = items,
+            PageNumber = request.PageNumber,
+            PageSize = request.PageSize,
+            TotalCount = totalCount
+        };
     }
 
     public async Task<ProjectResponse> GetByIdAsync(Guid projectId, Guid userId)
@@ -70,6 +85,20 @@ public class ProjectService : IProjectService
 
         await _context.SaveChangesAsync();
 
+        var studentProfile = await _context.Set<StudentProfile>()
+            .FirstOrDefaultAsync(s => s.UserId == userId && !s.IsDeleted);
+        if (studentProfile?.GuideId != null)
+        {
+            _context.Notifications.Add(new Notification
+            {
+                UserId = studentProfile.GuideId.Value,
+                Title = "New Project Created",
+                Message = $"Student has created a new project: '{project.Title}'.",
+                Type = "info",
+            });
+            await _context.SaveChangesAsync();
+        }
+
         return await GetByIdAsync(project.Id, userId);
     }
 
@@ -86,9 +115,12 @@ public class ProjectService : IProjectService
 
         project.Title = request.Title;
         project.Description = request.Description;
-        project.Status = Enum.Parse<ProjectStatus>(request.Status);
         project.TargetEndDate = request.TargetEndDate;
-        project.CompletionPercentage = request.CompletionPercentage;
+
+        if (project.Status != ProjectStatus.Completed)
+        {
+            project.Status = ProjectStatus.InProgress;
+        }
 
         await _context.SaveChangesAsync();
 
@@ -156,5 +188,116 @@ public class ProjectService : IProjectService
 
         _context.ProjectMembers.Remove(member);
         await _context.SaveChangesAsync();
+    }
+
+    public async Task<double> RecalculateCompletionPercentageAsync(Guid projectId)
+    {
+        var project = await _context.Projects
+            .Include(p => p.Milestones)
+            .Include(p => p.Documents)
+            .Include(p => p.Reviews)
+            .FirstOrDefaultAsync(p => p.Id == projectId && !p.IsDeleted)
+            ?? throw new KeyNotFoundException("Project not found");
+
+        double score = 0;
+
+        var milestones = project.Milestones.Where(m => !m.IsDeleted).ToList();
+        if (milestones.Count > 0)
+        {
+            var completedCount = milestones.Count(m => m.IsCompleted);
+            score += (double)completedCount / milestones.Count * 50;
+        }
+
+        var docs = project.Documents.Where(d => !d.IsDeleted).ToList();
+        if (docs.Count > 0)
+        {
+            var unit = 25.0 / Math.Max(docs.Count, 1);
+            var docScore = docs.Sum(d => d.DocumentStatus == "Migrated" || !string.IsNullOrEmpty(d.StoredFilePath) ? unit : 0);
+            score += Math.Min(docScore, 25);
+        }
+
+        var reviews = project.Reviews.Where(r => !r.IsDeleted).ToList();
+        var docReviews = await _context.Set<DocumentReview>().AsNoTracking()
+            .Where(r => r.ProjectId == projectId && !r.IsDeleted)
+            .ToListAsync();
+        var allReviews = reviews.Concat(docReviews.Cast<object>()).ToList();
+        if (allReviews.Count > 0)
+        {
+            var approved = reviews.Count(r => r.Status == ReviewStatus.Approved)
+                         + docReviews.Count(r => r.Status == "Approved");
+            score += (double)approved / allReviews.Count * 25;
+        }
+
+        project.CompletionPercentage = Math.Round(Math.Min(score, 100), 1);
+        project.UpdatedAt = DateTime.UtcNow;
+
+        if (project.CompletionPercentage >= 100 && project.Status != ProjectStatus.Completed)
+        {
+            project.Status = ProjectStatus.Completed;
+        }
+        else if (project.CompletionPercentage > 0 && project.Status == ProjectStatus.NotStarted)
+        {
+            project.Status = ProjectStatus.InProgress;
+        }
+
+        await _context.SaveChangesAsync();
+        return project.CompletionPercentage;
+    }
+
+    public async Task<ProjectResponse> SubmitFinalThesisAsync(Guid projectId, Guid userId)
+    {
+        var project = await _context.Projects
+            .Include(p => p.Milestones)
+            .Include(p => p.Documents)
+            .FirstOrDefaultAsync(p => p.Id == projectId && !p.IsDeleted)
+            ?? throw new KeyNotFoundException("Project not found");
+
+        if (project.StudentId != userId)
+            throw new UnauthorizedAccessException("Only the project owner can submit");
+
+        if (project.Status == ProjectStatus.Completed)
+            throw new InvalidOperationException("Project is already completed");
+
+        var incompleteMilestones = project.Milestones
+            .Where(m => !m.IsDeleted && !m.IsCompleted)
+            .ToList();
+        if (incompleteMilestones.Count > 0)
+            throw new InvalidOperationException(
+                $"Cannot submit final thesis. {incompleteMilestones.Count} milestone(s) are not completed. Complete all milestones first.");
+
+        var uploadedDocs = project.Documents.Where(d => !d.IsDeleted).ToList();
+        if (uploadedDocs.Count == 0)
+            throw new InvalidOperationException("Cannot submit final thesis. Upload at least one document first.");
+
+        await RecalculateCompletionPercentageAsync(projectId);
+
+        var studentProfile = await _context.Set<StudentProfile>()
+            .FirstOrDefaultAsync(s => s.UserId == userId && !s.IsDeleted);
+        if (studentProfile?.GuideId != null)
+        {
+            _context.Notifications.Add(new Notification
+            {
+                UserId = studentProfile.GuideId.Value,
+                Title = "Final Thesis Submitted",
+                Message = $"Student has submitted the final thesis for project '{project.Title}'. Please review.",
+                Type = "info",
+            });
+
+            var hodProfile = await _context.Set<DepartmentProfile>()
+                .FirstOrDefaultAsync(d => !d.IsDeleted);
+            if (hodProfile?.HodUserId != null)
+            {
+                _context.Notifications.Add(new Notification
+                {
+                    UserId = hodProfile.HodUserId.Value,
+                    Title = "Final Thesis Submitted",
+                    Message = $"Final thesis submitted for project '{project.Title}' by student.",
+                    Type = "info",
+                });
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        return await GetByIdAsync(projectId, userId);
     }
 }

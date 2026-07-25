@@ -3,19 +3,47 @@ import { Activity, Download, Filter, Server, ShieldCheck, Users } from "lucide-r
 import StatCard from "../../components/cards/StatCard";
 import Badge from "../../components/common/Badge";
 import Card from "../../components/common/Card";
+import Pagination from "../../components/common/Pagination";
 import { adminService } from "../../services/AdminService";
 import type { AuditLogResponse } from "../../types/Admin";
 
 export default function AdminAuditLogs() {
   const [logs, setLogs] = useState<AuditLogResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPreviousPage, setHasPreviousPage] = useState(false);
+  const [pageSize, setPageSize] = useState(20);
 
-  useEffect(() => {
+  const fetchLogs = (page: number, size: number) => {
+    setLoading(true);
     adminService.getAuditLogs()
-      .then(setLogs)
-      .catch(() => {})
+      .then((data) => {
+        setLogs(data);
+        setTotalCount(data.length);
+        setTotalPages(Math.max(1, Math.ceil(data.length / size)));
+        setHasNextPage(page < Math.ceil(data.length / size));
+        setHasPreviousPage(page > 1);
+      })
+      .catch((e) => { if (e instanceof Error) setError(e.message); })
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { fetchLogs(pageNumber, pageSize); }, []);
+
+  const handlePageChange = (page: number) => {
+    setPageNumber(page);
+    fetchLogs(page, pageSize);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setPageNumber(1);
+    fetchLogs(1, size);
+  };
 
   if (loading) {
     return (
@@ -29,8 +57,13 @@ export default function AdminAuditLogs() {
 
   return (
     <div className="flex flex-col gap-5">
+      {error && (
+        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 mb-4">
+          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+        </div>
+      )}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard label="Total Events" value={`${logs.length}`} icon={Activity} color="bg-blue-500"/>
+        <StatCard label="Total Events" value={`${totalCount}`} icon={Activity} color="bg-blue-500"/>
         <StatCard label="Today" value={`${todayLogs.length}`} icon={ShieldCheck} color="bg-red-500"/>
         <StatCard label="Unique Users" value={`${new Set(logs.filter(l => l.userId).map(l => l.userId)).size}`} icon={Users} color="bg-green-500"/>
         <StatCard label="Entities" value={`${new Set(logs.map(l => l.entityName)).size}`} icon={Server} color="bg-indigo-500"/>
@@ -55,7 +88,7 @@ export default function AdminAuditLogs() {
               ))}</tr>
             </thead>
             <tbody>
-              {logs.slice(0, 50).map((log) => (
+              {logs.map((log) => (
                 <tr key={log.id} className="border-t border-border hover:bg-muted/20 transition-colors">
                   <td className="px-5 py-3 font-mono text-xs text-muted-foreground">
                     {new Date(log.timestamp).toLocaleString()}
@@ -77,6 +110,16 @@ export default function AdminAuditLogs() {
           </table>
           {!logs.length && <p className="text-sm text-muted-foreground text-center py-8">No audit logs found</p>}
         </div>
+        <Pagination
+          pageNumber={pageNumber}
+          totalPages={totalPages}
+          totalCount={totalCount}
+          hasNextPage={hasNextPage}
+          hasPreviousPage={hasPreviousPage}
+          onPageChange={handlePageChange}
+          pageSize={pageSize}
+          onPageSizeChange={handlePageSizeChange}
+        />
       </Card>
     </div>
   );

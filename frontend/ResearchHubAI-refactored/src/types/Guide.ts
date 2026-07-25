@@ -20,6 +20,7 @@ export interface AssignedStudentSummary {
   researchTopic: string;
   projectTitle: string | null;
   projectStatus: string | null;
+  projectId: string | null;
   completionPercentage: number;
   totalChapters: number;
   approvedChapters: number;
@@ -43,6 +44,23 @@ export interface UpcomingMeetingSummary {
   status: string;
 }
 
+export interface ThesisDocumentSummary {
+  documentId: string;
+  projectId: string;
+  projectTitle: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  uploadedAt: string;
+  studentId: string;
+  studentName: string;
+  enrollment: string;
+  department: string;
+  researchTopic: string;
+  reviewStatus: string | null;
+  version: number;
+}
+
 export interface GuideDashboardData {
   totalAssignedStudents: number;
   projectsUnderReview: number;
@@ -52,6 +70,7 @@ export interface GuideDashboardData {
   pendingReviewList: PendingReviewSummary[];
   upcomingMeetingsList: UpcomingMeetingSummary[];
   recentNotifications: AppNotification[];
+  pendingThesisReviews: ThesisDocumentSummary[];
 }
 
 export interface AppNotification {
@@ -116,6 +135,19 @@ export interface MeetingParticipant {
   userId: string;
   userName: string;
   email: string;
+}
+
+export interface DocumentComment {
+  id: string;
+  documentId: string;
+  userId: string;
+  userName: string;
+  content: string;
+  parentCommentId: string | null;
+  isEdited: boolean;
+  createdAt: string;
+  updatedAt: string | null;
+  replies: DocumentComment[];
 }
 
 export interface ApprovalHistoryEntry {

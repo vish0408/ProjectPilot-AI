@@ -8,4 +8,8 @@ public class CreateCollegeRequest
     public string Phone { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string Website { get; set; } = string.Empty;
+
+    public Guid? SubscriptionId { get; set; }
+
+    public long StorageLimitBytes { get; set; } = 1073741824;
 }

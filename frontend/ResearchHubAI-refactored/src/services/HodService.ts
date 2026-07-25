@@ -1,14 +1,23 @@
 import { apiClient } from "../api/client";
+import type { PagedRequest, PagedResponse } from "../types/Pagination";
 import {
   HodProfileDto,
   HodDashboardData,
   HodStudentSummary,
+  StudentDetail,
   HodGuideSummary,
+  GuideDetail,
   ProjectAllocation,
   ResearchCategory,
   ResearchTopic,
   DepartmentAnnouncement,
   DepartmentReport,
+  HodProposal,
+  ReviewProposalRequest,
+  AddProposalCommentRequest,
+  ProposalComment,
+  HodProgressData,
+  HodMeeting,
 } from "../types/Hod";
 
 export class HodService {
@@ -32,11 +41,33 @@ export class HodService {
   }
 
   // Students
-  async getStudents(search?: string): Promise<HodStudentSummary[]> {
-    const params = search ? `?search=${encodeURIComponent(search)}` : "";
-    const res = await apiClient.get<HodStudentSummary[]>(`/hod/students${params}`);
+  async getStudents(search?: string, request?: PagedRequest): Promise<PagedResponse<HodStudentSummary>> {
+    const qp = new URLSearchParams();
+    if (search) qp.set("search", search);
+    if (request?.pageNumber) qp.set("pageNumber", String(request.pageNumber));
+    if (request?.pageSize) qp.set("pageSize", String(request.pageSize));
+    if (request?.sortField) qp.set("sortBy", request.sortField);
+    if (request?.statusFilter) qp.set("filterStatus", request.statusFilter);
+    const qs = qp.toString();
+    const res = await apiClient.get<PagedResponse<HodStudentSummary>>(`/hod/students${qs ? `?${qs}` : ""}`);
     if (!res.success || !res.data) throw new Error(res.message || "Failed to get students");
     return res.data;
+  }
+
+  async getStudentDetail(studentUserId: string): Promise<StudentDetail> {
+    const res = await apiClient.get<StudentDetail>(`/hod/students/${studentUserId}`);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to get student detail");
+    return res.data;
+  }
+
+  async assignStudentGuide(studentUserId: string, guideId: string, remarks?: string): Promise<void> {
+    const res = await apiClient.post(`/hod/students/${studentUserId}/assign-guide`, { guideId, remarks });
+    if (!res.success) throw new Error(res.message || "Failed to assign guide");
+  }
+
+  async toggleStudentStatus(studentUserId: string, isActive: boolean): Promise<void> {
+    const res = await apiClient.put(`/hod/students/${studentUserId}/status?isActive=${isActive}`);
+    if (!res.success) throw new Error(res.message || "Failed to update student status");
   }
 
   // Guides
@@ -45,6 +76,13 @@ export class HodService {
     if (!res.success || !res.data) throw new Error(res.message || "Failed to get guides");
     return res.data;
   }
+  
+  async getGuideDetail(guideUserId: string): Promise<GuideDetail> {
+    const res = await apiClient.get<GuideDetail>(`/hod/guides/${guideUserId}`);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to get guide detail");
+    return res.data;
+  }
+
   async assignGuide(data: { studentId: string; guideId: string; remarks?: string }): Promise<void> {
     const res = await apiClient.post("/hod/guides/assign", data);
     if (!res.success) throw new Error(res.message || "Failed to assign guide");
@@ -107,7 +145,7 @@ export class HodService {
     if (!res.success || !res.data) throw new Error(res.message || "Failed to get announcements");
     return res.data;
   }
-  async createAnnouncement(data: { title: string; content: string; priority?: string; scheduledAt?: string; expiresAt?: string }): Promise<DepartmentAnnouncement> {
+  async createAnnouncement(data: { title: string; content: string; priority: string; scheduledAt?: string; expiresAt?: string }): Promise<DepartmentAnnouncement> {
     const res = await apiClient.post<DepartmentAnnouncement>("/hod/announcements", data);
     if (!res.success || !res.data) throw new Error(res.message || "Failed to create announcement");
     return res.data;
@@ -118,11 +156,11 @@ export class HodService {
     return res.data;
   }
   async publishAnnouncement(id: string): Promise<void> {
-    const res = await apiClient.post(`/hod/announcements/${id}/publish`, {});
+    const res = await apiClient.post(`/hod/announcements/${id}/publish`);
     if (!res.success) throw new Error(res.message || "Failed to publish announcement");
   }
   async expireAnnouncement(id: string): Promise<void> {
-    const res = await apiClient.post(`/hod/announcements/${id}/expire`, {});
+    const res = await apiClient.post(`/hod/announcements/${id}/expire`);
     if (!res.success) throw new Error(res.message || "Failed to expire announcement");
   }
 
@@ -133,9 +171,97 @@ export class HodService {
     return res.data;
   }
   async generateReport(reportType: string, title: string): Promise<DepartmentReport> {
-    const res = await apiClient.post<DepartmentReport>(`/hod/reports/generate?reportType=${reportType}&title=${encodeURIComponent(title)}`, {});
+    const res = await apiClient.post<DepartmentReport>(`/hod/reports/generate?reportType=${reportType}&title=${encodeURIComponent(title)}`);
     if (!res.success || !res.data) throw new Error(res.message || "Failed to generate report");
     return res.data;
+  }
+
+  // Proposals
+  async getProposals(status?: string): Promise<HodProposal[]> {
+    const params = status ? `?status=${status}` : "";
+    const res = await apiClient.get<HodProposal[]>(`/hod/proposals${params}`);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to get proposals");
+    return res.data;
+  }
+  async getProposalDetail(id: string): Promise<HodProposal> {
+    const res = await apiClient.get<HodProposal>(`/hod/proposals/${id}`);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to get proposal detail");
+    return res.data;
+  }
+  async reviewProposal(id: string, data: ReviewProposalRequest): Promise<HodProposal> {
+    const res = await apiClient.post<HodProposal>(`/hod/proposals/${id}/review`, data);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to review proposal");
+    return res.data;
+  }
+  async addProposalComment(id: string, data: AddProposalCommentRequest): Promise<ProposalComment> {
+    const res = await apiClient.post<ProposalComment>(`/hod/proposals/${id}/comments`, data);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to add comment");
+    return res.data;
+  }
+
+  // Progress
+  async getProgress(): Promise<HodProgressData> {
+    const res = await apiClient.get<HodProgressData>("/hod/progress");
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to get progress");
+    return res.data;
+  }
+
+  // Meetings
+  async getMeetings(pageNumber?: number, pageSize?: number): Promise<PagedResponse<HodMeeting>> {
+    const qp = new URLSearchParams();
+    if (pageNumber) qp.set("pageNumber", String(pageNumber));
+    if (pageSize) qp.set("pageSize", String(pageSize ?? "20"));
+    const qs = qp.toString();
+    const res = await apiClient.get<PagedResponse<HodMeeting>>(`/meetings${qs ? `?${qs}` : ""}`);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to get meetings");
+    return res.data;
+  }
+  async getMeetingDetail(id: string): Promise<HodMeeting> {
+    const res = await apiClient.get<HodMeeting>(`/meetings/${id}`);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to get meeting detail");
+    return res.data;
+  }
+  async createMeeting(data: { title: string; description?: string; scheduledAt: string; durationMinutes: number; agenda?: string; meetingLink?: string; participantIds: string[] }): Promise<HodMeeting> {
+    const res = await apiClient.post<HodMeeting>("/meetings", data);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to create meeting");
+    return res.data;
+  }
+  async updateMeeting(id: string, data: Partial<HodMeeting>): Promise<HodMeeting> {
+    const res = await apiClient.put<HodMeeting>(`/meetings/${id}`, data);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to update meeting");
+    return res.data;
+  }
+  async deleteMeeting(id: string): Promise<void> {
+    const res = await apiClient.delete(`/meetings/${id}`);
+    if (!res.success) throw new Error(res.message || "Failed to delete meeting");
+  }
+
+  // Notifications
+  async getNotifications(pageNumber?: number, pageSize?: number): Promise<PagedResponse<AppNotification>> {
+    const qp = new URLSearchParams();
+    if (pageNumber) qp.set("pageNumber", String(pageNumber));
+    if (pageSize) qp.set("pageSize", String(pageSize ?? "20"));
+    const qs = qp.toString();
+    const res = await apiClient.get<PagedResponse<AppNotification>>(`/notifications${qs ? `?${qs}` : ""}`);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to get notifications");
+    return res.data;
+  }
+  async getUnreadCount(): Promise<number> {
+    const res = await apiClient.get<number>("/notifications/unread-count");
+    if (!res.success) throw new Error(res.message || "Failed to get unread count");
+    return res.data;
+  }
+  async markNotificationRead(notificationIds: string[]): Promise<void> {
+    const res = await apiClient.put("/notifications/mark-read", { notificationIds });
+    if (!res.success) throw new Error(res.message || "Failed to mark as read");
+  }
+  async markAllNotificationsRead(): Promise<void> {
+    const res = await apiClient.put("/notifications/mark-all-read");
+    if (!res.success) throw new Error(res.message || "Failed to mark all as read");
+  }
+  async deleteNotification(id: string): Promise<void> {
+    const res = await apiClient.delete(`/notifications/${id}`);
+    if (!res.success) throw new Error(res.message || "Failed to delete notification");
   }
 }
 

@@ -40,12 +40,13 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 // CORS
+var frontendBaseUrl = builder.Configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
         policy
-            .WithOrigins("http://localhost:5173")
+            .WithOrigins(frontendBaseUrl.TrimEnd('/'))
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -78,6 +79,68 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+// Validate SMTP configuration in Development mode
+if (app.Environment.IsDevelopment())
+{
+    var smtpSection = app.Configuration.GetSection("Smtp");
+    var host = smtpSection["Host"];
+    var port = smtpSection["Port"];
+    var username = smtpSection["Username"];
+    var password = smtpSection["Password"];
+    var fromEmail = smtpSection["FromEmail"];
+    var fromName = smtpSection["FromName"];
+    var useSsl = smtpSection["UseSsl"];
+
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation("=== SMTP Configuration ===");
+    logger.LogInformation("Host: {Host}", host);
+    logger.LogInformation("Port: {Port}", port);
+    logger.LogInformation("Username: {Username}", username);
+    logger.LogInformation("FromEmail: {FromEmail}", fromEmail);
+    logger.LogInformation("FromName: {FromName}", fromName);
+    logger.LogInformation("UseSsl: {UseSsl}", useSsl);
+    logger.LogInformation("Password: [REDACTED]");
+    logger.LogInformation("===========================");
+
+    var placeholders = new[] { "SET_VIA_USER_SECRETS_OR_ENVIRONMENT_VARIABLES", "YOUR_EMAIL", "YOUR_PASSWORD", "smtp.example.com", "" };
+    var missing = new List<string>();
+
+    if (placeholders.Contains(host, StringComparer.OrdinalIgnoreCase))
+        missing.Add("Smtp:Host");
+    if (placeholders.Contains(fromEmail, StringComparer.OrdinalIgnoreCase))
+        missing.Add("Smtp:FromEmail");
+
+    if (missing.Count > 0)
+    {
+        var msg = $"SMTP configuration is incomplete. Missing or placeholder values for: {string.Join(", ", missing)}. Set them via:\n" +
+                  $"  dotnet user-secrets set \"Smtp:Host\" \"your-smtp-host.com\"\n" +
+                  $"  dotnet user-secrets set \"Smtp:Port\" \"587\"\n" +
+                  $"  dotnet user-secrets set \"Smtp:Username\" \"your-email@gmail.com\"\n" +
+                  $"  dotnet user-secrets set \"Smtp:Password\" \"your-app-password\"\n" +
+                  $"  dotnet user-secrets set \"Smtp:FromEmail\" \"your-email@gmail.com\"";
+        logger.LogError("SMTP validation failed: {Message}", msg);
+        throw new InvalidOperationException(msg);
+    }
+
+    if (!string.IsNullOrEmpty(username) && placeholders.Contains(username, StringComparer.OrdinalIgnoreCase))
+        logger.LogWarning("Smtp:Username is set to a placeholder value. SMTP authentication will be skipped.");
+    if (!string.IsNullOrEmpty(password) && placeholders.Contains(password, StringComparer.OrdinalIgnoreCase))
+        logger.LogWarning("Smtp:Password is set to a placeholder value. SMTP authentication will be skipped.");
+
+    logger.LogInformation("SMTP configuration is valid.");
+
+    logger.LogInformation("=== Frontend Configuration ===");
+    logger.LogInformation("BaseUrl: {BaseUrl}", frontendBaseUrl);
+    logger.LogInformation("==============================");
+}
+
+if (string.IsNullOrEmpty(frontendBaseUrl))
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogError("Frontend:BaseUrl configuration is missing or empty. Set it via appsettings.json or user secrets.");
+    throw new InvalidOperationException("Frontend:BaseUrl configuration is missing or empty.");
+}
 
 // Exception handling
 app.UseMiddleware<ExceptionMiddleware>();

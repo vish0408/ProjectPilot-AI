@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<style>
+body{margin:0;padding:0;background-color:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif}
+.container{max-width:600px;margin:0 auto;padding:20px}
+.header{background:linear-gradient(135deg,#2563eb,#4f46e5);border-radius:16px;padding:32px;text-align:center}
+.header h1{color:#ffffff;font-size:28px;margin:0 0 8px}
+.header p{color:rgba(255,255,255,0.85);font-size:16px;margin:0}
+.body{background:#ffffff;border-radius:16px;padding:32px;margin-top:-8px;box-shadow:0 4px 6px rgba(0,0,0,0.05)}
+.credentials{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:20px}
+.credentials td{padding:8px 0}
+.credentials .label{color:#64748b;font-size:13px;width:100px}
+.credentials .value{color:#1e293b;font-size:14px;font-weight:600}
+.security{background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:16px;margin-bottom:20px}
+.security h3{color:#dc2626;font-size:14px;margin:0 0 4px}
+.security p{color:#991b1b;font-size:13px;margin:0;line-height:1.5}
+.btn{display:block;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:12px;padding:16px 24px;font-size:16px;font-weight:600;text-align:center;margin:20px 0}
+.btn:hover{background:#1d4ed8}
+.footer{text-align:center;padding:24px 16px}
+.footer p{color:#94a3b8;font-size:12px;margin:0 0 4px}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<div style="width:64px;height:64px;background:rgba(255,255,255,0.15);border-radius:16px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px">
+<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+</div>
+<h1>Welcome to ResearchHub AI</h1>
+<p>Your enterprise research management account</p>
+</div>
+<div class="body">
+<p style="color:#1e293b;font-size:16px;margin:0 0 16px">Dear <strong>{{UserName}}</strong>,</p>
+<p style="color:#475569;font-size:14px;line-height:1.6;margin:0 0 20px">An account has been created for you. Click the button below to activate your account and set your password.</p>
+<a href="{{ActivationLink}}" class="btn">Activate Your Account</a>
+<div class="credentials">
+<table style="width:100%;border-collapse:collapse">
+<tr><td class="label">Email</td><td class="value">{{Email}}</td></tr>
+<tr><td class="label">Temp Password</td><td class="value" style="font-family:'Courier New',monospace;letter-spacing:1px">{{TemporaryPassword}}</td></tr>
+</table>
+</div>
+<div class="security">
+<h3>&#9888; Security Notice</h3>
+<p>This temporary password expires in 72 hours. You must activate your account within 24 hours.</p>
+</div>
+<p style="color:#64748b;font-size:13px;margin:16px 0 0">If you did not expect this invitation, please ignore this email.</p>
+</div>
+<div class="footer">
+<p>Need help? Contact your institution administrator at <a href="mailto:support@researchhub.ai" style="color:#2563eb">support@researchhub.ai</a></p>
+<p>ResearchHub AI &copy; 2026</p>
+</div>
+</div>
+</body>
+</html>

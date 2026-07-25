@@ -4,21 +4,43 @@ import Badge from "../../components/common/Badge";
 import Card from "../../components/common/Card";
 import SectionHead from "../../components/common/SectionHead";
 import { guideService } from "../../services/GuideService";
+import { referenceDataService } from "../../services/ReferenceDataService";
 import { GuideProfileDto } from "../../types/Guide";
+import type { CollegeResponse, DepartmentResponse } from "../../types/Admin";
 
 export default function GuideProfile() {
   const [profile, setProfile] = useState<GuideProfileDto | null>(null);
+  const [colleges, setColleges] = useState<CollegeResponse[]>([]);
+  const [departments, setDepartments] = useState<DepartmentResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Partial<GuideProfileDto>>({});
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    guideService.getProfile()
-      .then(p => { setProfile(p); setForm(p); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    Promise.all([
+      guideService.getProfile(),
+      referenceDataService.getColleges().catch(() => []),
+    ]).then(([p, colls]) => {
+      setProfile(p); setForm(p);
+      setColleges(colls);
+      const matched = colls.find(c => c.name === p.institution);
+      if (matched) {
+        referenceDataService.getDepartments(matched.id).then(setDepartments).catch(() => {});
+      }
+    }).catch((e) => { if (e instanceof Error) setError(e.message); })
+    .finally(() => setLoading(false));
   }, []);
+
+  const handleCollegeChange = (collegeId: string) => {
+    const college = colleges.find(c => c.id === collegeId);
+    setForm({ ...form, institution: college?.name || "", department: "" });
+    setDepartments([]);
+    if (collegeId) {
+      referenceDataService.getDepartments(collegeId).then(setDepartments).catch(() => {});
+    }
+  };
 
   const handleSave = async () => {
     if (!profile) return;
@@ -28,7 +50,7 @@ export default function GuideProfile() {
       setProfile(updated);
       setForm(updated);
       setEditing(false);
-    } catch {}
+    } catch (e) { if (e instanceof Error) setError(e.message); }
     finally { setSaving(false); }
   };
 
@@ -42,6 +64,11 @@ export default function GuideProfile() {
 
   return (
     <div className="flex flex-col gap-6">
+      {error && (
+        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 mb-4">
+          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+        </div>
+      )}
       <div className="bg-gradient-to-r from-indigo-600 to-violet-700 rounded-2xl p-6 text-white">
         <div className="flex items-center gap-5">
           <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center text-2xl font-bold">
@@ -67,24 +94,37 @@ export default function GuideProfile() {
           <SectionHead title="Professional Information"/>
           {editing ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
-              {[
-                {l:"Bio",k:"bio",w:"full"},
-                {l:"Department",k:"department"},
-                {l:"Institution",k:"institution"},
-                {l:"Specialization",k:"specialization"},
-                {l:"Designation",k:"designation"},
-              ].map(f => (
-                <div key={f.k} className={f.w === "full" ? "col-span-full" : ""}>
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">{f.l}</label>
-                  {f.w === "full" ? (
-                    <textarea value={(form as any)[f.k] || ""} onChange={e => setForm({...form, [f.k]: e.target.value})}
-                      className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm mt-1 outline-none focus:border-primary min-h-[80px]" />
-                  ) : (
-                    <input value={(form as any)[f.k] || ""} onChange={e => setForm({...form, [f.k]: e.target.value})}
-                      className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm mt-1 outline-none focus:border-primary" />
-                  )}
-                </div>
-              ))}
+              <div className="col-span-full">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Bio</label>
+                <textarea value={form.bio || ""} onChange={e => setForm({...form, bio: e.target.value})}
+                  className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm mt-1 outline-none focus:border-primary min-h-[80px]" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">College</label>
+                <select value={colleges.find(c => c.name === form.institution)?.id || ""} onChange={e => handleCollegeChange(e.target.value)}
+                  className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm mt-1 outline-none focus:border-primary">
+                  <option value="">Select College</option>
+                  {colleges.filter(c => c.isActive).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Department</label>
+                <select value={form.department || ""} onChange={e => setForm({...form, department: e.target.value})}
+                  className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm mt-1 outline-none focus:border-primary" disabled={departments.length === 0}>
+                  <option value="">{departments.length ? "Select Department" : "Select a college first"}</option>
+                  {departments.filter(d => d.isActive).map(d => <option key={d.id} value={d.departmentName}>{d.departmentName} ({d.departmentCode})</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Specialization</label>
+                <input value={form.specialization || ""} onChange={e => setForm({...form, specialization: e.target.value})}
+                  className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm mt-1 outline-none focus:border-primary" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Designation</label>
+                <input value={form.designation || ""} onChange={e => setForm({...form, designation: e.target.value})}
+                  className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm mt-1 outline-none focus:border-primary" />
+              </div>
               <div className="col-span-full flex items-center gap-2">
                 <input type="checkbox" checked={form.isAvailable ?? true} onChange={e => setForm({...form, isAvailable: e.target.checked})} id="avail" />
                 <label htmlFor="avail" className="text-sm text-foreground">Available for new students</label>

@@ -1,5 +1,6 @@
 import { apiClient } from "../api/client";
-import { StudentProfileDto, Project, TaskItem, Milestone, ProjectDocument, AppNotification, DashboardData } from "../types/Student";
+import type { PagedRequest, PagedResponse } from "../types/Pagination";
+import { StudentProfileDto, Project, TaskItem, Milestone, ProjectDocument, AppNotification, DashboardData, DocumentComment } from "../types/Student";
 
 export class StudentService {
   // Profile
@@ -23,8 +24,12 @@ export class StudentService {
   }
 
   // Projects
-  async getMyProjects(): Promise<Project[]> {
-    const res = await apiClient.get<Project[]>("/projects/my");
+  async getMyProjects(request?: PagedRequest): Promise<PagedResponse<Project>> {
+    const qp = new URLSearchParams();
+    if (request?.pageNumber) qp.set("pageNumber", String(request.pageNumber));
+    if (request?.pageSize) qp.set("pageSize", String(request.pageSize));
+    const qs = qp.toString();
+    const res = await apiClient.get<PagedResponse<Project>>(`/projects/my${qs ? `?${qs}` : ""}`);
     if (!res.success || !res.data) throw new Error(res.message || "Failed to get projects");
     return res.data;
   }
@@ -128,9 +133,56 @@ export class StudentService {
     if (!res.success) throw new Error(res.message || "Failed to delete document");
   }
 
+  // Document Comments
+  async getDocumentComments(documentId: string): Promise<DocumentComment[]> {
+    const res = await apiClient.get<DocumentComment[]>(`/documents/${documentId}/comments`);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to get comments");
+    return res.data;
+  }
+
+  // Authenticated Blob Fetch
+  private async fetchBlob(path: string): Promise<Blob> {
+    const token = localStorage.getItem("accessToken");
+    const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "/api";
+    const response = await fetch(`${baseUrl}${path}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!response.ok) throw new Error(`Failed to fetch document: ${response.status}`);
+    return response.blob();
+  }
+
+  async openDocument(projectId: string, documentId: string): Promise<void> {
+    const blob = await this.fetchBlob(`/projects/${projectId}/documents/${documentId}/download`);
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+
+  async downloadDocument(projectId: string, documentId: string, fileName: string): Promise<void> {
+    const blob = await this.fetchBlob(`/projects/${projectId}/documents/${documentId}/download`);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+
+  async submitFinalThesis(projectId: string): Promise<Project> {
+    const res = await apiClient.post<Project>(`/projects/${projectId}/submit-final`, {});
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to submit final thesis");
+    return res.data;
+  }
+
   // Notifications
-  async getNotifications(): Promise<AppNotification[]> {
-    const res = await apiClient.get<AppNotification[]>("/notifications");
+  async getNotifications(request?: PagedRequest): Promise<PagedResponse<AppNotification>> {
+    const qp = new URLSearchParams();
+    if (request?.pageNumber) qp.set("pageNumber", String(request.pageNumber));
+    if (request?.pageSize) qp.set("pageSize", String(request.pageSize));
+    const qs = qp.toString();
+    const res = await apiClient.get<PagedResponse<AppNotification>>(`/notifications${qs ? `?${qs}` : ""}`);
     if (!res.success || !res.data) throw new Error(res.message || "Failed to get notifications");
     return res.data;
   }

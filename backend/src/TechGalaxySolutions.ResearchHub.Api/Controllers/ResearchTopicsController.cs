@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.ResearchTopic;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
@@ -7,7 +7,7 @@ namespace TechGalaxySolutions.ResearchHub.Api.Controllers;
 
 [ApiController]
 [Route("hod/research-topics")]
-[Authorize(Roles = "HOD")]
+[Authorize(Roles = "HOD,CollegeAdmin,SuperAdmin")]
 public class ResearchTopicsController : ControllerBase
 {
     private readonly IResearchTopicService _topicService;
@@ -38,4 +38,12 @@ public class ResearchTopicsController : ControllerBase
         var topic = await _topicService.UpdateTopicAsync(id, request);
         return Ok(topic);
     }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> DeleteTopic(Guid id)
+    {
+        await _topicService.DeleteTopicAsync(id);
+        return NoContent();
+    }
 }
+

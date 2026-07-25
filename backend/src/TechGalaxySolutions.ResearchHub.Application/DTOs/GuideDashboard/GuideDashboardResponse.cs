@@ -12,6 +12,25 @@ public class GuideDashboardResponse
     public List<PendingReviewSummary> PendingReviewList { get; set; } = new();
     public List<UpcomingMeetingSummary> UpcomingMeetingsList { get; set; } = new();
     public List<NotificationResponse> RecentNotifications { get; set; } = new();
+    public List<ThesisDocumentSummary> PendingThesisReviews { get; set; } = new();
+}
+
+public class ThesisDocumentSummary
+{
+    public Guid DocumentId { get; set; }
+    public Guid ProjectId { get; set; }
+    public string ProjectTitle { get; set; } = string.Empty;
+    public string FileName { get; set; } = string.Empty;
+    public string FileType { get; set; } = string.Empty;
+    public long FileSize { get; set; }
+    public DateTime UploadedAt { get; set; }
+    public Guid StudentId { get; set; }
+    public string StudentName { get; set; } = string.Empty;
+    public string Enrollment { get; set; } = string.Empty;
+    public string Department { get; set; } = string.Empty;
+    public string ResearchTopic { get; set; } = string.Empty;
+    public string? ReviewStatus { get; set; }
+    public int Version { get; set; }
 }
 
 public class AssignedStudentSummary

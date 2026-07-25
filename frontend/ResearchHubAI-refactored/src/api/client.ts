@@ -33,7 +33,7 @@ class ApiClient {
     return headers;
   }
 
-  private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
+  private async handleResponse<T>(response: Response, method: string, url: string): Promise<ApiResponse<T>> {
     if (!response.ok) {
       const errorBody = await response.text();
       let message: string;
@@ -43,6 +43,8 @@ class ApiClient {
       } catch {
         message = errorBody || `Request failed with status ${response.status}`;
       }
+      const fullMsg = `${method} ${url} → ${response.status}: ${message}`;
+      console.error(`[ApiClient] ${fullMsg}`);
 
       if (response.status === 401 && this.getRefreshToken()) {
         const refreshed = await this.tryRefreshToken();
@@ -54,7 +56,7 @@ class ApiClient {
         throw new Error("Session expired. Please login again.");
       }
 
-      throw new Error(message);
+      throw new Error(fullMsg);
     }
 
     if (response.status === 204) {
@@ -107,13 +109,14 @@ class ApiClient {
     return this.autoRetryOnExpiry(async () => {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 30000);
+      const url = `${this.baseUrl}${path}`;
       try {
-        const response = await fetch(`${this.baseUrl}${path}`, {
+        const response = await fetch(url, {
           method: "GET",
           headers: this.getHeaders(),
           signal: controller.signal,
         });
-        return this.handleResponse<T>(response);
+        return this.handleResponse<T>(response, "GET", url);
       } finally { clearTimeout(timeout); }
     });
   }
@@ -122,14 +125,15 @@ class ApiClient {
     return this.autoRetryOnExpiry(async () => {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 30000);
+      const url = `${this.baseUrl}${path}`;
       try {
-        const response = await fetch(`${this.baseUrl}${path}`, {
+        const response = await fetch(url, {
           method: "POST",
           headers: this.getHeaders(),
           body: body ? JSON.stringify(body) : undefined,
           signal: controller.signal,
         });
-        return this.handleResponse<T>(response);
+        return this.handleResponse<T>(response, "POST", url);
       } finally { clearTimeout(timeout); }
     });
   }
@@ -138,14 +142,15 @@ class ApiClient {
     return this.autoRetryOnExpiry(async () => {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 30000);
+      const url = `${this.baseUrl}${path}`;
       try {
-        const response = await fetch(`${this.baseUrl}${path}`, {
+        const response = await fetch(url, {
           method: "PUT",
           headers: this.getHeaders(),
           body: body ? JSON.stringify(body) : undefined,
           signal: controller.signal,
         });
-        return this.handleResponse<T>(response);
+        return this.handleResponse<T>(response, "PUT", url);
       } finally { clearTimeout(timeout); }
     });
   }
@@ -154,13 +159,14 @@ class ApiClient {
     return this.autoRetryOnExpiry(async () => {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 30000);
+      const url = `${this.baseUrl}${path}`;
       try {
-        const response = await fetch(`${this.baseUrl}${path}`, {
+        const response = await fetch(url, {
           method: "DELETE",
           headers: this.getHeaders(),
           signal: controller.signal,
         });
-        return this.handleResponse<T>(response);
+        return this.handleResponse<T>(response, "DELETE", url);
       } finally { clearTimeout(timeout); }
     });
   }

@@ -32,11 +32,24 @@ export default function AIPlayground() {
   });
   const [copied, setCopied] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [loadingProviders, setLoadingProviders] = useState(true);
+  const [providersError, setProvidersError] = useState("");
   const abortRef = useRef<AbortController | null>(null);
   const outputRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    aiService.getProviders().then(setProviders).catch(() => {});
+    setLoadingProviders(true);
+    setProvidersError("");
+    aiService.getProviders()
+      .then(data => {
+        setProviders(data);
+        const firstEnabled = data.find(p => p.isEnabled);
+        if (firstEnabled) setSelectedProvider(firstEnabled.name);
+      })
+      .catch(err => {
+        setProvidersError(err instanceof Error ? err.message : "Failed to load providers");
+      })
+      .finally(() => setLoadingProviders(false));
   }, []);
 
   useEffect(() => {
@@ -44,22 +57,20 @@ export default function AIPlayground() {
   }, [history]);
 
   const currentProvider = providers.find(p => p.name === selectedProvider);
-  const models: Record<string, string[]> = {
-    OpenAI: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"],
-    Anthropic: ["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"],
-    Gemini: ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-1.0-pro"],
-  };
 
   useEffect(() => {
-    const m = models[selectedProvider];
-    if (m && !m.includes(model)) setModel(m[0]);
-  }, [selectedProvider]);
+    if (currentProvider?.model) {
+      setModel(currentProvider.model);
+    }
+  }, [selectedProvider, providers]);
 
   const handleSend = useCallback(async () => {
     if (!prompt.trim()) return;
     setError("");
     setLoading(true);
     setOutput("");
+
+    const requestBody = { messages: [{ role: "user", content: prompt }], systemPrompt: systemPrompt || undefined, options: { model, temperature, maxTokens } };
 
     const startTime = performance.now();
     let accumulatedContent = "";
@@ -70,7 +81,7 @@ export default function AIPlayground() {
       abortRef.current = new AbortController();
       try {
         for await (const chunk of aiService.streamChat(
-          { messages: [{ role: "user", content: prompt }], systemPrompt: systemPrompt || undefined, options: { model, temperature, maxTokens } },
+          requestBody,
           selectedProvider,
           abortRef.current.signal,
         )) {
@@ -90,7 +101,7 @@ export default function AIPlayground() {
       abortRef.current = new AbortController();
       try {
         const res = await aiService.sendChat(
-          { messages: [{ role: "user", content: prompt }], systemPrompt: systemPrompt || undefined, options: { model, temperature, maxTokens } },
+          requestBody,
           selectedProvider,
         );
         accumulatedContent = res.content;
@@ -177,18 +188,33 @@ export default function AIPlayground() {
             <div className="flex flex-wrap gap-3 mb-4">
               <div className="flex-1 min-w-[140px]">
                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1.5 block">Provider</label>
-                <select
-                  value={selectedProvider}
-                  onChange={e => setSelectedProvider(e.target.value)}
-                  className="w-full bg-input-background border border-border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-primary"
-                  disabled={loading}
-                >
-                  {providers.map(p => (
-                    <option key={p.name} value={p.name} disabled={!p.isEnabled}>
-                      {p.name} {!p.isEnabled ? "(not configured)" : ""}
-                    </option>
-                  ))}
-                </select>
+                {loadingProviders ? (
+                  <div className="w-full bg-input-background border border-border rounded-xl px-3 py-2.5 text-sm text-muted-foreground flex items-center gap-2">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Loading providers...
+                  </div>
+                ) : providersError ? (
+                  <div className="w-full bg-input-background border border-red-300 rounded-xl px-3 py-2.5 text-sm text-red-600">
+                    {providersError}
+                  </div>
+                ) : providers.length === 0 ? (
+                  <div className="w-full bg-input-background border border-border rounded-xl px-3 py-2.5 text-sm text-muted-foreground">
+                    No AI providers available. Add API keys in appsettings.json.
+                  </div>
+                ) : (
+                  <select
+                    value={selectedProvider}
+                    onChange={e => setSelectedProvider(e.target.value)}
+                    className="w-full bg-input-background border border-border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-primary"
+                    disabled={loading}
+                  >
+                    {providers.map(p => (
+                      <option key={p.name} value={p.name} disabled={!p.isEnabled}>
+                        {p.name} {!p.isEnabled ? "(not configured)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
               <div className="flex-1 min-w-[140px]">
                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1.5 block">Model</label>
@@ -198,9 +224,11 @@ export default function AIPlayground() {
                   className="w-full bg-input-background border border-border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-primary"
                   disabled={loading}
                 >
-                  {(models[selectedProvider] ?? []).map(m => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
+                  {currentProvider?.model ? (
+                    <option key={currentProvider.model} value={currentProvider.model}>{currentProvider.model}</option>
+                  ) : (
+                    <option value="" disabled>No model available</option>
+                  )}
                 </select>
               </div>
             </div>

@@ -1,5 +1,6 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using TechGalaxySolutions.ResearchHub.Application.DTOs.Common;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.Meeting;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
 using TechGalaxySolutions.ResearchHub.Domain.Entities;
@@ -19,16 +20,30 @@ public class MeetingService : IMeetingService
         _mapper = mapper;
     }
 
-    public async Task<List<MeetingResponse>> GetMyMeetingsAsync(Guid userId)
+    public async Task<PagedResponse<MeetingResponse>> GetMyMeetingsAsync(Guid userId, PagedRequest request)
     {
-        var meetings = await _context.Set<Meeting>().AsNoTracking()
+        var query = _context.Set<Meeting>().AsNoTracking()
             .Include(m => m.Guide)
             .Include(m => m.Participants).ThenInclude(p => p.User)
-            .Where(m => (m.GuideId == userId || m.Participants.Any(p => p.UserId == userId)) && !m.IsDeleted)
+            .Where(m => (m.GuideId == userId || m.Participants.Any(p => p.UserId == userId)) && !m.IsDeleted);
+
+        var totalCount = await query.CountAsync();
+
+        var meetings = await query
             .OrderByDescending(m => m.ScheduledAt)
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
             .ToListAsync();
 
-        return _mapper.Map<List<MeetingResponse>>(meetings);
+        var items = _mapper.Map<List<MeetingResponse>>(meetings);
+
+        return new PagedResponse<MeetingResponse>
+        {
+            Items = items,
+            PageNumber = request.PageNumber,
+            PageSize = request.PageSize,
+            TotalCount = totalCount
+        };
     }
 
     public async Task<MeetingResponse> GetByIdAsync(Guid meetingId)
