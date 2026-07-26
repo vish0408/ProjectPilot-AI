@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   MessageSquare, Plus, Trash2, Copy, Download, Search,
   PanelLeftClose, PanelLeft, Send, Loader2, Sparkles,
@@ -368,6 +368,7 @@ export default function ResearchChatPage() {
   const [streamingContent, setStreamingContent] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [editingTitle, setEditingTitle] = useState<string | null>(null);
   const [editTitleValue, setEditTitleValue] = useState("");
@@ -381,6 +382,11 @@ export default function ResearchChatPage() {
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     loadSessions();
@@ -511,7 +517,6 @@ export default function ResearchChatPage() {
           break;
         }
         if (chunk.isComplete) {
-          fullContent = streamingContent;
           break;
         }
         fullContent += chunk.content;
@@ -584,9 +589,9 @@ export default function ResearchChatPage() {
     }
   };
 
-  const filteredSessions = sessions.filter(s =>
-    s.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredSessions = useMemo(() => sessions.filter(s =>
+    s.title.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+  ), [sessions, debouncedSearchQuery]);
 
   const allMessages = activeSession?.messages ?? [];
 

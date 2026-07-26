@@ -9,4 +9,5 @@ public interface ICollegeService
     Task<CollegeResponse> CreateCollegeAsync(CreateCollegeRequest request);
     Task<CollegeResponse> UpdateCollegeAsync(Guid id, UpdateCollegeRequest request);
     Task DeleteCollegeAsync(Guid id);
+    Task<List<CollegeAnalyticsResponse>> GetCollegeAnalyticsAsync();
 }

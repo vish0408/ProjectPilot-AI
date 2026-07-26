@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   Award,
   Calendar,
@@ -22,6 +22,12 @@ export default function GuideAssignedStudents() {
   const [data, setData] = useState<GuideDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     (async () => {
@@ -36,10 +42,12 @@ export default function GuideAssignedStudents() {
     })();
   }, []);
 
-  const filtered = data?.assignedStudents.filter(s =>
-    s.fullName.toLowerCase().includes(search.toLowerCase()) ||
-    s.researchTopic.toLowerCase().includes(search.toLowerCase())
-  ) ?? [];
+  const filtered = useMemo(() =>
+    data?.assignedStudents.filter(s =>
+      s.fullName.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      s.researchTopic.toLowerCase().includes(debouncedSearch.toLowerCase())
+    ) ?? [],
+  [data?.assignedStudents, debouncedSearch]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" /></div>;
@@ -49,9 +57,9 @@ export default function GuideAssignedStudents() {
     return <div className="text-center text-muted-foreground py-10">Failed to load students.</div>;
   }
 
-  const activeCount = data.assignedStudents.filter(s => s.completionPercentage > 0 && s.completionPercentage < 100).length;
-  const avgProgress = data.assignedStudents.length > 0 ? Math.round(data.assignedStudents.reduce((a, s) => a + s.completionPercentage, 0) / data.assignedStudents.length) : 0;
-  const graduatingSoon = data.assignedStudents.filter(s => s.completionPercentage >= 90).length;
+  const activeCount = useMemo(() => data.assignedStudents.filter(s => s.completionPercentage > 0 && s.completionPercentage < 100).length, [data.assignedStudents]);
+  const avgProgress = useMemo(() => data.assignedStudents.length > 0 ? Math.round(data.assignedStudents.reduce((a, s) => a + s.completionPercentage, 0) / data.assignedStudents.length) : 0, [data.assignedStudents]);
+  const graduatingSoon = useMemo(() => data.assignedStudents.filter(s => s.completionPercentage >= 90).length, [data.assignedStudents]);
 
   return (
     <div className="flex flex-col gap-5">

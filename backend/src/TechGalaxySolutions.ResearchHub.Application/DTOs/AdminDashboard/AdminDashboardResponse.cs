@@ -8,6 +8,8 @@ public class AdminDashboardResponse
     public int ActiveGuides { get; set; }
     public int TotalHods { get; set; }
     public int ActiveHods { get; set; }
+    public int TotalCollegeAdmins { get; set; }
+    public int ActiveCollegeAdmins { get; set; }
     public int TotalColleges { get; set; }
     public int TotalDepartments { get; set; }
     public int ActiveAcademicYears { get; set; }

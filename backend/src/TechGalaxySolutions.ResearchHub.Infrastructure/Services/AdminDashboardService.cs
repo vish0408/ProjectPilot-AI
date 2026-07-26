@@ -36,6 +36,14 @@ public class AdminDashboardService : IAdminDashboardService
         var activeHods = await _context.Set<Hod>().AsNoTracking()
             .CountAsync(h => !h.IsDeleted && h.IsActive);
 
+        var totalCollegeAdmins = await _context.Set<User>().AsNoTracking()
+            .Include(u => u.Role)
+            .CountAsync(u => !u.IsDeleted && u.Role.Name == "CollegeAdmin");
+
+        var activeCollegeAdmins = await _context.Set<User>().AsNoTracking()
+            .Include(u => u.Role)
+            .CountAsync(u => !u.IsDeleted && u.IsActive && u.Role.Name == "CollegeAdmin");
+
         var totalColleges = await _context.Set<College>().AsNoTracking()
             .CountAsync(c => !c.IsDeleted);
 
@@ -77,6 +85,8 @@ public class AdminDashboardService : IAdminDashboardService
             ActiveGuides = activeGuides,
             TotalHods = totalHods,
             ActiveHods = activeHods,
+            TotalCollegeAdmins = totalCollegeAdmins,
+            ActiveCollegeAdmins = activeCollegeAdmins,
             TotalColleges = totalColleges,
             TotalDepartments = totalDepartments,
             ActiveAcademicYears = activeAcademicYears,

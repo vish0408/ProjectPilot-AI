@@ -74,11 +74,11 @@ export default function ChangePasswordPage({ onSuccess }: ChangePasswordPageProp
         </div>
       </div>
 
-      <div className="flex flex-1 items-center justify-center p-6 lg:p-10">
+      <div className="flex flex-1 items-center justify-center p-4 sm:p-6 lg:p-10">
         <div className="w-full max-w-sm">
           <div className="flex items-center gap-2.5 mb-8 lg:hidden"><div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center"><FlaskConical className="w-4 h-4 text-white" /></div><span className="font-bold text-foreground">ResearchHub AI</span></div>
-          <h1 className="text-2xl font-bold text-foreground mb-1">Set New Password</h1>
-          <p className="text-muted-foreground text-sm mb-7">Enter your current password and choose a new one.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-1">Set New Password</h1>
+          <p className="text-muted-foreground text-sm mb-6 sm:mb-7">Enter your current password and choose a new one.</p>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
@@ -89,7 +89,7 @@ export default function ChangePasswordPage({ onSuccess }: ChangePasswordPageProp
                   type={showPwd ? "text" : "password"}
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full bg-input-background border border-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
+                  className="w-full bg-input-background border border-border rounded-xl pl-10 pr-4 py-2.5 text-base sm:text-sm text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
                   placeholder="Enter current password"
                 />
               </div>
@@ -103,10 +103,10 @@ export default function ChangePasswordPage({ onSuccess }: ChangePasswordPageProp
                   type={showPwd ? "text" : "password"}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full bg-input-background border border-border rounded-xl pl-10 pr-10 py-2.5 text-sm text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
+                  className="w-full bg-input-background border border-border rounded-xl pl-10 pr-10 py-2.5 text-base sm:text-sm text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
                   placeholder="At least 8 characters"
                 />
-                <button type="button" onClick={() => setShowPwd(!showPwd)} className="absolute right-3 top-1/2 -translate-y-1/2">
+                <button type="button" onClick={() => setShowPwd(!showPwd)} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 touch-target">
                   {showPwd ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
                 </button>
               </div>
@@ -130,7 +130,7 @@ export default function ChangePasswordPage({ onSuccess }: ChangePasswordPageProp
                   type={showPwd ? "text" : "password"}
                   value={confirmNewPassword}
                   onChange={(e) => setConfirmNewPassword(e.target.value)}
-                  className="w-full bg-input-background border border-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
+                  className="w-full bg-input-background border border-border rounded-xl pl-10 pr-4 py-2.5 text-base sm:text-sm text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
                   placeholder="Re-enter new password"
                 />
               </div>
@@ -139,7 +139,7 @@ export default function ChangePasswordPage({ onSuccess }: ChangePasswordPageProp
             {error && <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-700 dark:text-red-300"><AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />{error}</div>}
             {success && <div className="flex items-start gap-2 p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-xl text-xs text-green-700 dark:text-green-300"><CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />{success}</div>}
 
-            <button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all hover:shadow-lg hover:shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed">
+            <button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 sm:py-3 rounded-xl transition-all hover:shadow-lg hover:shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed touch-target">
               {loading ? <><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Changing...</> : "Change Password"}
             </button>
           </form>

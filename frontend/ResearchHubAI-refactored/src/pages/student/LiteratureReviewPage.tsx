@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   BookOpen, Upload, FileText, Search, Filter, Trash2, Loader2,
   Brain, Sparkles, Check, Copy, Download, X,
@@ -34,7 +34,13 @@ export default function LiteratureReviewPage() {
   const [showReview, setShowReview] = useState(false);
   const [expandedReview, setExpandedReview] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     literatureService.getHistory().then(setReviews).catch((e) => { if (e instanceof Error) setError(e.message); });
@@ -200,10 +206,10 @@ export default function LiteratureReviewPage() {
     URL.revokeObjectURL(url);
   };
 
-  const filteredReviews = reviews.filter(r =>
-    r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.researchArea.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredReviews = useMemo(() => reviews.filter(r =>
+    r.title.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+    r.researchArea.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+  ), [reviews, debouncedSearchQuery]);
 
   const getSelectedDocs = () => {
     const docs: UploadedDocumentResponse[] = [];

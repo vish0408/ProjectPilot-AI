@@ -1,7 +1,7 @@
 import { apiClient } from "../api/client";
 import type { PagedRequest, PagedResponse } from "../types/Pagination";
 import type {
-  CollegeResponse, CreateCollegeRequest, UpdateCollegeRequest,
+  CollegeResponse, CollegeAnalyticsResponse, CreateCollegeRequest, UpdateCollegeRequest,
   DepartmentResponse, CreateDepartmentRequest, UpdateDepartmentRequest,
   AcademicYearResponse, CreateAcademicYearRequest, UpdateAcademicYearRequest,
   SemesterResponse, CreateSemesterRequest, UpdateSemesterRequest,
@@ -54,6 +54,12 @@ export class AdminService {
   async deleteCollege(id: string): Promise<void> {
     const res = await apiClient.delete(`/admin/colleges/${id}`);
     if (!res.success) throw new Error(res.message || "Failed to delete college");
+  }
+
+  async getCollegeAnalytics(): Promise<CollegeAnalyticsResponse[]> {
+    const res = await apiClient.get<CollegeAnalyticsResponse[]>("/admin/colleges/analytics");
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to get college analytics");
+    return res.data;
   }
 
   // Departments

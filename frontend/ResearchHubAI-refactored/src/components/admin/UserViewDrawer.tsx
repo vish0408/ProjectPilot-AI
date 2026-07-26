@@ -64,11 +64,11 @@ export default function UserViewDrawer({ open, userId, user: initialUser, onClos
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
       className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
     >
-      <div className="w-full max-w-lg bg-white dark:bg-slate-900 h-full overflow-y-auto shadow-2xl border-l border-white/10 animate-in slide-in-from-right duration-300">
-        <div className="sticky top-0 bg-white dark:bg-slate-900 z-10 flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">User Profile</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition-colors">
-            <X className="w-5 h-5" />
+      <div className="w-full sm:max-w-lg bg-white dark:bg-slate-900 h-full overflow-y-auto shadow-2xl sm:border-l border-white/10 animate-in slide-in-from-right duration-300">
+        <div className="sticky top-0 bg-white dark:bg-slate-900 z-10 flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-700">
+          <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">User Profile</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition-colors touch-target">
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
 
@@ -79,14 +79,14 @@ export default function UserViewDrawer({ open, userId, user: initialUser, onClos
         ) : !user ? (
           <div className="flex items-center justify-center h-64 text-slate-500 text-sm">User not found</div>
         ) : (
-          <div className="p-6 space-y-6">
+          <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
             <div className="flex flex-col items-center text-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-lg flex-shrink-0">
                 {initials}
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">{user.fullName}</h3>
-                <p className="text-sm text-slate-500">{user.email}</p>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">{user.fullName}</h3>
+                <p className="text-xs sm:text-sm text-slate-500">{user.email}</p>
               </div>
               <div className="flex gap-2 flex-wrap justify-center">
                 <Badge variant={roleColor(user.roleName)}>{user.roleName}</Badge>
@@ -103,17 +103,17 @@ export default function UserViewDrawer({ open, userId, user: initialUser, onClos
               <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Contact</h4>
               <div className="grid grid-cols-1 gap-2">
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-                  <Mail className="w-4 h-4 text-slate-400" />
-                  <div>
+                  <Mail className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  <div className="min-w-0">
                     <p className="text-[10px] text-slate-500">Email</p>
-                    <p className="text-sm font-medium text-slate-900 dark:text-white">{user.email}</p>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user.email}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-                  <Phone className="w-4 h-4 text-slate-400" />
-                  <div>
+                  <Phone className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  <div className="min-w-0">
                     <p className="text-[10px] text-slate-500">Phone</p>
-                    <p className="text-sm font-medium text-slate-900 dark:text-white">{user.phoneNumber || "Not provided"}</p>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user.phoneNumber || "Not provided"}</p>
                   </div>
                 </div>
               </div>
@@ -124,17 +124,17 @@ export default function UserViewDrawer({ open, userId, user: initialUser, onClos
               <div className="grid grid-cols-2 gap-2">
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <Hash className="w-3 h-3 text-slate-400" />
-                    <p className="text-[10px] text-slate-500">Employee / Student ID</p>
+                    <Hash className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                    <p className="text-[10px] text-slate-500 truncate">Employee / Student ID</p>
                   </div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">{user.employeeId || "-"}</p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user.employeeId || "-"}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <Shield className="w-3 h-3 text-slate-400" />
-                    <p className="text-[10px] text-slate-500">Role</p>
+                    <Shield className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                    <p className="text-[10px] text-slate-500 truncate">Role</p>
                   </div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">{user.roleName}</p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user.roleName}</p>
                 </div>
               </div>
             </div>
@@ -144,24 +144,24 @@ export default function UserViewDrawer({ open, userId, user: initialUser, onClos
               <div className="grid grid-cols-2 gap-2">
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <Building className="w-3 h-3 text-slate-400" />
-                    <p className="text-[10px] text-slate-500">Department</p>
+                    <Building className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                    <p className="text-[10px] text-slate-500 truncate">Department</p>
                   </div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">{user.department || "-"}</p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user.department || "-"}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <MapPin className="w-3 h-3 text-slate-400" />
-                    <p className="text-[10px] text-slate-500">College</p>
+                    <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                    <p className="text-[10px] text-slate-500 truncate">College</p>
                   </div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">{user.college || "-"}</p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user.college || "-"}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <UserCheck className="w-3 h-3 text-slate-400" />
-                    <p className="text-[10px] text-slate-500">Designation</p>
+                    <UserCheck className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                    <p className="text-[10px] text-slate-500 truncate">Designation</p>
                   </div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">{user.designation || "-"}</p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user.designation || "-"}</p>
                 </div>
               </div>
             </div>
@@ -171,31 +171,31 @@ export default function UserViewDrawer({ open, userId, user: initialUser, onClos
               <div className="grid grid-cols-2 gap-2">
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <Calendar className="w-3 h-3 text-slate-400" />
-                    <p className="text-[10px] text-slate-500">Created</p>
+                    <Calendar className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                    <p className="text-[10px] text-slate-500 truncate">Created</p>
                   </div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">{new Date(user.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{new Date(user.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <Activity className="w-3 h-3 text-slate-400" />
-                    <p className="text-[10px] text-slate-500">Account Status</p>
+                    <Activity className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                    <p className="text-[10px] text-slate-500 truncate">Account Status</p>
                   </div>
                   <Badge variant={statusColor(user.accountStatus)}>{user.accountStatus || (user.isActive ? "Active" : "Inactive")}</Badge>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <BadgeCheck className="w-3 h-3 text-slate-400" />
-                    <p className="text-[10px] text-slate-500">Email Verified</p>
+                    <BadgeCheck className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                    <p className="text-[10px] text-slate-500 truncate">Email Verified</p>
                   </div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">{user.emailVerified ? "Yes" : "No"}</p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user.emailVerified ? "Yes" : "No"}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <Clock className="w-3 h-3 text-slate-400" />
-                    <p className="text-[10px] text-slate-500">Last Login</p>
+                    <Clock className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                    <p className="text-[10px] text-slate-500 truncate">Last Login</p>
                   </div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString() : "Never"}</p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString() : "Never"}</p>
                 </div>
               </div>
             </div>

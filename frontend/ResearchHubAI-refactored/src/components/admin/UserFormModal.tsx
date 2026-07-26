@@ -224,8 +224,8 @@ export default function UserFormModal({ open, user, onClose, onSaved }: UserForm
       onKeyDown={handleKeyDown}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
     >
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-white/10 animate-in zoom-in-95 duration-200">
-        <div className="sticky top-0 bg-white dark:bg-slate-900 z-10 flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700 rounded-t-2xl">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-[95%] sm:w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-white/10 animate-in zoom-in-95 duration-200">
+        <div className="sticky top-0 bg-white dark:bg-slate-900 z-10 flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-700 rounded-t-2xl">
           <h2 className="text-lg font-bold text-slate-900 dark:text-white">
             {isEdit ? "Edit User" : "Add User"}
           </h2>
@@ -234,7 +234,7 @@ export default function UserFormModal({ open, user, onClose, onSaved }: UserForm
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5">
           {error && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800">
               <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />

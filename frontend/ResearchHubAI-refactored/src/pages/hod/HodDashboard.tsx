@@ -1,4 +1,4 @@
-import { Component, useEffect, useState } from "react";
+import { Component, useEffect, useState, useMemo } from "react";
 import {
   Users, Beaker, FileText, ClipboardList, UserCheck,
   Calendar, CheckCircle, Building2, Bell, Clock, RefreshCw, AlertTriangle
@@ -182,6 +182,19 @@ export default function HodDashboard() {
 
   useEffect(() => { load(); }, []);
 
+  const stats = useMemo(() => [
+    { label: "Total Students",              value: String(data?.totalStudents ?? 0),              icon: Users,        color: "bg-blue-500" },
+    { label: "Active Research Projects",     value: String(data?.activeResearchProjects ?? 0),     icon: Beaker,       color: "bg-cyan-500" },
+    { label: "Pending Topic Approvals",      value: String(data?.pendingTopicApprovals ?? 0),      icon: FileText,     color: "bg-amber-500" },
+    { label: "Pending Proposal Approvals",   value: String(data?.pendingProposalApprovals ?? 0),   icon: ClipboardList,color: "bg-orange-500" },
+    { label: "Assigned Guides",              value: String(data?.assignedGuides ?? 0),             icon: UserCheck,    color: "bg-green-500" },
+    { label: "Meetings Scheduled",           value: String(data?.meetingsScheduled ?? 0),           icon: Calendar,     color: "bg-violet-500" },
+    { label: "Completed Research",           value: String(data?.completedResearch ?? 0),            icon: CheckCircle,  color: "bg-emerald-500" },
+    { label: "Departments Managed",          value: String(data?.departmentsManaged ?? 0),          icon: Building2,    color: "bg-indigo-500" },
+    { label: "Notifications",                value: String(data?.notifications ?? 0),                icon: Bell,         color: "bg-rose-500" },
+    { label: "Upcoming Deadlines",           value: String(data?.upcomingDeadlines ?? 0),           icon: Clock,        color: "bg-red-500" },
+  ], [data]);
+
   /* ---- loading skeleton ---- */
   if (loading) {
     return (
@@ -252,21 +265,7 @@ export default function HodDashboard() {
     );
   }
 
-  /* ---- stat card config ---- */
-  const stats = [
-    { label: "Total Students",              value: String(data.totalStudents ?? 0),              icon: Users,        color: "bg-blue-500" },
-    { label: "Active Research Projects",     value: String(data.activeResearchProjects ?? 0),     icon: Beaker,       color: "bg-cyan-500" },
-    { label: "Pending Topic Approvals",      value: String(data.pendingTopicApprovals ?? 0),      icon: FileText,     color: "bg-amber-500" },
-    { label: "Pending Proposal Approvals",   value: String(data.pendingProposalApprovals ?? 0),   icon: ClipboardList,color: "bg-orange-500" },
-    { label: "Assigned Guides",              value: String(data.assignedGuides ?? 0),             icon: UserCheck,    color: "bg-green-500" },
-    { label: "Meetings Scheduled",           value: String(data.meetingsScheduled ?? 0),           icon: Calendar,     color: "bg-violet-500" },
-    { label: "Completed Research",           value: String(data.completedResearch ?? 0),            icon: CheckCircle,  color: "bg-emerald-500" },
-    { label: "Departments Managed",          value: String(data.departmentsManaged ?? 0),          icon: Building2,    color: "bg-indigo-500" },
-    { label: "Notifications",                value: String(data.notifications ?? 0),                icon: Bell,         color: "bg-rose-500" },
-    { label: "Upcoming Deadlines",           value: String(data.upcomingDeadlines ?? 0),           icon: Clock,        color: "bg-red-500" },
-  ];
-
-  const pendingReviews = (data.pendingTopicApprovals ?? 0) + (data.pendingProposalApprovals ?? 0);
+  const pendingReviews = (data?.pendingTopicApprovals ?? 0) + (data?.pendingProposalApprovals ?? 0);
 
   return (
     <div className="flex flex-col gap-6">

@@ -137,12 +137,13 @@ export default function AdminUserManagement() {
     setDeleting(true);
     try {
       await adminService.deleteUser(deleteUser.id);
-      setSuccessMsg(`"${deleteUser.fullName}" deleted successfully`);
+      setSuccessMsg("User deleted successfully.");
       setDeleteUser(null);
       setTimeout(() => setSuccessMsg(null), 3000);
       fetchData(pageNumber, pageSize, search, roleFilter, departmentFilter, collegeFilter, statusFilter, sortField, sortDir);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Delete failed");
+      const msg = e instanceof Error ? e.message : "Delete failed";
+      setError(msg);
     } finally {
       setDeleting(false);
     }
@@ -219,39 +220,39 @@ export default function AdminUserManagement() {
       </div>
 
       <Card p={false}>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 py-4 border-b border-border gap-3">
-          <h3 className="font-bold text-foreground">All Users</h3>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 sm:px-5 py-3 sm:py-4 border-b border-border gap-2 sm:gap-3">
+          <h3 className="font-bold text-foreground text-sm sm:text-base">All Users</h3>
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            <div className="relative flex-1 sm:flex-none sm:min-w-[200px]">
+            <div className="relative flex-1 sm:flex-none sm:min-w-[200px] min-w-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <input
                 value={search}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 className="bg-muted border border-border rounded-xl pl-9 pr-3 py-2 text-sm outline-none focus:border-primary w-full"
-                placeholder="Search by name, email, ID, phone..."
+                placeholder="Search..."
               />
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`text-xs border rounded-lg px-3 py-2 flex items-center gap-1.5 transition-colors ${showFilters ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 text-blue-600" : "border-border text-muted-foreground hover:bg-muted"}`}
+              className={`text-xs border rounded-lg px-3 py-2 flex items-center gap-1.5 transition-colors touch-target ${showFilters ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 text-blue-600" : "border-border text-muted-foreground hover:bg-muted"}`}
             >
               <Filter className="w-3.5 h-3.5" />
-              Filter
+              <span className="hidden sm:inline">Filter</span>
               <ChevronDown className={`w-3 h-3 transition-transform ${showFilters ? "rotate-180" : ""}`} />
             </button>
-            <button onClick={handleAdd} className="bg-blue-600 text-white text-xs font-bold px-3 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-1.5 transition-colors">
+            <button onClick={handleAdd} className="bg-blue-600 text-white text-xs font-bold px-3 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-1.5 transition-colors touch-target">
               <Plus className="w-3.5 h-3.5" />
-              Add User
+              <span className="hidden sm:inline">Add User</span>
             </button>
           </div>
         </div>
 
         {showFilters && (
-          <div className="flex flex-wrap items-center gap-3 px-5 py-3 border-b border-border bg-muted/20">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3 px-4 sm:px-5 py-3 border-b border-border bg-muted/20">
             <select
               value={roleFilter}
               onChange={(e) => { setRoleFilter(e.target.value); setPageNumber(1); }}
-              className="bg-muted border border-border rounded-lg px-3 py-1.5 text-xs outline-none text-foreground"
+              className="bg-muted border border-border rounded-lg px-3 py-1.5 text-xs outline-none text-foreground w-full sm:w-auto"
             >
               <option value="">All Roles</option>
               {roles.map((r) => (
@@ -261,19 +262,19 @@ export default function AdminUserManagement() {
             <input
               value={departmentFilter}
               onChange={(e) => { setDepartmentFilter(e.target.value); setPageNumber(1); }}
-              className="bg-muted border border-border rounded-lg px-3 py-1.5 text-xs outline-none text-foreground w-40"
+              className="bg-muted border border-border rounded-lg px-3 py-1.5 text-xs outline-none text-foreground w-full sm:w-32"
               placeholder="Department..."
             />
             <input
               value={collegeFilter}
               onChange={(e) => { setCollegeFilter(e.target.value); setPageNumber(1); }}
-              className="bg-muted border border-border rounded-lg px-3 py-1.5 text-xs outline-none text-foreground w-36"
+              className="bg-muted border border-border rounded-lg px-3 py-1.5 text-xs outline-none text-foreground w-full sm:w-32"
               placeholder="College..."
             />
             <select
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPageNumber(1); }}
-              className="bg-muted border border-border rounded-lg px-3 py-1.5 text-xs outline-none text-foreground"
+              className="bg-muted border border-border rounded-lg px-3 py-1.5 text-xs outline-none text-foreground w-full sm:w-auto"
             >
               <option value="">All Status</option>
               <option value="active">Active</option>
@@ -285,7 +286,7 @@ export default function AdminUserManagement() {
             </select>
             <button
               onClick={handleRefresh}
-              className="text-xs border border-border rounded-lg px-3 py-1.5 text-muted-foreground hover:bg-muted flex items-center gap-1.5"
+              className="text-xs border border-border rounded-lg px-3 py-1.5 text-muted-foreground hover:bg-muted flex items-center gap-1.5 touch-target w-full sm:w-auto justify-center"
             >
               <RefreshCw className="w-3 h-3" />
               Refresh
@@ -294,7 +295,7 @@ export default function AdminUserManagement() {
         )}
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[640px]">
             <thead className="bg-muted/40">
               <tr>
                 {[
@@ -308,7 +309,7 @@ export default function AdminUserManagement() {
                   <th
                     key={h.label}
                     onClick={() => h.key && handleSort(h.key)}
-                    className={`text-left px-5 py-3 text-xs font-semibold text-muted-foreground ${h.key ? "cursor-pointer hover:text-foreground select-none" : ""}`}
+                    className={`text-left px-3 sm:px-5 py-3 text-[10px] sm:text-xs font-semibold text-muted-foreground whitespace-nowrap ${h.key ? "cursor-pointer hover:text-foreground select-none" : ""}`}
                   >
                     {h.label}
                     {h.key && <SortIcon field={h.key} />}
@@ -323,14 +324,14 @@ export default function AdminUserManagement() {
                   className="border-t border-border hover:bg-muted/20 transition-colors cursor-pointer"
                   onClick={() => handleView(u)}
                 >
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-3">
+                  <td className="px-3 sm:px-5 py-3 sm:py-3.5">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       <Avatar name={u.fullName} size="sm" />
-                      <span className="text-xs font-bold text-foreground">{u.fullName}</span>
+                      <span className="text-xs font-bold text-foreground truncate max-w-[120px] sm:max-w-none">{u.fullName}</span>
                     </div>
                   </td>
-                  <td className="px-5 py-3.5 text-xs text-muted-foreground">{u.email}</td>
-                  <td className="px-5 py-3.5">
+                  <td className="px-3 sm:px-5 py-3 sm:py-3.5 text-[10px] sm:text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-none">{u.email}</td>
+                  <td className="px-3 sm:px-5 py-3 sm:py-3.5">
                     <Badge
                       variant={
                         u.roleName.toLowerCase() === "collegeadmin" || u.roleName.toLowerCase() === "super admin"
@@ -345,27 +346,27 @@ export default function AdminUserManagement() {
                       {u.roleName}
                     </Badge>
                   </td>
-                  <td className="px-5 py-3.5">
+                  <td className="px-3 sm:px-5 py-3 sm:py-3.5">
                     <AccountStatusBadge status={u.accountStatus} />
                     {u.emailVerified && (
-                      <span className="ml-1.5 text-[10px] text-green-600 dark:text-green-400 font-medium">(Verified)</span>
+                      <span className="ml-1 text-[10px] text-green-600 dark:text-green-400 font-medium hidden sm:inline">(Verified)</span>
                     )}
                   </td>
-                  <td className="px-5 py-3.5 text-xs text-muted-foreground">
+                  <td className="px-3 sm:px-5 py-3 sm:py-3.5 text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
                     {new Date(u.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                   </td>
-                  <td className="px-5 py-3.5">
-                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-3 sm:px-5 py-3 sm:py-3.5">
+                    <div className="flex gap-0.5 sm:gap-1" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => handleView(u)}
-                        className="p-1.5 text-muted-foreground hover:text-blue-600 transition-colors"
+                        className="p-1.5 sm:p-1.5 text-muted-foreground hover:text-blue-600 transition-colors touch-target"
                         title="View"
                       >
                         <Eye className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => handleEdit(u)}
-                        className="p-1.5 text-muted-foreground hover:text-amber-600 transition-colors"
+                        className="p-1.5 sm:p-1.5 text-muted-foreground hover:text-amber-600 transition-colors touch-target"
                         title="Edit"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
@@ -373,14 +374,14 @@ export default function AdminUserManagement() {
                       <button
                         onClick={() => handleSendInvitation(u)}
                         disabled={resendingId === u.id}
-                        className="p-1.5 text-muted-foreground hover:text-green-600 transition-colors disabled:opacity-40"
+                        className="p-1.5 sm:p-1.5 text-muted-foreground hover:text-green-600 transition-colors disabled:opacity-40 touch-target"
                         title="Send Invitation Email"
                       >
                         {resendingId === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
                       </button>
                       <button
                         onClick={() => handleDeleteClick(u)}
-                        className="p-1.5 text-muted-foreground hover:text-red-600 transition-colors"
+                        className="p-1.5 sm:p-1.5 text-muted-foreground hover:text-red-600 transition-colors touch-target"
                         title="Delete"
                       >
                         <Trash2 className="w-3.5 h-3.5" />

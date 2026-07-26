@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Building, Edit2, UserCheck, Plus, Trash2, Search, X, Check } from "lucide-react";
 import StatCard from "../../components/cards/StatCard";
 import Badge from "../../components/common/Badge";
@@ -9,43 +9,79 @@ import { adminService } from "../../services/AdminService";
 import type { DepartmentResponse, CollegeResponse, CreateDepartmentRequest, UpdateDepartmentRequest } from "../../types/Admin";
 
 export default function AdminDepartmentMgmt() {
-  const [response, setResponse] = useState<{ items: DepartmentResponse[]; pageNumber: number; pageSize: number; totalCount: number }>({ items: [], pageNumber: 1, pageSize: 10, totalCount: 0 });
+  const [items, setItems] = useState<DepartmentResponse[]>([]);
   const [colleges, setColleges] = useState<CollegeResponse[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<DepartmentResponse | null>(null);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterCollege, setFilterCollege] = useState("");
   const [sortField, setSortField] = useState("departmentname");
   const [sortDirection, setSortDirection] = useState("asc");
   const [form, setForm] = useState({ departmentName: "", departmentCode: "", shortName: "", description: "", collegeId: "" });
   const [saving, setSaving] = useState(false);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchData = useCallback(async (page?: number) => {
+  const fetchData = useCallback(async (p: number, sz: number, term: string, collegeId: string, sortF: string, sortD: string) => {
     setLoading(true);
     try {
       const [deptRes, colls] = await Promise.all([
         adminService.getDepartmentsPaged(
           {
-            pageNumber: page ?? response.pageNumber,
-            pageSize: response.pageSize,
-            searchTerm: search || undefined,
-            sortField,
-            sortDirection,
+            pageNumber: p,
+            pageSize: sz,
+            searchTerm: term || undefined,
+            sortField: sortF,
+            sortDirection: sortD,
             statusFilter: undefined,
           },
-          filterCollege || undefined
+          collegeId || undefined
         ),
         adminService.getColleges(),
       ]);
-      setResponse(deptRes);
+      setItems(deptRes.items);
+      setTotalCount(deptRes.totalCount);
       setColleges(colls);
-    } catch (e) { if (e instanceof Error) setError(e.message); }
-    finally { setLoading(false); }
-  }, [search, filterCollege, sortField, sortDirection, response.pageNumber, response.pageSize]);
+    } catch (e) {
+      if (e instanceof Error) setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  useEffect(() => { fetchData(1); }, []);
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, filterCollege, sortField, sortDirection]);
+
+  useEffect(() => {
+    fetchData(page, pageSize, debouncedSearch, filterCollege, sortField, sortDirection);
+  }, [page, pageSize, debouncedSearch, filterCollege, sortField, sortDirection, fetchData]);
+
+  useEffect(() => {
+    return () => {
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+    };
+  }, []);
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      setDebouncedSearch(value);
+    }, 300);
+  };
+
+  const clearSearch = () => {
+    setSearch("");
+    setDebouncedSearch("");
+  };
+
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(totalCount / pageSize)), [totalCount, pageSize]);
 
   const resetForm = () => {
     setForm({ departmentName: "", departmentCode: "", shortName: "", description: "", collegeId: "" });
@@ -73,29 +109,33 @@ export default function AdminDepartmentMgmt() {
     try {
       if (editing) {
         const updated = await adminService.updateDepartment(editing.id, form as UpdateDepartmentRequest);
-        setResponse(prev => ({ ...prev, items: prev.items.map(d => d.id === editing.id ? updated : d) }));
+        setItems(prev => prev.map(d => d.id === editing.id ? updated : d));
       } else {
         await adminService.createDepartment(form as CreateDepartmentRequest);
-        await fetchData(1);
+        setPage(1);
       }
       resetForm();
-    } catch (e) { if (e instanceof Error) setError(e.message); }
-    finally { setSaving(false); }
+    } catch (e) {
+      if (e instanceof Error) setError(e.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this department?")) return;
     try {
       await adminService.deleteDepartment(id);
-      setResponse(prev => ({ ...prev, items: prev.items.filter(d => d.id !== id), totalCount: prev.totalCount - 1 }));
-    } catch (e) { if (e instanceof Error) setError(e.message); }
+      setItems(prev => prev.filter(d => d.id !== id));
+      setTotalCount(prev => prev - 1);
+    } catch (e) {
+      if (e instanceof Error) setError(e.message);
+    }
   };
 
-  const totalPages = Math.ceil(response.totalCount / response.pageSize);
+  const hasFilters = debouncedSearch || filterCollege;
 
-  const handleSearch = () => { fetchData(1); };
-
-  if (loading && !response.items.length) {
+  if (loading && !items.length) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -112,8 +152,8 @@ export default function AdminDepartmentMgmt() {
         </div>
       )}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard label="Departments" value={`${response.totalCount}`} icon={Building} color="bg-blue-500"/>
-        <StatCard label="Total Faculty" value={`${response.items.reduce((s, d) => s + d.facultyCount, 0)}`} icon={UserCheck} color="bg-indigo-500"/>
+        <StatCard label="Departments" value={`${totalCount}`} icon={Building} color="bg-blue-500"/>
+        <StatCard label="Total Faculty" value={`${items.reduce((s, d) => s + d.facultyCount, 0)}`} icon={UserCheck} color="bg-indigo-500"/>
       </div>
       <SectionHead title="Departments" desc="Manage departments across colleges"
         action={
@@ -173,11 +213,11 @@ export default function AdminDepartmentMgmt() {
         <div className="flex items-center gap-3 px-1 pb-4 flex-wrap">
           <div className="flex items-center gap-2 flex-1 min-w-[200px]">
             <Search className="w-4 h-4 text-muted-foreground shrink-0" />
-            <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSearch()} placeholder="Search departments..."
+            <input value={search} onChange={e => handleSearchChange(e.target.value)} placeholder="Search by department name or code..."
               className="flex-1 bg-transparent text-sm outline-none text-foreground placeholder:text-muted-foreground" />
-            {search && <button onClick={() => { setSearch(""); fetchData(1); }}><X className="w-4 h-4 text-muted-foreground" /></button>}
+            {search && <button onClick={clearSearch}><X className="w-4 h-4 text-muted-foreground" /></button>}
           </div>
-          <select value={filterCollege} onChange={e => { setFilterCollege(e.target.value); fetchData(1); }}
+          <select value={filterCollege} onChange={e => setFilterCollege(e.target.value)}
             className="bg-input-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none focus:border-primary">
             <option value="">All Colleges</option>
             {colleges.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -190,7 +230,7 @@ export default function AdminDepartmentMgmt() {
             <option value="isactive">Status</option>
             <option value="createdat">Created</option>
           </select>
-          <button onClick={() => { setSortDirection(d => d === "asc" ? "desc" : "asc"); fetchData(1); }}
+          <button onClick={() => setSortDirection(d => d === "asc" ? "desc" : "asc")}
             className="border border-border rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted">
             {sortDirection === "asc" ? "↑ Asc" : "↓ Desc"}
           </button>
@@ -208,7 +248,7 @@ export default function AdminDepartmentMgmt() {
               </tr>
             </thead>
             <tbody>
-              {response.items.map((d) => (
+              {items.map((d) => (
                 <tr key={d.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                   <td className="py-3 px-3">
                     <div className="flex items-center gap-2">
@@ -239,26 +279,31 @@ export default function AdminDepartmentMgmt() {
                   </td>
                 </tr>
               ))}
-              {!response.items.length && (
+              {!items.length && (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
-                    {search || filterCollege ? "No departments match your filters" : "No departments found. Add your first department above."}
+                  <td colSpan={6} className="py-12 text-center">
+                    <p className="text-sm font-semibold text-foreground mb-1">No departments found.</p>
+                    <p className="text-xs text-muted-foreground">
+                      {hasFilters ? "Try changing your filters." : "Add your first department to get started."}
+                    </p>
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-        <Pagination
-          pageNumber={response.pageNumber}
-          totalPages={totalPages}
-          totalCount={response.totalCount}
-          hasNextPage={response.pageNumber < totalPages}
-          hasPreviousPage={response.pageNumber > 1}
-          onPageChange={p => fetchData(p)}
-          pageSize={response.pageSize}
-          onPageSizeChange={size => setResponse(prev => ({ ...prev, pageSize: size }))}
-        />
+        {totalPages > 0 && (
+          <Pagination
+            pageNumber={page}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            hasNextPage={page < totalPages}
+            hasPreviousPage={page > 1}
+            onPageChange={p => setPage(p)}
+            pageSize={pageSize}
+            onPageSizeChange={sz => { setPageSize(sz); setPage(1); }}
+          />
+        )}
       </Card>
     </div>
   );

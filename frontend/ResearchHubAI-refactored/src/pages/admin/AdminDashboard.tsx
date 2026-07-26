@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { BarChart2, Plus, GraduationCap, UserCheck, Building, CheckCircle, FlaskConical, Clock, Users, BookOpen } from "lucide-react";
+import { BarChart2, Plus, GraduationCap, UserCheck, Building, CheckCircle, FlaskConical, HeartPulse, Users, BookOpen, ShieldCheck, Check } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Cell, Legend, Pie, PieChart as RechartsPieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import StatCard from "../../components/cards/StatCard";
 import Card from "../../components/common/Card";
 import SectionHead from "../../components/common/SectionHead";
 import WidgetErrorBoundary from "../../components/common/WidgetErrorBoundary";
+import UserFormModal from "../../components/admin/UserFormModal";
 import { useApp } from "../../context/AppContext";
 import { adminService } from "../../services/AdminService";
 import type { AdminDashboardResponse } from "../../types/Admin";
@@ -32,10 +33,19 @@ function SkeletonRow() {
 }
 
 export default function AdminDashboard() {
-  const { user } = useApp();
+  const { user, setScreen } = useApp();
   const [data, setData] = useState<AdminDashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [addUserModalOpen, setAddUserModalOpen] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const refreshDashboard = () => {
+    setError(null);
+    adminService.getDashboard()
+      .then(setData)
+      .catch((e) => { if (e instanceof Error) setError(e.message); });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -45,6 +55,12 @@ export default function AdminDashboard() {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);
+
+  const handleUserSaved = () => {
+    setSuccessMsg("User created successfully.");
+    setTimeout(() => setSuccessMsg(null), 3000);
+    refreshDashboard();
+  };
 
   if (loading) return <SkeletonRow />;
 
@@ -79,7 +95,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl p-6 text-white relative overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl p-4 sm:p-6 text-white relative overflow-hidden">
         <div className="absolute inset-0 opacity-5" style={{backgroundImage:"radial-gradient(circle at 25% 25%, white 1px, transparent 1px), radial-gradient(circle at 75% 75%, white 1px, transparent 1px)",backgroundSize:"40px 40px"}}/>
         <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
@@ -87,25 +103,23 @@ export default function AdminDashboard() {
             <h2 className="text-xl font-bold">{user?.institution || "ResearchHub AI"}</h2>
             <p className="text-slate-300 text-sm mt-0.5">{safeData.totalUsers ?? 0} total users · {safeData.totalColleges ?? 0} colleges · Services operational</p>
           </div>
-          <div className="flex gap-2">
-            <button className="bg-white/10 hover:bg-white/20 text-white text-sm font-semibold px-4 py-2 rounded-xl flex items-center gap-2"><Plus className="w-4 h-4"/>Add User</button>
-            <button className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-xl flex items-center gap-2"><BarChart2 className="w-4 h-4"/>Analytics</button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <button onClick={() => setAddUserModalOpen(true)} className="flex-1 sm:flex-none bg-white/10 hover:bg-white/20 text-white text-sm font-semibold px-4 py-2.5 sm:py-2 rounded-xl flex items-center justify-center gap-2 touch-target"><Plus className="w-4 h-4"/>Add User</button>
+            <button onClick={() => setScreen("analytics")} className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 sm:py-2 rounded-xl flex items-center justify-center gap-2 touch-target"><BarChart2 className="w-4 h-4"/>Analytics</button>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total Students" value={`${safeData.totalStudents ?? 0}`} icon={GraduationCap} color="bg-blue-500" />
-        <StatCard label="Research Guides" value={`${safeData.totalGuides ?? 0}`} sub={`${safeData.activeGuides ?? 0} active`} icon={UserCheck} color="bg-indigo-500"/>
-        <StatCard label="Departments" value={`${safeData.totalDepartments ?? 0}`} sub="Across colleges" icon={Building} color="bg-cyan-500"/>
-        <StatCard label="HODs" value={`${safeData.totalHods ?? 0}`} sub={`${safeData.activeHods ?? 0} active`} icon={CheckCircle} color="bg-green-500"/>
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <StatCard label="Total Colleges" value={`${safeData.totalColleges ?? 0}`} icon={BookOpen} color="bg-amber-500"/>
+        <StatCard label="Total Departments" value={`${safeData.totalDepartments ?? 0}`} icon={Building} color="bg-cyan-500"/>
         <StatCard label="Total Users" value={`${safeData.totalUsers ?? 0}`} icon={Users} color="bg-violet-500"/>
-        <StatCard label="Colleges" value={`${safeData.totalColleges ?? 0}`} icon={BookOpen} color="bg-amber-500"/>
-        <StatCard label="Active Academic Years" value={`${safeData.activeAcademicYears ?? 0}`} icon={Clock} color="bg-teal-500"/>
-        <StatCard label="Active Projects" value={`${0}`} icon={FlaskConical} color="bg-rose-500"/>
+        <StatCard label="Total Students" value={`${safeData.totalStudents ?? 0}`} icon={GraduationCap} color="bg-blue-500" />
+        <StatCard label="Total Guides" value={`${safeData.totalGuides ?? 0}`} sub={`${safeData.activeGuides ?? 0} active`} icon={UserCheck} color="bg-indigo-500"/>
+        <StatCard label="Total HODs" value={`${safeData.totalHods ?? 0}`} sub={`${safeData.activeHods ?? 0} active`} icon={CheckCircle} color="bg-green-500"/>
+        <StatCard label="Total College Admins" value={`${safeData.totalCollegeAdmins ?? 0}`} sub={`${safeData.activeCollegeAdmins ?? 0} active`} icon={ShieldCheck} color="bg-purple-500"/>
+        <StatCard label="Active Research" value={`${0}`} icon={FlaskConical} color="bg-rose-500"/>
+        <StatCard label="System Health" value="Operational" icon={HeartPulse} color="bg-emerald-500"/>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -176,37 +190,53 @@ export default function AdminDashboard() {
         </WidgetErrorBoundary>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
-        <WidgetErrorBoundary title="Department Statistics">
-          <Card>
-            <SectionHead title="Department Statistics" />
-            {departmentStats.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left py-2 px-3 font-semibold text-foreground">Department</th>
-                      <th className="text-right py-2 px-3 font-semibold text-foreground">Students</th>
-                      <th className="text-right py-2 px-3 font-semibold text-foreground">Completed Projects</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {departmentStats.map((dept, i) => (
-                      <tr key={i} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
-                        <td className="py-2.5 px-3 text-foreground">{dept.name}</td>
-                        <td className="py-2.5 px-3 text-right text-muted-foreground">{dept.students}</td>
-                        <td className="py-2.5 px-3 text-right text-muted-foreground">{dept.completed}</td>
+      {user?.role !== "superadmin" && (
+        <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
+          <WidgetErrorBoundary title="Department Statistics">
+            <Card>
+              <SectionHead title="Department Statistics" />
+              {departmentStats.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left py-2 px-3 font-semibold text-foreground">Department</th>
+                        <th className="text-right py-2 px-3 font-semibold text-foreground">Students</th>
+                        <th className="text-right py-2 px-3 font-semibold text-foreground">Completed Projects</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-8">No department statistics available</p>
-            )}
-          </Card>
-        </WidgetErrorBoundary>
-      </div>
+                    </thead>
+                    <tbody>
+                      {departmentStats.map((dept, i) => (
+                        <tr key={i} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                          <td className="py-2.5 px-3 text-foreground">{dept.name}</td>
+                          <td className="py-2.5 px-3 text-right text-muted-foreground">{dept.students}</td>
+                          <td className="py-2.5 px-3 text-right text-muted-foreground">{dept.completed}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">No department statistics available</p>
+              )}
+            </Card>
+          </WidgetErrorBoundary>
+        </div>
+      )}
+
+      {successMsg && (
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 shadow-lg animate-in slide-in-from-right-4 fade-in duration-200">
+          <Check className="w-4 h-4 text-green-500" />
+          <p className="text-sm font-medium text-green-700 dark:text-green-300">{successMsg}</p>
+        </div>
+      )}
+
+      <UserFormModal
+        open={addUserModalOpen}
+        user={null}
+        onClose={() => setAddUserModalOpen(false)}
+        onSaved={handleUserSaved}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   GraduationCap, Search, Users, X, Eye, UserPlus, Loader2,
   Mail, Phone, Building, BookOpen, UserCheck, Activity, Shield, AlertTriangle,
@@ -205,11 +205,11 @@ export default function HodStudents() {
     );
   }
 
-  const withGuideCount = students.filter((s) => s.guideName).length;
-  const hasProjectCount = students.filter((s) => s.projectTitle).length;
-  const avgProgress = students.length
+  const withGuideCount = useMemo(() => students.filter((s) => s.guideName).length, [students]);
+  const hasProjectCount = useMemo(() => students.filter((s) => s.projectTitle).length, [students]);
+  const avgProgress = useMemo(() => students.length
     ? Math.round(students.reduce((a, s) => a + s.completionPercentage, 0) / students.length)
-    : 0;
+    : 0, [students]);
 
   return (
     <div className="flex flex-col gap-5">

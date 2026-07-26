@@ -91,6 +91,59 @@ public class CollegeService : ICollegeService
         return _mapper.Map<CollegeResponse>(college);
     }
 
+    public async Task<List<CollegeAnalyticsResponse>> GetCollegeAnalyticsAsync()
+    {
+        var colleges = await _context.Set<College>().AsNoTracking()
+            .Where(c => !c.IsDeleted)
+            .OrderBy(c => c.Name)
+            .ToListAsync();
+
+        var departmentCounts = await _context.Set<Department>().AsNoTracking()
+            .Where(d => !d.IsDeleted)
+            .GroupBy(d => d.CollegeId)
+            .ToDictionaryAsync(g => g.Key, g => g.Count());
+
+        var userCounts = await _context.Set<User>().AsNoTracking()
+            .Include(u => u.Role)
+            .Where(u => !u.IsDeleted && u.CollegeId != null)
+            .GroupBy(u => new { CollegeId = u.CollegeId!.Value, RoleName = u.Role.Name })
+            .Select(g => new { g.Key.CollegeId, g.Key.RoleName, Count = g.Count() })
+            .ToListAsync();
+
+        var hodCounts = await _context.Set<Hod>().AsNoTracking()
+            .Where(h => !h.IsDeleted)
+            .GroupBy(h => h.CollegeId)
+            .ToDictionaryAsync(g => g.Key, g => g.Count());
+
+        var researchCounts = await _context.Set<Project>().AsNoTracking()
+            .Where(p => !p.IsDeleted && p.Student.CollegeId != null)
+            .GroupBy(p => p.Student.CollegeId!.Value)
+            .Select(g => new { CollegeId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.CollegeId, g => g.Count);
+
+        return colleges.Select(c =>
+        {
+            var byRole = userCounts
+                .Where(x => x.CollegeId == c.Id)
+                .ToDictionary(x => x.RoleName, x => x.Count);
+
+            return new CollegeAnalyticsResponse
+            {
+                Id = c.Id,
+                Name = c.Name,
+                Code = c.Code,
+                IsActive = c.IsActive,
+                CreatedAt = c.CreatedAt,
+                DepartmentCount = departmentCounts.GetValueOrDefault(c.Id),
+                StudentCount = byRole.GetValueOrDefault("Student"),
+                GuideCount = byRole.GetValueOrDefault("Guide"),
+                HodCount = hodCounts.GetValueOrDefault(c.Id),
+                CollegeAdminCount = byRole.GetValueOrDefault("CollegeAdmin"),
+                ResearchCount = researchCounts.GetValueOrDefault(c.Id),
+            };
+        }).ToList();
+    }
+
     public async Task DeleteCollegeAsync(Guid id)
     {
         var college = await _context.Set<College>()

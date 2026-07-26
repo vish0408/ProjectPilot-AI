@@ -42,6 +42,7 @@ public class HodManagementService : IHodManagementService
                 h.User.FullName.ToLower().Contains(term) ||
                 h.User.Email.ToLower().Contains(term) ||
                 h.User.EmployeeId!.ToLower().Contains(term) ||
+                (h.User.PhoneNumber != null && h.User.PhoneNumber.ToLower().Contains(term)) ||
                 h.Department.DepartmentName.ToLower().Contains(term) ||
                 h.College.Name.ToLower().Contains(term));
         }

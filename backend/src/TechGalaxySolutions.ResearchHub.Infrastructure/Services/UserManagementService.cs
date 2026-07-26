@@ -256,14 +256,170 @@ public class UserManagementService : IUserManagementService
 
     public async Task DeleteUserAsync(Guid id)
     {
+        _logger.LogInformation("DeleteUserAsync called with Id: {UserId}", id);
+
         var user = await _context.Set<User>()
-            .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted)
-            ?? throw new KeyNotFoundException("User not found");
+            .FirstOrDefaultAsync(u => u.Id == id);
 
-        user.IsDeleted = true;
-        user.UpdatedAt = DateTime.UtcNow;
+        if (user == null)
+        {
+            _logger.LogWarning("DeleteUserAsync: No user found with Id {UserId}. The row may have been already deleted from the Users table, or the frontend sent an invalid GUID.", id);
+            throw new KeyNotFoundException("User not found");
+        }
 
-        await _context.SaveChangesAsync();
+        if (user.IsDeleted)
+        {
+            _logger.LogInformation("DeleteUserAsync: User {UserId} ({Email}) was previously soft-deleted (IsDeleted=true). Proceeding with permanent hard delete.", id, user.Email);
+        }
+        else
+        {
+            _logger.LogInformation("DeleteUserAsync: Found active user {UserId} ({Email}). Proceeding with hard delete.", id, user.Email);
+        }
+
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            // 1. Set nullable FK references to null so they don't block deletion
+            var auditLogs = await _context.Set<AuditLog>().Where(x => x.UserId == id).ToListAsync();
+            foreach (var al in auditLogs) al.UserId = null;
+
+            var backupRecords = await _context.Set<BackupRecord>().Where(x => x.CreatedByUserId == id).ToListAsync();
+            foreach (var br in backupRecords) br.CreatedByUserId = null;
+
+            var departmentProfiles = await _context.Set<DepartmentProfile>().Where(x => x.HodUserId == id).ToListAsync();
+            foreach (var dp in departmentProfiles) dp.HodUserId = null;
+
+            var departments = await _context.Set<Department>().Where(x => x.HodId == id).ToListAsync();
+            foreach (var d in departments) d.HodId = null;
+
+            var studentProfilesByGuide = await _context.Set<StudentProfile>().Where(x => x.GuideId == id).ToListAsync();
+            foreach (var sp in studentProfilesByGuide) sp.GuideId = null;
+
+            var emailLogs = await _context.Set<EmailLog>().Where(x => x.UserId == id).ToListAsync();
+            foreach (var el in emailLogs) el.UserId = null;
+
+            var taskItemsByAssignee = await _context.Set<TaskItem>().Where(x => x.AssignedToId == id).ToListAsync();
+            foreach (var ti in taskItemsByAssignee) ti.AssignedToId = null;
+
+            // 2. Delete / nullify entities with FK to User or its owned projects
+
+            // DocumentComment: nullify self-referencing ParentCommentId for replies to this user's comments
+            var userCommentIds = await _context.Set<DocumentComment>()
+                .Where(x => x.UserId == id)
+                .Select(x => x.Id)
+                .ToListAsync();
+            if (userCommentIds.Count != 0)
+            {
+                var replies = await _context.Set<DocumentComment>()
+                    .Where(x => x.ParentCommentId != null && userCommentIds.Contains(x.ParentCommentId.Value))
+                    .ToListAsync();
+                foreach (var r in replies) r.ParentCommentId = null;
+            }
+            _context.RemoveRange(await _context.Set<DocumentComment>().Where(x => x.UserId == id).ToListAsync());
+
+            // DocumentReview (GuideId FK)
+            _context.RemoveRange(await _context.Set<DocumentReview>().Where(x => x.GuideId == id).ToListAsync());
+
+            // ChapterComment (UserId FK)
+            _context.RemoveRange(await _context.Set<ChapterComment>().Where(x => x.UserId == id).ToListAsync());
+
+            // MeetingParticipant (UserId FK)
+            _context.RemoveRange(await _context.Set<MeetingParticipant>().Where(x => x.UserId == id).ToListAsync());
+
+            // ApprovalHistory (GuideId FK)
+            _context.RemoveRange(await _context.Set<ApprovalHistory>().Where(x => x.GuideId == id).ToListAsync());
+
+            // LoginHistory (UserId FK)
+            _context.RemoveRange(await _context.Set<LoginHistory>().Where(x => x.UserId == id).ToListAsync());
+
+            // Notification (UserId FK)
+            _context.RemoveRange(await _context.Set<Notification>().Where(x => x.UserId == id).ToListAsync());
+
+            // ProjectMember (UserId FK — user is a member of projects they don't own)
+            _context.RemoveRange(await _context.Set<ProjectMember>().Where(x => x.UserId == id).ToListAsync());
+
+            // Collect UploadedDocument IDs owned by this user (for DocumentChunk cascade)
+            var uploadedDocIds = await _context.Set<UploadedDocument>()
+                .Where(x => x.UploadedByUserId == id)
+                .Select(x => x.Id)
+                .ToListAsync();
+            if (uploadedDocIds.Count != 0)
+                _context.RemoveRange(await _context.Set<DocumentChunk>().Where(x => uploadedDocIds.Contains(x.UploadedDocumentId)).ToListAsync());
+
+            // Collect LiteratureReview IDs owned by this user (for AnalysisHistory cascade)
+            var litReviewIds = await _context.Set<LiteratureReview>().Where(x => x.StudentId == id).Select(x => x.Id).ToListAsync();
+            if (litReviewIds.Count != 0)
+                _context.RemoveRange(await _context.Set<AnalysisHistory>().Where(x => litReviewIds.Contains(x.LiteratureReviewId)).ToListAsync());
+
+            // UploadedDocument (UploadedByUserId FK)
+            _context.RemoveRange(await _context.Set<UploadedDocument>().Where(x => x.UploadedByUserId == id).ToListAsync());
+
+            // LiteratureReview (StudentId FK)
+            _context.RemoveRange(await _context.Set<LiteratureReview>().Where(x => x.StudentId == id).ToListAsync());
+
+            // ProjectDocument (UploaderId FK)
+            _context.RemoveRange(await _context.Set<ProjectDocument>().Where(x => x.UploaderId == id).ToListAsync());
+
+            // Review (GuideId FK)
+            _context.RemoveRange(await _context.Set<Review>().Where(x => x.GuideId == id).ToListAsync());
+
+            // Meeting (GuideId FK — user as a guide)
+            _context.RemoveRange(await _context.Set<Meeting>().Where(x => x.GuideId == id).ToListAsync());
+
+            // Project (StudentId FK — owned projects; EF Core cascade handles TaskItem,
+            // Milestone, Review, Chapter, ChapterComment, ProjectMember, ProjectDocument
+            // through default cascade behaviors)
+            _context.RemoveRange(await _context.Set<Project>().Where(x => x.StudentId == id).ToListAsync());
+
+            // 4. Delete remaining reference entities
+
+            // ProjectAllocation (StudentId / GuideId / AllocatedByUserId FK)
+            _context.RemoveRange(await _context.Set<ProjectAllocation>()
+                .Where(x => x.StudentId == id || x.GuideId == id || x.AllocatedByUserId == id)
+                .ToListAsync());
+
+            // DepartmentAnnouncement (CreatedByUserId FK)
+            _context.RemoveRange(await _context.Set<DepartmentAnnouncement>().Where(x => x.CreatedByUserId == id).ToListAsync());
+
+            // GlobalAnnouncement (CreatedByUserId FK)
+            _context.RemoveRange(await _context.Set<GlobalAnnouncement>().Where(x => x.CreatedByUserId == id).ToListAsync());
+
+            // ResearchTopic (CreatedByUserId FK)
+            _context.RemoveRange(await _context.Set<ResearchTopic>().Where(x => x.CreatedByUserId == id).ToListAsync());
+
+            // DepartmentReport (GeneratedByUserId FK)
+            _context.RemoveRange(await _context.Set<DepartmentReport>().Where(x => x.GeneratedByUserId == id).ToListAsync());
+
+            // AIProposal (StudentId FK)
+            _context.RemoveRange(await _context.Set<AIProposal>().Where(x => x.StudentId == id).ToListAsync());
+
+            // 5. Delete profile entities
+            var studentProfile = await _context.Set<StudentProfile>().FirstOrDefaultAsync(x => x.UserId == id);
+            if (studentProfile != null) _context.Remove(studentProfile);
+
+            var guideProfile = await _context.Set<GuideProfile>().FirstOrDefaultAsync(x => x.UserId == id);
+            if (guideProfile != null) _context.Remove(guideProfile);
+
+            var hodEntity = await _context.Set<Hod>().FirstOrDefaultAsync(x => x.UserId == id);
+            if (hodEntity != null) _context.Remove(hodEntity);
+
+            var facultyMember = await _context.Set<FacultyMember>().FirstOrDefaultAsync(x => x.UserId == id);
+            if (facultyMember != null) _context.Remove(facultyMember);
+
+            // RefreshToken (UserId FK — default cascade, handled explicitly for clarity)
+            _context.RemoveRange(await _context.Set<RefreshToken>().Where(x => x.UserId == id).ToListAsync());
+
+            // 6. Delete the user
+            _context.Remove(user);
+            await _context.SaveChangesAsync();
+
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
 
         await _auditLogService.LogAsync(user.Id, "User Deleted", "User", user.Id.ToString(), user.FullName, null);
     }

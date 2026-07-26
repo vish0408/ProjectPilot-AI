@@ -24,6 +24,13 @@ public class AdminCollegesController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("analytics")]
+    public async Task<IActionResult> GetAnalytics()
+    {
+        var result = await _collegeService.GetCollegeAnalyticsAsync();
+        return Ok(result);
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {

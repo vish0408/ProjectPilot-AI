@@ -50,8 +50,23 @@ public class AdminUsersController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        await _userManagementService.DeleteUserAsync(id);
-        return NoContent();
+        try
+        {
+            await _userManagementService.DeleteUserAsync(id);
+            return Ok(new { message = "User deleted successfully." });
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { error = "User not found." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = $"Failed to delete user: {ex.InnerException?.Message ?? ex.Message}" });
+        }
     }
 
     [HttpPost("{id:guid}/resend-invitation")]

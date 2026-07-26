@@ -11,6 +11,20 @@ export interface CollegeResponse {
   createdAt: string;
 }
 
+export interface CollegeAnalyticsResponse {
+  id: string;
+  name: string;
+  code: string;
+  isActive: boolean;
+  createdAt: string;
+  departmentCount: number;
+  studentCount: number;
+  guideCount: number;
+  hodCount: number;
+  collegeAdminCount: number;
+  researchCount: number;
+}
+
 export interface CreateCollegeRequest {
   name: string;
   code: string;
@@ -231,6 +245,8 @@ export interface AdminDashboardResponse {
   activeGuides: number;
   totalHods: number;
   activeHods: number;
+  totalCollegeAdmins: number;
+  activeCollegeAdmins: number;
   totalColleges: number;
   totalDepartments: number;
   activeAcademicYears: number;
@@ -371,6 +387,7 @@ export interface HodResponse {
   status: string;
   isActive: boolean;
   createdAt: string;
+  updatedAt?: string | null;
 }
 
 export interface CreateHodRequest {
