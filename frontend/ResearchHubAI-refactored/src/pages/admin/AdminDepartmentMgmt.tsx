@@ -21,13 +21,18 @@ export default function AdminDepartmentMgmt() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterCollege, setFilterCollege] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
   const [sortField, setSortField] = useState("departmentname");
   const [sortDirection, setSortDirection] = useState("asc");
   const [form, setForm] = useState({ departmentName: "", departmentCode: "", shortName: "", description: "", collegeId: "" });
   const [saving, setSaving] = useState(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const fetchData = useCallback(async (p: number, sz: number, term: string, collegeId: string, sortF: string, sortD: string) => {
+  const fetchData = useCallback(async (p: number, sz: number, term: string, collegeId: string, status: string, sortF: string, sortD: string) => {
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setLoading(true);
     try {
       const [deptRes, colls] = await Promise.all([
@@ -38,29 +43,32 @@ export default function AdminDepartmentMgmt() {
             searchTerm: term || undefined,
             sortField: sortF,
             sortDirection: sortD,
-            statusFilter: undefined,
+            statusFilter: status || undefined,
           },
-          collegeId || undefined
+          collegeId || undefined,
+          controller.signal
         ),
         adminService.getColleges(),
       ]);
+      if (controller.signal.aborted) return;
       setItems(deptRes.items);
       setTotalCount(deptRes.totalCount);
       setColleges(colls);
     } catch (e) {
+      if (controller.signal.aborted) return;
       if (e instanceof Error) setError(e.message);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, filterCollege, sortField, sortDirection]);
+  }, [debouncedSearch, filterCollege, filterStatus, sortField, sortDirection]);
 
   useEffect(() => {
-    fetchData(page, pageSize, debouncedSearch, filterCollege, sortField, sortDirection);
-  }, [page, pageSize, debouncedSearch, filterCollege, sortField, sortDirection, fetchData]);
+    fetchData(page, pageSize, debouncedSearch, filterCollege, filterStatus, sortField, sortDirection);
+  }, [page, pageSize, debouncedSearch, filterCollege, filterStatus, sortField, sortDirection, fetchData]);
 
   useEffect(() => {
     return () => {
@@ -213,7 +221,7 @@ export default function AdminDepartmentMgmt() {
         <div className="flex items-center gap-3 px-1 pb-4 flex-wrap">
           <div className="flex items-center gap-2 flex-1 min-w-[200px]">
             <Search className="w-4 h-4 text-muted-foreground shrink-0" />
-            <input value={search} onChange={e => handleSearchChange(e.target.value)} placeholder="Search by department name or code..."
+            <input value={search} onChange={e => handleSearchChange(e.target.value)} placeholder="Search by name, code, college, or HOD..."
               className="flex-1 bg-transparent text-sm outline-none text-foreground placeholder:text-muted-foreground" />
             {search && <button onClick={clearSearch}><X className="w-4 h-4 text-muted-foreground" /></button>}
           </div>
@@ -221,6 +229,12 @@ export default function AdminDepartmentMgmt() {
             className="bg-input-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none focus:border-primary">
             <option value="">All Colleges</option>
             {colleges.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+            className="bg-input-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none focus:border-primary">
+            <option value="">All Status</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
           </select>
           <select value={sortField} onChange={e => setSortField(e.target.value)}
             className="bg-input-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none focus:border-primary">
@@ -268,12 +282,16 @@ export default function AdminDepartmentMgmt() {
                     <Badge variant={d.isActive ? "success" : "outline"}>{d.isActive ? "Active" : "Inactive"}</Badge>
                   </td>
                   <td className="py-3 px-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => openEdit(d)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Edit">
-                        <Edit2 className="w-3.5 h-3.5" />
+                    <div className="flex items-center justify-end gap-1.5">
+                      <button onClick={() => openEdit(d)}
+                        className="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-950/20 text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-950/40 hover:scale-105 transition-all flex items-center justify-center touch-target"
+                        title="Edit department">
+                        <Edit2 className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleDelete(d.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 text-muted-foreground hover:text-red-500 transition-colors" title="Delete">
-                        <Trash2 className="w-3.5 h-3.5" />
+                      <button onClick={() => handleDelete(d.id)}
+                        className="w-10 h-10 rounded-lg bg-red-50 dark:bg-red-950/20 text-red-600 hover:bg-red-100 dark:hover:bg-red-950/40 hover:scale-105 transition-all flex items-center justify-center touch-target"
+                        title="Delete department">
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </td>

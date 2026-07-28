@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.College;
+using TechGalaxySolutions.ResearchHub.Application.DTOs.Common;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
 
 namespace TechGalaxySolutions.ResearchHub.Api.Controllers;
@@ -17,10 +18,17 @@ public class AdminCollegesController : ControllerBase
         _collegeService = collegeService;
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetAll()
+    [HttpGet("all")]
+    public async Task<IActionResult> GetAllColleges()
     {
-        var result = await _collegeService.GetCollegesAsync();
+        var result = await _collegeService.GetAllCollegesAsync();
+        return Ok(result);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll([FromQuery] PagedRequest request)
+    {
+        var result = await _collegeService.GetCollegesAsync(request);
         return Ok(result);
     }
 

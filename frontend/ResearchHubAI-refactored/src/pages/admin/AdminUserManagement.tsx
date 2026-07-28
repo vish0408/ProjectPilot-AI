@@ -9,6 +9,7 @@ import UserFormModal from "../../components/admin/UserFormModal";
 import UserViewDrawer from "../../components/admin/UserViewDrawer";
 import DeleteConfirmDialog from "../../components/admin/DeleteConfirmDialog";
 import { adminService } from "../../services/AdminService";
+import type { PagedRequest } from "../../types/Pagination";
 import type { UserResponse, RoleResponse } from "../../types/Admin";
 
 function AccountStatusBadge({ status }: { status?: string }) {
@@ -45,6 +46,7 @@ export default function AdminUserManagement() {
   const [hasPreviousPage, setHasPreviousPage] = useState(false);
   const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [collegeFilter, setCollegeFilter] = useState("");
@@ -53,7 +55,6 @@ export default function AdminUserManagement() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [showFilters, setShowFilters] = useState(false);
   const [roles, setRoles] = useState<RoleResponse[]>([]);
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editUser, setEditUser] = useState<UserResponse | null>(null);
@@ -63,62 +64,66 @@ export default function AdminUserManagement() {
   const [deleting, setDeleting] = useState(false);
   const [resendingId, setResendingId] = useState<string | null>(null);
 
+  const abortRef = useRef<AbortController | null>(null);
+
   const fetchData = useCallback(async (page: number, size: number, term: string, role: string, dept: string, college: string, status: string, sortF: string, sortD: string) => {
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setLoading(true);
     setError(null);
     try {
-      const data = await adminService.getUsers();
-      const filtered = data.filter(u => {
-        if (role && u.roleName.toLowerCase() !== role.toLowerCase()) return false;
-        if (dept && u.department?.toLowerCase() !== dept.toLowerCase()) return false;
-        if (college && u.college?.toLowerCase() !== college.toLowerCase()) return false;
-        if (status) {
-          const st = status.toLowerCase();
-          const acctStatus = (u.accountStatus || "").toLowerCase();
-          if (st === "active" && acctStatus !== "active") return false;
-          if (st === "draft" && acctStatus !== "draft") return false;
-          if (st === "invitationsent" && acctStatus !== "invitationsent" && acctStatus !== "invitation sent") return false;
-          if (st === "emailverified" && acctStatus !== "emailverified" && acctStatus !== "email verified") return false;
-          if (st === "locked" && acctStatus !== "locked") return false;
-          if (st === "disabled" && acctStatus !== "disabled") return false;
-        }
-        if (term) {
-          const t = term.toLowerCase();
-          if (!u.fullName.toLowerCase().includes(t) && !u.email.toLowerCase().includes(t) && !(u.employeeId?.toLowerCase() || '').includes(t) && !(u.phoneNumber?.toLowerCase() || '').includes(t)) return false;
-        }
-        return true;
-      });
-      const sorted = [...filtered].sort((a, b) => {
-        const af = (a as any)[sortF]?.toString().toLowerCase() || '';
-        const bf = (b as any)[sortF]?.toString().toLowerCase() || '';
-        return sortD === 'asc' ? af.localeCompare(bf) : bf.localeCompare(af);
-      });
-      setUsers(sorted);
-      setTotalCount(sorted.length);
-      setTotalPages(Math.max(1, Math.ceil(sorted.length / size)));
-      setHasNextPage(page < Math.ceil(sorted.length / size));
-      setHasPreviousPage(page > 1);
+      const req: PagedRequest = {
+        pageNumber: page,
+        pageSize: size,
+        searchTerm: term || undefined,
+        roleFilter: role || undefined,
+        departmentFilter: dept || undefined,
+        collegeFilter: college || undefined,
+        statusFilter: status || undefined,
+        sortField: sortF,
+        sortDirection: sortD,
+      };
+      const result = await adminService.getUsersPaged(req, controller.signal);
+      if (controller.signal.aborted) return;
+      setUsers(result.items);
+      setTotalCount(result.totalCount);
+      setTotalPages(result.totalPages);
+      setHasNextPage(result.hasNextPage);
+      setHasPreviousPage(result.hasPreviousPage);
     } catch (e) {
+      if (controller.signal.aborted) return;
       if (e instanceof Error) setError(e.message);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchData(pageNumber, pageSize, search, roleFilter, departmentFilter, collegeFilter, statusFilter, sortField, sortDir);
-  }, [fetchData, pageNumber, pageSize, roleFilter, departmentFilter, collegeFilter, statusFilter, sortField, sortDir]);
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    setPageNumber(1);
+  }, [debouncedSearch, roleFilter, departmentFilter, collegeFilter, statusFilter]);
+
+  useEffect(() => {
+    fetchData(pageNumber, pageSize, debouncedSearch, roleFilter, departmentFilter, collegeFilter, statusFilter, sortField, sortDir);
+  }, [fetchData, pageNumber, pageSize, debouncedSearch, roleFilter, departmentFilter, collegeFilter, statusFilter, sortField, sortDir]);
 
   useEffect(() => {
     adminService.getRoles().then(setRoles).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+    };
+  }, []);
+
   const handleSearchChange = (value: string) => {
     setSearch(value);
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => {
-      setPageNumber(1);
-    }, 400);
   };
 
   const handleSort = (field: string) => {
@@ -140,7 +145,7 @@ export default function AdminUserManagement() {
       setSuccessMsg("User deleted successfully.");
       setDeleteUser(null);
       setTimeout(() => setSuccessMsg(null), 3000);
-      fetchData(pageNumber, pageSize, search, roleFilter, departmentFilter, collegeFilter, statusFilter, sortField, sortDir);
+      fetchData(pageNumber, pageSize, debouncedSearch, roleFilter, departmentFilter, collegeFilter, statusFilter, sortField, sortDir);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Delete failed";
       setError(msg);
@@ -155,7 +160,7 @@ export default function AdminUserManagement() {
       await adminService.sendInvitation(u.id);
       setSuccessMsg(`Invitation email sent successfully to "${u.fullName}"`);
       setTimeout(() => setSuccessMsg(null), 3000);
-      fetchData(pageNumber, pageSize, search, roleFilter, departmentFilter, collegeFilter, statusFilter, sortField, sortDir);
+      fetchData(pageNumber, pageSize, debouncedSearch, roleFilter, departmentFilter, collegeFilter, statusFilter, sortField, sortDir);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to send invitation";
       setError(msg);
@@ -168,7 +173,7 @@ export default function AdminUserManagement() {
   const handleSaved = () => {
     setSuccessMsg(editUser ? "User updated successfully" : "User created successfully");
     setTimeout(() => setSuccessMsg(null), 3000);
-    fetchData(pageNumber, pageSize, search, roleFilter, departmentFilter, collegeFilter, statusFilter, sortField, sortDir);
+    fetchData(pageNumber, pageSize, debouncedSearch, roleFilter, departmentFilter, collegeFilter, statusFilter, sortField, sortDir);
   };
 
   const handlePageChange = (page: number) => setPageNumber(page);
@@ -178,7 +183,7 @@ export default function AdminUserManagement() {
   };
 
   const handleRefresh = () => {
-    fetchData(pageNumber, pageSize, search, roleFilter, departmentFilter, collegeFilter, statusFilter, sortField, sortDir);
+    fetchData(pageNumber, pageSize, debouncedSearch, roleFilter, departmentFilter, collegeFilter, statusFilter, sortField, sortDir);
   };
 
   const studentCount = users.filter((u) => u.roleName.toLowerCase() === "student").length;

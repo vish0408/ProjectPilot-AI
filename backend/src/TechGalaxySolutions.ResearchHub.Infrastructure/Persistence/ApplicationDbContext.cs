@@ -275,6 +275,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<AuditLog>(entity =>
         {
             entity.HasOne(a => a.User).WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.SetNull);
+            entity.Property(a => a.UserAgent).HasMaxLength(512);
             entity.HasIndex(a => a.Timestamp);
             entity.HasIndex(al => al.EntityName).HasDatabaseName("IX_AuditLogs_EntityName");
         });

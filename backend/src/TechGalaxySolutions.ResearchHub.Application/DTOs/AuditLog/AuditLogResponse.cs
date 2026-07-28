@@ -11,5 +11,6 @@ public class AuditLogResponse
     public string OldValues { get; set; } = string.Empty;
     public string NewValues { get; set; } = string.Empty;
     public string IpAddress { get; set; } = string.Empty;
+    public string? UserAgent { get; set; }
     public DateTime Timestamp { get; set; }
 }

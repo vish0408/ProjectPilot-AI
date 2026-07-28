@@ -1,15 +1,16 @@
-import { useState, useEffect } from "react";
-import { Activity, Download, Filter, Server, ShieldCheck, Users } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Activity, Download, Search, Server, ShieldCheck, Users, X } from "lucide-react";
 import StatCard from "../../components/cards/StatCard";
 import Badge from "../../components/common/Badge";
 import Card from "../../components/common/Card";
 import Pagination from "../../components/common/Pagination";
 import { adminService } from "../../services/AdminService";
 import type { AuditLogResponse } from "../../types/Admin";
+import type { PagedRequest } from "../../types/Pagination";
 
 export default function AdminAuditLogs() {
   const [logs, setLogs] = useState<AuditLogResponse[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -17,35 +18,68 @@ export default function AdminAuditLogs() {
   const [hasNextPage, setHasNextPage] = useState(false);
   const [hasPreviousPage, setHasPreviousPage] = useState(false);
   const [pageSize, setPageSize] = useState(20);
+  const [search, setSearch] = useState("");
+  const [actionFilter, setActionFilter] = useState("");
+  const abortRef = useRef<AbortController | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchLogs = (page: number, size: number) => {
-    setLoading(true);
-    adminService.getAuditLogs()
+  const fetchLogs = (page: number, size: number, term: string, action: string) => {
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const req: PagedRequest = {
+      pageNumber: page,
+      pageSize: size,
+      searchTerm: term || undefined,
+      statusFilter: action || undefined,
+    };
+    adminService.getAuditLogsPaged(req, controller.signal)
       .then((data) => {
-        setLogs(data);
-        setTotalCount(data.length);
-        setTotalPages(Math.max(1, Math.ceil(data.length / size)));
-        setHasNextPage(page < Math.ceil(data.length / size));
-        setHasPreviousPage(page > 1);
+        if (controller.signal.aborted) return;
+        setLogs(data.items);
+        setTotalCount(data.totalCount);
+        setTotalPages(data.totalPages);
+        setHasNextPage(data.hasNextPage);
+        setHasPreviousPage(data.hasPreviousPage);
       })
-      .catch((e) => { if (e instanceof Error) setError(e.message); })
-      .finally(() => setLoading(false));
+      .catch((e) => {
+        if (controller.signal.aborted) return;
+        if (e instanceof Error) setError(e.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setInitialLoading(false);
+        }
+      });
   };
 
-  useEffect(() => { fetchLogs(pageNumber, pageSize); }, []);
+  useEffect(() => {
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchLogs(pageNumber, pageSize, search, actionFilter);
+    }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [pageNumber, pageSize, search, actionFilter]);
 
   const handlePageChange = (page: number) => {
     setPageNumber(page);
-    fetchLogs(page, pageSize);
   };
 
   const handlePageSizeChange = (size: number) => {
     setPageSize(size);
     setPageNumber(1);
-    fetchLogs(1, size);
   };
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -69,12 +103,37 @@ export default function AdminAuditLogs() {
         <StatCard label="Entities" value={`${new Set(logs.map(l => l.entityName)).size}`} icon={Server} color="bg-indigo-500"/>
       </div>
       <Card p={false}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h3 className="font-bold text-foreground">Audit Log</h3>
-          <div className="flex gap-2">
-            <button className="text-xs border border-border rounded-lg px-3 py-2 text-muted-foreground hover:bg-muted flex items-center gap-1.5">
-              <Filter className="w-3.5 h-3.5" />Filter
-            </button>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 py-4 border-b border-border gap-2">
+          <h3 className="font-bold text-foreground text-sm">Audit Log</h3>
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <div className="relative flex-1 sm:min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPageNumber(1); }}
+                className="bg-muted border border-border rounded-lg pl-9 pr-3 py-2 text-xs outline-none focus:border-primary w-full"
+                placeholder="Search action, user, entity, IP..."
+              />
+              {search && (
+                <button onClick={() => { setSearch(""); setPageNumber(1); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            <select
+              value={actionFilter}
+              onChange={(e) => { setActionFilter(e.target.value); setPageNumber(1); }}
+              className="bg-muted border border-border rounded-lg px-3 py-2 text-xs outline-none text-foreground"
+            >
+              <option value="">All Actions</option>
+              <option value="CREATE">Create</option>
+              <option value="UPDATE">Update</option>
+              <option value="DELETE">Delete</option>
+              <option value="Login">Login</option>
+              <option value="Logout">Logout</option>
+              <option value="LOGIN_FAIL">Login Fail</option>
+              <option value="User Registered">User Registered</option>
+            </select>
             <button className="text-xs border border-border rounded-lg px-3 py-2 text-muted-foreground hover:bg-muted flex items-center gap-1.5">
               <Download className="w-3.5 h-3.5" />Export
             </button>
@@ -83,7 +142,7 @@ export default function AdminAuditLogs() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/40">
-              <tr>{["Timestamp", "User", "Action", "Resource", "IP"].map(h => (
+              <tr>{["Timestamp", "User", "Action", "Resource", "IP", "User Agent"].map(h => (
                 <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground">{h}</th>
               ))}</tr>
             </thead>
@@ -103,7 +162,8 @@ export default function AdminAuditLogs() {
                     }>{log.action}</Badge>
                   </td>
                   <td className="px-5 py-3 text-xs text-muted-foreground">{log.entityName}</td>
-                  <td className="px-5 py-3 font-mono text-xs text-muted-foreground">{log.ipAddress}</td>
+                  <td className="px-5 py-3 font-mono text-xs text-muted-foreground" title={log.ipAddress || ""}>{log.ipAddress || "Unknown"}</td>
+                  <td className="px-5 py-3 text-xs text-muted-foreground max-w-40 truncate" title={log.userAgent || ""}>{log.userAgent || "—"}</td>
                 </tr>
               ))}
             </tbody>

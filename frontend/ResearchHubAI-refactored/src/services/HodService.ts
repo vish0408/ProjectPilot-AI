@@ -41,7 +41,7 @@ export class HodService {
   }
 
   // Students
-  async getStudents(search?: string, request?: PagedRequest): Promise<PagedResponse<HodStudentSummary>> {
+  async getStudents(search?: string, request?: PagedRequest, signal?: AbortSignal): Promise<PagedResponse<HodStudentSummary>> {
     const qp = new URLSearchParams();
     if (search) qp.set("search", search);
     if (request?.pageNumber) qp.set("pageNumber", String(request.pageNumber));
@@ -49,7 +49,7 @@ export class HodService {
     if (request?.sortField) qp.set("sortBy", request.sortField);
     if (request?.statusFilter) qp.set("filterStatus", request.statusFilter);
     const qs = qp.toString();
-    const res = await apiClient.get<PagedResponse<HodStudentSummary>>(`/hod/students${qs ? `?${qs}` : ""}`);
+    const res = await apiClient.get<PagedResponse<HodStudentSummary>>(`/hod/students${qs ? `?${qs}` : ""}`, signal);
     if (!res.success || !res.data) throw new Error(res.message || "Failed to get students");
     return res.data;
   }

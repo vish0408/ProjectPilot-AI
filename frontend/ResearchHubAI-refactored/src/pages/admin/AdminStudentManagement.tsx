@@ -7,12 +7,13 @@ import Avatar from "../../components/common/Avatar";
 import Badge from "../../components/common/Badge";
 import Card from "../../components/common/Card";
 import { adminService } from "../../services/AdminService";
+import { useDebounce } from "../../hooks/useDebounce";
 import type { UserResponse } from "../../types/Admin";
 
 export default function AdminStudentManagement() {
   const [users, setUsers] = useState<UserResponse[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 200);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [viewUser, setViewUser] = useState<UserResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -20,13 +21,12 @@ export default function AdminStudentManagement() {
   useEffect(() => {
     adminService.getUsers()
       .then(all => setUsers((all ?? []).filter(u => u.roleName === "Student")))
-      .catch((e) => { if (e instanceof Error) setError(e.message); })
-      .finally(() => setLoading(false));
+      .catch((e) => { if (e instanceof Error) setError(e.message); });
   }, []);
 
   const filtered = users.filter(u =>
-    u.fullName.toLowerCase().includes(search.toLowerCase()) ||
-    u.email.toLowerCase().includes(search.toLowerCase())
+    !debouncedSearch || u.fullName.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+    u.email.toLowerCase().includes(debouncedSearch.toLowerCase())
   );
 
   const handleDelete = async (id: string) => {
@@ -44,10 +44,6 @@ export default function AdminStudentManagement() {
     const a = document.createElement("a"); a.href = url; a.download = "students.csv"; a.click();
     URL.revokeObjectURL(url);
   };
-
-  if (loading) {
-    return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>;
-  }
 
   return (
     <div className="flex flex-col gap-5">

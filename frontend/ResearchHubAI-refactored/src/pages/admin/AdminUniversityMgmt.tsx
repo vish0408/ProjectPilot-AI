@@ -5,15 +5,16 @@ import Badge from "../../components/common/Badge";
 import Card from "../../components/common/Card";
 import SectionHead from "../../components/common/SectionHead";
 import { adminService } from "../../services/AdminService";
+import { useDebounce } from "../../hooks/useDebounce";
 import type { CollegeResponse, CreateCollegeRequest, UpdateCollegeRequest } from "../../types/Admin";
 
 export default function AdminUniversityMgmt() {
   const [colleges, setColleges] = useState<CollegeResponse[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<CollegeResponse | null>(null);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 200);
   const [form, setForm] = useState({ name: "", code: "", address: "", phone: "", email: "", website: "" });
   const [saving, setSaving] = useState(false);
 
@@ -22,7 +23,6 @@ export default function AdminUniversityMgmt() {
       const data = await adminService.getColleges();
       setColleges(data);
     } catch (e) { if (e instanceof Error) setError(e.message); }
-    finally { setLoading(false); }
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -42,9 +42,10 @@ export default function AdminUniversityMgmt() {
   const handleSave = async () => {
     if (!form.name.trim()) { setError("College name is required"); return; }
     if (!form.code.trim()) { setError("College code is required"); return; }
+    const safe = Array.isArray(colleges) ? colleges : [];
     const duplicate = editing
-      ? colleges.some(c => (c.name.toLowerCase() === form.name.trim().toLowerCase() || c.code.toLowerCase() === form.code.trim().toLowerCase()) && c.id !== editing.id)
-      : colleges.some(c => c.name.toLowerCase() === form.name.trim().toLowerCase() || c.code.toLowerCase() === form.code.trim().toLowerCase());
+      ? safe.some(c => (c.name.toLowerCase() === form.name.trim().toLowerCase() || c.code.toLowerCase() === form.code.trim().toLowerCase()) && c.id !== editing.id)
+      : safe.some(c => c.name.toLowerCase() === form.name.trim().toLowerCase() || c.code.toLowerCase() === form.code.trim().toLowerCase());
     if (duplicate) { setError("A college with this name or code already exists"); return; }
     setSaving(true);
     try {
@@ -66,19 +67,12 @@ export default function AdminUniversityMgmt() {
     catch (e) { if (e instanceof Error) setError(e.message); }
   };
 
-  const filtered = colleges.filter(c =>
-    !search || c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.code.toLowerCase().includes(search.toLowerCase()) ||
-    (c.address ?? "").toLowerCase().includes(search.toLowerCase())
+  const safeColleges = Array.isArray(colleges) ? colleges : [];
+  const filtered = safeColleges.filter(c =>
+    !debouncedSearch || c.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+    c.code.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+    (c.address ?? "").toLowerCase().includes(debouncedSearch.toLowerCase())
   );
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -89,9 +83,9 @@ export default function AdminUniversityMgmt() {
         </div>
       )}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard label="Total Colleges" value={`${colleges.length}`} icon={Building} color="bg-blue-600"/>
-        <StatCard label="Total Departments" value={`${colleges.reduce((s, c) => s + c.departmentCount, 0)}`} icon={Layers} color="bg-indigo-500"/>
-        <StatCard label="Active" value={`${colleges.filter(c => c.isActive).length}`} icon={Globe} color="bg-green-500"/>
+        <StatCard label="Total Colleges" value={`${safeColleges.length}`} icon={Building} color="bg-blue-600"/>
+        <StatCard label="Total Departments" value={`${safeColleges.reduce((s, c) => s + c.departmentCount, 0)}`} icon={Layers} color="bg-indigo-500"/>
+        <StatCard label="Active" value={`${safeColleges.filter(c => c.isActive).length}`} icon={Globe} color="bg-green-500"/>
       </div>
       <SectionHead title="Colleges" desc="Manage colleges and institutions"
         action={

@@ -18,5 +18,7 @@ public class AuditLog : BaseEntity
 
     public string IpAddress { get; set; } = string.Empty;
 
+    public string? UserAgent { get; set; }
+
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }

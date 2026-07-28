@@ -2,6 +2,7 @@ using AutoMapper;
 using BCrypt.Net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using TechGalaxySolutions.ResearchHub.Application.DTOs.Common;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.UserManagement;
 using TechGalaxySolutions.ResearchHub.Application.Exceptions;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
@@ -32,10 +33,12 @@ public class UserManagementService : IUserManagementService
         _logger = logger;
     }
 
-    public async Task<List<UserResponse>> GetUsersAsync()
+    public async Task<List<UserResponse>> GetAllUsersAsync()
     {
         var users = await _context.Set<User>().AsNoTracking()
             .Include(u => u.Role)
+            .Include(u => u.DepartmentEntity)
+            .Include(u => u.CollegeEntity)
             .Where(u => !u.IsDeleted)
             .OrderBy(u => u.FullName)
             .ToListAsync();
@@ -43,10 +46,85 @@ public class UserManagementService : IUserManagementService
         return _mapper.Map<List<UserResponse>>(users);
     }
 
+    public async Task<PagedResponse<UserResponse>> GetUsersAsync(PagedRequest request)
+    {
+        var query = _context.Set<User>().AsNoTracking()
+            .Include(u => u.Role)
+            .Include(u => u.DepartmentEntity)
+            .Include(u => u.CollegeEntity)
+            .Where(u => !u.IsDeleted);
+
+        if (!string.IsNullOrWhiteSpace(request.SearchTerm))
+        {
+            var term = request.SearchTerm.ToLower();
+            query = query.Where(u =>
+                (u.EmployeeId != null && u.EmployeeId.ToLower().Contains(term)) ||
+                u.FullName.ToLower().Contains(term) ||
+                u.Email.ToLower().Contains(term) ||
+                (u.PhoneNumber != null && u.PhoneNumber.ToLower().Contains(term)) ||
+                u.Role.Name.ToLower().Contains(term) ||
+                (u.DepartmentEntity != null && u.DepartmentEntity.DepartmentName.ToLower().Contains(term)) ||
+                (u.CollegeEntity != null && u.CollegeEntity.Name.ToLower().Contains(term)) ||
+                u.Status.ToLower().Contains(term));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.RoleFilter))
+        {
+            var roleTerm = request.RoleFilter.ToLower();
+            query = query.Where(u => u.Role.Name.ToLower() == roleTerm);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.StatusFilter))
+        {
+            var statusTerm = request.StatusFilter.ToLower();
+            query = query.Where(u => u.Status.ToLower() == statusTerm);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.DepartmentFilter) && Guid.TryParse(request.DepartmentFilter, out var deptId))
+        {
+            query = query.Where(u => u.DepartmentId == deptId);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.CollegeFilter) && Guid.TryParse(request.CollegeFilter, out var collegeId))
+        {
+            query = query.Where(u => u.CollegeId == collegeId);
+        }
+
+        query = (request.SortField?.ToLower()) switch
+        {
+            "fullname" => request.SortDirection == "desc" ? query.OrderByDescending(u => u.FullName) : query.OrderBy(u => u.FullName),
+            "email" => request.SortDirection == "desc" ? query.OrderByDescending(u => u.Email) : query.OrderBy(u => u.Email),
+            "employeeid" => request.SortDirection == "desc" ? query.OrderByDescending(u => u.EmployeeId) : query.OrderBy(u => u.EmployeeId),
+            "rolename" => request.SortDirection == "desc" ? query.OrderByDescending(u => u.Role.Name) : query.OrderBy(u => u.Role.Name),
+            "department" => request.SortDirection == "desc" ? query.OrderByDescending(u => u.DepartmentEntity!.DepartmentName) : query.OrderBy(u => u.DepartmentEntity!.DepartmentName),
+            "college" => request.SortDirection == "desc" ? query.OrderByDescending(u => u.CollegeEntity!.Name) : query.OrderBy(u => u.CollegeEntity!.Name),
+            "status" => request.SortDirection == "desc" ? query.OrderByDescending(u => u.Status) : query.OrderBy(u => u.Status),
+            "createdat" => request.SortDirection == "desc" ? query.OrderByDescending(u => u.CreatedAt) : query.OrderBy(u => u.CreatedAt),
+            _ => query.OrderBy(u => u.FullName)
+        };
+
+        var totalCount = await query.CountAsync();
+        var users = await query
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToListAsync();
+
+        var items = _mapper.Map<List<UserResponse>>(users);
+        return new PagedResponse<UserResponse>
+        {
+            Items = items,
+            PageNumber = request.PageNumber,
+            PageSize = request.PageSize,
+            TotalCount = totalCount
+        };
+    }
+
     public async Task<UserResponse> GetUserAsync(Guid id)
     {
         var user = await _context.Set<User>().AsNoTracking()
             .Include(u => u.Role)
+            .Include(u => u.DepartmentEntity)
+            .Include(u => u.CollegeEntity)
             .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted)
             ?? throw new KeyNotFoundException("User not found");
 
@@ -136,6 +214,9 @@ public class UserManagementService : IUserManagementService
             RoleId = request.RoleId,
             CollegeId = request.CollegeId,
             DepartmentId = request.DepartmentId,
+            EmployeeId = request.EmployeeId,
+            PhoneNumber = request.PhoneNumber,
+            Designation = request.Designation,
             IsFirstLogin = request.Password == null,
             TemporaryPasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
             TemporaryPasswordExpiresAt = DateTime.UtcNow.AddHours(72),
@@ -245,6 +326,9 @@ public class UserManagementService : IUserManagementService
         user.RoleId = request.RoleId;
         user.CollegeId = request.CollegeId;
         user.DepartmentId = request.DepartmentId;
+        user.EmployeeId = request.EmployeeId;
+        user.PhoneNumber = request.PhoneNumber;
+        user.Designation = request.Designation;
         user.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();

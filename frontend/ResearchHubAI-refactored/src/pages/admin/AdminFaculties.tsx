@@ -7,6 +7,7 @@ import Avatar from "../../components/common/Avatar";
 import StatCard from "../../components/cards/StatCard";
 import Pagination from "../../components/common/Pagination";
 import { adminService } from "../../services/AdminService";
+import { useDebounce } from "../../hooks/useDebounce";
 import type { FacultyResponse, CreateFacultyRequest, UpdateFacultyRequest, UserResponse, DepartmentResponse } from "../../types/Admin";
 
 export default function AdminFaculties() {
@@ -14,7 +15,7 @@ export default function AdminFaculties() {
   const [users, setUsers] = useState<UserResponse[]>([]);
   const [departments, setDepartments] = useState<DepartmentResponse[]>([]);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
+  const debouncedSearch = useDebounce(search, 200);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<FacultyResponse | null>(null);
@@ -36,7 +37,6 @@ export default function AdminFaculties() {
       setHasNextPage(page < Math.ceil(data.length / size));
       setHasPreviousPage(page > 1);
     } catch (e) { if (e instanceof Error) setError(e.message); }
-    finally { setLoading(false); }
   };
 
   const fetchFormData = async () => {
@@ -130,19 +130,11 @@ export default function AdminFaculties() {
     fetchData(1, size);
   };
 
-  const filtered = items.filter(i =>
-    !search || i.fullName.toLowerCase().includes(search.toLowerCase()) ||
-    i.departmentName.toLowerCase().includes(search.toLowerCase()) ||
-    i.designation.toLowerCase().includes(search.toLowerCase())
+  const filtered = (Array.isArray(items) ? items : []).filter(i =>
+    !debouncedSearch || i.fullName.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+    i.departmentName.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+    i.designation.toLowerCase().includes(debouncedSearch.toLowerCase())
   );
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -176,7 +168,7 @@ export default function AdminFaculties() {
                 <select value={form.userId} onChange={e => setForm({ ...form, userId: e.target.value })}
                   className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary">
                   <option value="">Select user...</option>
-                  {users.filter(u => u.roleName === "Guide" || u.roleName === "HOD").map(u => (
+                  {(Array.isArray(users) ? users : []).filter(u => u.roleName === "Guide" || u.roleName === "HOD").map(u => (
                     <option key={u.id} value={u.id}>{u.fullName} ({u.email})</option>
                   ))}
                 </select>
@@ -187,7 +179,7 @@ export default function AdminFaculties() {
               <select value={form.departmentId} onChange={e => setForm({ ...form, departmentId: e.target.value })}
                 className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary">
                 <option value="">Select department...</option>
-                {departments.map(d => (
+                {(Array.isArray(departments) ? departments : []).map(d => (
                   <option key={d.id} value={d.id}>{d.departmentName}</option>
                 ))}
               </select>

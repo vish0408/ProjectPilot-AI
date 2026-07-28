@@ -1,6 +1,7 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.College;
+using TechGalaxySolutions.ResearchHub.Application.DTOs.Common;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
 using TechGalaxySolutions.ResearchHub.Domain.Entities;
 using TechGalaxySolutions.ResearchHub.Infrastructure.Persistence;
@@ -18,7 +19,60 @@ public class CollegeService : ICollegeService
         _mapper = mapper;
     }
 
-    public async Task<List<CollegeResponse>> GetCollegesAsync()
+    public async Task<PagedResponse<CollegeResponse>> GetCollegesAsync(PagedRequest request)
+    {
+        var query = _context.Set<College>().AsNoTracking()
+            .Where(c => !c.IsDeleted);
+
+        if (!string.IsNullOrWhiteSpace(request.SearchTerm))
+        {
+            var term = request.SearchTerm.ToLower();
+            query = query.Where(c =>
+                c.Name.ToLower().Contains(term) ||
+                c.Code.ToLower().Contains(term) ||
+                c.Email.ToLower().Contains(term) ||
+                c.Address.ToLower().Contains(term));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.StatusFilter))
+        {
+            var statusTerm = request.StatusFilter.ToLower();
+            query = query.Where(c => c.Status.ToLower() == statusTerm);
+        }
+
+        query = (request.SortField?.ToLower()) switch
+        {
+            "name" => request.SortDirection == "desc" ? query.OrderByDescending(c => c.Name) : query.OrderBy(c => c.Name),
+            "code" => request.SortDirection == "desc" ? query.OrderByDescending(c => c.Code) : query.OrderBy(c => c.Code),
+            "createdat" => request.SortDirection == "desc" ? query.OrderByDescending(c => c.CreatedAt) : query.OrderBy(c => c.CreatedAt),
+            _ => query.OrderBy(c => c.Name)
+        };
+
+        var totalCount = await query.CountAsync();
+        var colleges = await query
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToListAsync();
+
+        var departmentCounts = await _context.Set<Department>().AsNoTracking()
+            .Where(d => !d.IsDeleted)
+            .GroupBy(d => d.CollegeId)
+            .ToDictionaryAsync(g => g.Key, g => g.Count());
+
+        var items = _mapper.Map<List<CollegeResponse>>(colleges);
+        foreach (var item in items)
+            item.DepartmentCount = departmentCounts.GetValueOrDefault(item.Id);
+
+        return new PagedResponse<CollegeResponse>
+        {
+            Items = items,
+            PageNumber = request.PageNumber,
+            PageSize = request.PageSize,
+            TotalCount = totalCount
+        };
+    }
+
+    public async Task<List<CollegeResponse>> GetAllCollegesAsync()
     {
         var colleges = await _context.Set<College>().AsNoTracking()
             .Where(c => !c.IsDeleted)
@@ -32,9 +86,7 @@ public class CollegeService : ICollegeService
 
         var response = _mapper.Map<List<CollegeResponse>>(colleges);
         foreach (var item in response)
-        {
             item.DepartmentCount = departmentCounts.GetValueOrDefault(item.Id);
-        }
 
         return response;
     }

@@ -3,7 +3,6 @@ import {
   LogOut,
   Menu,
   Moon,
-  Search,
   Sun
 } from "lucide-react";
 import Avatar from "../components/common/Avatar";
@@ -21,9 +20,6 @@ export default function Topbar({ nav, onMenu }: { nav: typeof STUDENT_NAV; onMen
       <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1 md:flex-none">
         <button onClick={onMenu} className="lg:hidden w-9 h-9 rounded-xl hover:bg-muted flex items-center justify-center flex-shrink-0 transition-colors touch-target"><Menu className="w-5 h-5"/></button>
         <div className="min-w-0"><h1 className="text-sm font-bold text-foreground leading-none truncate">{label}</h1><p className={`text-[10px] md:text-xs font-semibold mt-0.5 truncate ${rc[user?.role||"student"]}`}>{rl[user?.role||"student"]}</p></div>
-      </div>
-      <div className="hidden md:block flex-1 max-w-xs mx-2 lg:mx-4">
-        <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground"/><input className="w-full bg-muted border border-border rounded-xl pl-9 pr-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all" placeholder="Search..."/></div>
       </div>
       <div className="flex items-center gap-0.5 md:gap-1.5 flex-shrink-0">
         <button onClick={()=>setTheme(theme==="light"?"dark":"light")} className="w-9 h-9 rounded-xl hover:bg-muted flex items-center justify-center transition-colors touch-target">

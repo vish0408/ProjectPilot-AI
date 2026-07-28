@@ -140,12 +140,16 @@ public class HodManagementService : IHodManagementService
             throw new ConflictException("This department already has an active HOD");
 
         var password = request.Password ?? GenerateDefaultPassword();
+        var employeeId = request.EmployeeId;
+        if (string.IsNullOrWhiteSpace(employeeId))
+            employeeId = await GenerateEmployeeIdAsync();
+
         var user = new User
         {
             FullName = request.FullName,
             Email = request.Email,
             PhoneNumber = request.Phone,
-            EmployeeId = request.EmployeeId,
+            EmployeeId = employeeId,
             Designation = request.Designation,
             RoleId = hodRole.Id,
             CollegeId = department.CollegeId,
@@ -250,6 +254,26 @@ public class HodManagementService : IHodManagementService
         hod.User.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+    }
+
+    private async Task<string> GenerateEmployeeIdAsync()
+    {
+        var year = DateTime.UtcNow.Year;
+        var prefix = $"HOD{year}";
+        var lastEmp = await _context.Set<User>().AsNoTracking()
+            .Where(u => u.EmployeeId != null && u.EmployeeId.StartsWith(prefix) && !u.IsDeleted)
+            .OrderByDescending(u => u.EmployeeId)
+            .Select(u => u.EmployeeId)
+            .FirstOrDefaultAsync();
+
+        if (lastEmp == null)
+            return $"{prefix}00001";
+
+        var numPart = lastEmp[prefix.Length..];
+        if (int.TryParse(numPart, out var num))
+            return $"{prefix}{(num + 1).ToString("D5")}";
+
+        return $"{prefix}00001";
     }
 
     private static string GenerateDefaultPassword()

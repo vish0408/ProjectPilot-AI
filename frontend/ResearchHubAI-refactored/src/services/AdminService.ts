@@ -28,7 +28,21 @@ export class AdminService {
 
   // Colleges
   async getColleges(): Promise<CollegeResponse[]> {
-    const res = await apiClient.get<CollegeResponse[]>("/admin/colleges");
+    const res = await apiClient.get<CollegeResponse[]>("/admin/colleges/all");
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to get colleges");
+    return Array.isArray(res.data) ? res.data : [];
+  }
+
+  async getCollegesPaged(request?: PagedRequest): Promise<PagedResponse<CollegeResponse>> {
+    const params = new URLSearchParams();
+    if (request?.pageNumber) params.set("pageNumber", String(request.pageNumber));
+    if (request?.pageSize) params.set("pageSize", String(request.pageSize));
+    if (request?.searchTerm) params.set("searchTerm", request.searchTerm);
+    if (request?.sortField) params.set("sortField", request.sortField);
+    if (request?.sortDirection) params.set("sortDirection", request.sortDirection);
+    if (request?.statusFilter) params.set("statusFilter", request.statusFilter);
+    const qs = params.toString();
+    const res = await apiClient.get<PagedResponse<CollegeResponse>>(`/admin/colleges${qs ? `?${qs}` : ""}`);
     if (!res.success || !res.data) throw new Error(res.message || "Failed to get colleges");
     return res.data;
   }
@@ -63,7 +77,7 @@ export class AdminService {
   }
 
   // Departments
-  async getDepartmentsPaged(request?: PagedRequest, collegeId?: string): Promise<PagedResponse<DepartmentResponse>> {
+  async getDepartmentsPaged(request?: PagedRequest, collegeId?: string, signal?: AbortSignal): Promise<PagedResponse<DepartmentResponse>> {
     const params = new URLSearchParams();
     if (request?.pageNumber) params.set("pageNumber", String(request.pageNumber));
     if (request?.pageSize) params.set("pageSize", String(request.pageSize));
@@ -73,7 +87,7 @@ export class AdminService {
     if (request?.statusFilter) params.set("statusFilter", request.statusFilter);
     if (collegeId) params.set("collegeId", collegeId);
     const qs = params.toString();
-    const res = await apiClient.get<PagedResponse<DepartmentResponse>>(`/admin/departments${qs ? `?${qs}` : ""}`);
+    const res = await apiClient.get<PagedResponse<DepartmentResponse>>(`/admin/departments${qs ? `?${qs}` : ""}`, signal);
     if (!res.success || !res.data) throw new Error(res.message || "Failed");
     return res.data;
   }
@@ -216,7 +230,24 @@ export class AdminService {
 
   // Users
   async getUsers(): Promise<UserResponse[]> {
-    const res = await apiClient.get<UserResponse[]>("/admin/users");
+    const res = await apiClient.get<UserResponse[]>("/admin/users/all");
+    if (!res.success || !res.data) throw new Error(res.message || "Failed");
+    return Array.isArray(res.data) ? res.data : [];
+  }
+
+  async getUsersPaged(request?: PagedRequest, signal?: AbortSignal): Promise<PagedResponse<UserResponse>> {
+    const params = new URLSearchParams();
+    if (request?.pageNumber) params.set("pageNumber", String(request.pageNumber));
+    if (request?.pageSize) params.set("pageSize", String(request.pageSize));
+    if (request?.searchTerm) params.set("searchTerm", request.searchTerm);
+    if (request?.sortField) params.set("sortField", request.sortField);
+    if (request?.sortDirection) params.set("sortDirection", request.sortDirection);
+    if (request?.roleFilter) params.set("roleFilter", request.roleFilter);
+    if (request?.statusFilter) params.set("statusFilter", request.statusFilter);
+    if (request?.departmentFilter) params.set("departmentFilter", request.departmentFilter);
+    if (request?.collegeFilter) params.set("collegeFilter", request.collegeFilter);
+    const qs = params.toString();
+    const res = await apiClient.get<PagedResponse<UserResponse>>(`/admin/users${qs ? `?${qs}` : ""}`, signal);
     if (!res.success || !res.data) throw new Error(res.message || "Failed");
     return res.data;
   }
@@ -341,7 +372,19 @@ export class AdminService {
 
   // Audit Logs
   async getAuditLogs(): Promise<AuditLogResponse[]> {
-    const res = await apiClient.get<AuditLogResponse[]>("/admin/audit-logs");
+    const res = await apiClient.get<AuditLogResponse[]>("/admin/audit-logs/all");
+    if (!res.success || !res.data) throw new Error(res.message || "Failed");
+    return Array.isArray(res.data) ? res.data : [];
+  }
+
+  async getAuditLogsPaged(request?: PagedRequest, signal?: AbortSignal): Promise<PagedResponse<AuditLogResponse>> {
+    const params = new URLSearchParams();
+    if (request?.pageNumber) params.set("pageNumber", String(request.pageNumber));
+    if (request?.pageSize) params.set("pageSize", String(request.pageSize));
+    if (request?.searchTerm) params.set("searchTerm", request.searchTerm);
+    if (request?.statusFilter) params.set("statusFilter", request.statusFilter);
+    const qs = params.toString();
+    const res = await apiClient.get<PagedResponse<AuditLogResponse>>(`/admin/audit-logs${qs ? `?${qs}` : ""}`, signal);
     if (!res.success || !res.data) throw new Error(res.message || "Failed");
     return res.data;
   }
@@ -434,7 +477,7 @@ export class AdminService {
   }
 
   // HOD Management
-  async getHodsPaged(request?: PagedRequest, collegeId?: string, departmentId?: string): Promise<PagedResponse<HodResponse>> {
+  async getHodsPaged(request?: PagedRequest, collegeId?: string, departmentId?: string, signal?: AbortSignal): Promise<PagedResponse<HodResponse>> {
     const params = new URLSearchParams();
     if (request?.pageNumber) params.set("pageNumber", String(request.pageNumber));
     if (request?.pageSize) params.set("pageSize", String(request.pageSize));
@@ -445,7 +488,7 @@ export class AdminService {
     if (collegeId) params.set("collegeId", collegeId);
     if (departmentId) params.set("departmentId", departmentId);
     const qs = params.toString();
-    const res = await apiClient.get<PagedResponse<HodResponse>>(`/admin/hods${qs ? `?${qs}` : ""}`);
+    const res = await apiClient.get<PagedResponse<HodResponse>>(`/admin/hods${qs ? `?${qs}` : ""}`, signal);
     if (!res.success || !res.data) throw new Error(res.message || "Failed");
     return res.data;
   }

@@ -105,16 +105,19 @@ class ApiClient {
     return result;
   }
 
-  async get<T>(path: string): Promise<ApiResponse<T>> {
+  async get<T>(path: string, signal?: AbortSignal): Promise<ApiResponse<T>> {
     return this.autoRetryOnExpiry(async () => {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 30000);
+      const signals: AbortSignal[] = [controller.signal];
+      if (signal) signals.push(signal);
+      const combinedSignal = signals.length > 1 ? (typeof AbortSignal !== "undefined" && typeof AbortSignal.any === "function" ? AbortSignal.any(signals) : controller.signal) : controller.signal;
       const url = `${this.baseUrl}${path}`;
       try {
         const response = await fetch(url, {
           method: "GET",
           headers: this.getHeaders(),
-          signal: controller.signal,
+          signal: combinedSignal,
         });
         return this.handleResponse<T>(response, "GET", url);
       } finally { clearTimeout(timeout); }

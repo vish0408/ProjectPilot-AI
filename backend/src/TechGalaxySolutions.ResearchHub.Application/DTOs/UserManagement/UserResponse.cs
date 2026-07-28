@@ -19,6 +19,7 @@ public class UserResponse
     public bool EmailVerified { get; set; }
     public DateTime? PasswordChangedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
     public int FailedLoginCount { get; set; }
     public DateTime? LockedUntil { get; set; }
     public bool IsLocked => LockedUntil.HasValue && LockedUntil.Value > DateTime.UtcNow;

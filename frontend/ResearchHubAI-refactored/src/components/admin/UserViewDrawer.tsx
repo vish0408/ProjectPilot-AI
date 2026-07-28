@@ -127,7 +127,7 @@ export default function UserViewDrawer({ open, userId, user: initialUser, onClos
                     <Hash className="w-3 h-3 text-slate-400 flex-shrink-0" />
                     <p className="text-[10px] text-slate-500 truncate">Employee / Student ID</p>
                   </div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user.employeeId || "-"}</p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user.employeeId || "Not assigned"}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
                   <div className="flex items-center gap-1.5 mb-1">
@@ -147,21 +147,21 @@ export default function UserViewDrawer({ open, userId, user: initialUser, onClos
                     <Building className="w-3 h-3 text-slate-400 flex-shrink-0" />
                     <p className="text-[10px] text-slate-500 truncate">Department</p>
                   </div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user.department || "-"}</p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user.department || "Not assigned"}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
                   <div className="flex items-center gap-1.5 mb-1">
                     <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
                     <p className="text-[10px] text-slate-500 truncate">College</p>
                   </div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user.college || "-"}</p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user.college || "Not assigned"}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
                   <div className="flex items-center gap-1.5 mb-1">
                     <UserCheck className="w-3 h-3 text-slate-400 flex-shrink-0" />
                     <p className="text-[10px] text-slate-500 truncate">Designation</p>
                   </div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user.designation || "-"}</p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user.designation || "Not assigned"}</p>
                 </div>
               </div>
             </div>
@@ -196,6 +196,13 @@ export default function UserViewDrawer({ open, userId, user: initialUser, onClos
                     <p className="text-[10px] text-slate-500 truncate">Last Login</p>
                   </div>
                   <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString() : "Never"}</p>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Clock className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                    <p className="text-[10px] text-slate-500 truncate">Updated</p>
+                  </div>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user.updatedAt ? new Date(user.updatedAt).toLocaleDateString() : "Not assigned"}</p>
                 </div>
               </div>
             </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import {
   GraduationCap, Search, Users, X, Eye, UserPlus, Loader2,
   Mail, Phone, Building, BookOpen, UserCheck, Activity, Shield, AlertTriangle,
@@ -37,8 +37,9 @@ const statusLabel = (status: string | null) => {
 export default function HodStudents() {
   const [students, setStudents] = useState<HodStudentSummary[]>([]);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -67,13 +68,17 @@ export default function HodStudents() {
   const [confirmAction, setConfirmAction] = useState<"activate" | "deactivate">("activate");
   const [confirmLoading, setConfirmLoading] = useState(false);
 
+  const abortRef = useRef<AbortController | null>(null);
+
   const fetchStudents = useCallback(async (
     term: string | undefined,
     filter: string,
     page: number,
     size: number,
   ) => {
-    setLoading(true);
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setError(null);
     try {
       const data = await hodService.getStudents(term, {
@@ -81,6 +86,7 @@ export default function HodStudents() {
         pageSize: size,
         statusFilter: filter === "all" ? undefined : filter,
       });
+      if (controller.signal.aborted) return;
       setStudents(data.items);
       setPageNumber(data.pageNumber);
       setTotalPages(data.totalPages);
@@ -88,36 +94,41 @@ export default function HodStudents() {
       setHasNextPage(data.hasNextPage);
       setHasPreviousPage(data.hasPreviousPage);
     } catch (e) {
+      if (controller.signal.aborted) return;
       if (e instanceof Error) setError(e.message);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setInitialLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    fetchStudents(undefined, activeFilter, pageNumber, pageSize);
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+    };
   }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setPageNumber(1);
-      fetchStudents(search || undefined, activeFilter, 1, pageSize);
+      fetchStudents(debouncedSearch || undefined, activeFilter, 1, pageSize);
     }, 300);
+    return () => clearTimeout(timer);
+  }, [debouncedSearch, activeFilter]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(timer);
   }, [search]);
 
-  useEffect(() => {
-    setPageNumber(1);
-    fetchStudents(search || undefined, activeFilter, 1, pageSize);
-  }, [activeFilter]);
-
   const handlePageChange = (page: number) => {
-    fetchStudents(search || undefined, activeFilter, page, pageSize);
+    fetchStudents(debouncedSearch || undefined, activeFilter, page, pageSize);
   };
 
   const handlePageSizeChange = (size: number) => {
     setPageSize(size);
-    fetchStudents(search || undefined, activeFilter, 1, size);
+    fetchStudents(debouncedSearch || undefined, activeFilter, 1, size);
   };
 
   const handleViewDetail = async (userId: string) => {
@@ -160,7 +171,7 @@ export default function HodStudents() {
     try {
       await hodService.assignStudentGuide(assignStudentId, selectedGuideId, assignRemarks || undefined);
       setAssignOpen(false);
-      fetchStudents(search || undefined, activeFilter, pageNumber, pageSize);
+      fetchStudents(debouncedSearch || undefined, activeFilter, pageNumber, pageSize);
       if (drawerOpen && selectedUserId === assignStudentId) {
         const detail = await hodService.getStudentDetail(assignStudentId);
         setStudentDetail(detail);
@@ -185,7 +196,7 @@ export default function HodStudents() {
       await hodService.toggleStudentStatus(confirmStudent.userId, confirmAction === "activate");
       setConfirmOpen(false);
       setConfirmStudent(null);
-      fetchStudents(search || undefined, activeFilter, pageNumber, pageSize);
+      fetchStudents(debouncedSearch || undefined, activeFilter, pageNumber, pageSize);
       if (drawerOpen && selectedUserId === confirmStudent.userId) {
         const detail = await hodService.getStudentDetail(confirmStudent.userId);
         setStudentDetail(detail);
@@ -197,7 +208,7 @@ export default function HodStudents() {
     }
   };
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />

@@ -47,12 +47,16 @@ export default function AdminHodManagement() {
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const showSuccess = (msg: string) => { setSuccess(msg); setTimeout(() => setSuccess(null), 3000); };
   const showError = (msg: string) => { setError(msg); setTimeout(() => setError(null), 5000); };
 
-  const fetchData = useCallback(async (page?: number, size?: number, searchTerm?: string) => {
-    setLoading(true);
+  const fetchData = useCallback(async (page?: number, size?: number, searchTerm?: string, pageChanged?: boolean) => {
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    if (!pageChanged) setLoading(true);
     const p = page ?? pageNumber;
     const s = size ?? pageSize;
     const term = searchTerm ?? search;
@@ -68,16 +72,21 @@ export default function AdminHodManagement() {
             statusFilter: filterStatus || undefined,
           },
           filterCollege || undefined,
-          filterDepartment || undefined
+          filterDepartment || undefined,
+          controller.signal
         ),
         adminService.getColleges(),
       ]);
+      if (controller.signal.aborted) return;
       setResponse(hodRes);
       setColleges(colls);
       setPageNumber(p);
       setPageSize(s);
-    } catch (e) { if (e instanceof Error) showError(e.message); }
-    finally { setLoading(false); }
+    } catch (e) {
+      if (controller.signal.aborted) return;
+      if (e instanceof Error) showError(e.message);
+    }
+    finally { if (!controller.signal.aborted) setLoading(false); }
   }, [search, filterCollege, filterDepartment, filterStatus, sortField, sortDirection, pageNumber, pageSize]);
 
   useEffect(() => { fetchData(1); }, []);
@@ -108,7 +117,10 @@ export default function AdminHodManagement() {
   }, [fetchData]);
 
   useEffect(() => {
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (abortRef.current) abortRef.current.abort();
+    };
   }, []);
 
   const resetForm = () => {
@@ -149,7 +161,7 @@ export default function AdminHodManagement() {
           fullName: form.fullName,
           email: form.email,
           phone: form.phone || undefined,
-          employeeId: form.employeeId || undefined,
+          employeeId: form.employeeId,
           designation: form.designation || undefined,
           departmentId: form.departmentId,
           qualification: form.qualification,
@@ -166,7 +178,7 @@ export default function AdminHodManagement() {
           fullName: form.fullName,
           email: form.email,
           phone: form.phone || undefined,
-          employeeId: form.employeeId || undefined,
+          employeeId: form.employeeId,
           designation: form.designation || undefined,
           password: form.password,
           departmentId: form.departmentId,
@@ -189,7 +201,7 @@ export default function AdminHodManagement() {
         fullName: h.fullName,
         email: h.email,
         phone: h.phone || undefined,
-        employeeId: h.employeeId || undefined,
+        employeeId: h.employeeId,
         designation: h.designation || undefined,
         departmentId: h.departmentId,
         qualification: h.qualification,
@@ -448,20 +460,28 @@ export default function AdminHodManagement() {
                     <Badge variant={h.isActive ? "success" : "outline"}>{h.isActive ? "Active" : "Inactive"}</Badge>
                   </td>
                   <td className="py-3 px-3 text-xs text-muted-foreground whitespace-nowrap hidden lg:table-cell">{fmtDate(h.createdAt)}</td>
-                  <td className="py-3 px-3 text-right whitespace-nowrap">
-                    <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => setViewing(h)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="View">
-                        <Eye className="w-3.5 h-3.5" />
+                  <td className="py-2 px-3 text-right whitespace-nowrap">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <button onClick={() => setViewing(h)}
+                        className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/20 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-950/40 hover:scale-105 transition-all flex items-center justify-center touch-target"
+                        title="View HOD details">
+                        <Eye className="w-4 h-4" />
                       </button>
-                      <button onClick={() => openEdit(h)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Edit">
-                        <Edit2 className="w-3.5 h-3.5" />
+                      <button onClick={() => openEdit(h)}
+                        className="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-950/20 text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-950/40 hover:scale-105 transition-all flex items-center justify-center touch-target"
+                        title="Edit HOD">
+                        <Edit2 className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleToggleActive(h)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={h.isActive ? "Deactivate" : "Activate"}>
-                        <Shield className="w-3.5 h-3.5" />
+                      <button onClick={() => handleToggleActive(h)}
+                        className="w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 hover:scale-105 transition-all flex items-center justify-center touch-target"
+                        title={h.isActive ? "Deactivate HOD" : "Activate HOD"}>
+                        <Shield className="w-4 h-4" />
                       </button>
                       <div className="relative group">
-                        <button className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="More actions">
-                          <Mail className="w-3.5 h-3.5" />
+                        <button
+                          className="w-10 h-10 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:scale-105 transition-all flex items-center justify-center touch-target"
+                          title="Email actions">
+                          <Mail className="w-4 h-4" />
                         </button>
                         <div className="absolute right-0 top-full mt-1 z-50 hidden group-hover:block group-focus-within:block min-w-[180px] bg-card border border-border rounded-xl shadow-xl py-1">
                           <button onClick={() => handleSendInvitation(h)} disabled={actionLoading === `invite-${h.id}`}
@@ -481,8 +501,10 @@ export default function AdminHodManagement() {
                           </button>
                         </div>
                       </div>
-                      <button onClick={() => setConfirmDelete(h)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 text-muted-foreground hover:text-red-500 transition-colors" title="Delete">
-                        <Trash2 className="w-3.5 h-3.5" />
+                      <button onClick={() => setConfirmDelete(h)}
+                        className="w-10 h-10 rounded-lg bg-red-50 dark:bg-red-950/20 text-red-600 hover:bg-red-100 dark:hover:bg-red-950/40 hover:scale-105 transition-all flex items-center justify-center touch-target"
+                        title="Delete HOD">
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </td>

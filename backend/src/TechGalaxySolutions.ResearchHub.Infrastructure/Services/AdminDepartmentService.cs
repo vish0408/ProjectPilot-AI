@@ -14,10 +14,30 @@ public class AdminDepartmentService : IAdminDepartmentService
     private readonly ApplicationDbContext _context;
     private readonly IMapper _mapper;
 
+    private static readonly string[] FacultyRoleNames = ["Guide", "HOD"];
+
     public AdminDepartmentService(ApplicationDbContext context, IMapper mapper)
     {
         _context = context;
         _mapper = mapper;
+    }
+
+    private async Task<Dictionary<Guid, int>> GetFacultyCountsAsync()
+    {
+        return await _context.Set<User>().AsNoTracking()
+            .Include(u => u.Role)
+            .Where(u => u.DepartmentId.HasValue && !u.IsDeleted)
+            .Where(u => u.Role.Name == "Guide" || u.Role.Name == "HOD")
+            .GroupBy(u => u.DepartmentId!.Value)
+            .ToDictionaryAsync(g => g.Key, g => g.Count());
+    }
+
+    private async Task<int> GetFacultyCountForDepartmentAsync(Guid departmentId)
+    {
+        return await _context.Set<User>().AsNoTracking()
+            .Include(u => u.Role)
+            .CountAsync(u => u.DepartmentId == departmentId && !u.IsDeleted &&
+                        (u.Role.Name == "Guide" || u.Role.Name == "HOD"));
     }
 
     public async Task<PagedResponse<DepartmentResponse>> GetDepartmentsAsync(PagedRequest request, Guid? collegeId = null)
@@ -37,7 +57,8 @@ public class AdminDepartmentService : IAdminDepartmentService
                 d.DepartmentName.ToLower().Contains(term) ||
                 d.DepartmentCode.ToLower().Contains(term) ||
                 d.ShortName.ToLower().Contains(term) ||
-                d.College.Name.ToLower().Contains(term));
+                d.College.Name.ToLower().Contains(term) ||
+                (d.Hod != null && d.Hod.FullName.ToLower().Contains(term)));
         }
 
         if (!string.IsNullOrWhiteSpace(request.StatusFilter))
@@ -62,10 +83,7 @@ public class AdminDepartmentService : IAdminDepartmentService
             .Take(request.PageSize)
             .ToListAsync();
 
-        var facultyCounts = await _context.Set<FacultyMember>().AsNoTracking()
-            .Where(f => !f.IsDeleted)
-            .GroupBy(f => f.DepartmentId)
-            .ToDictionaryAsync(g => g.Key, g => g.Count());
+        var facultyCounts = await GetFacultyCountsAsync();
 
         var items = _mapper.Map<List<DepartmentResponse>>(departments);
         foreach (var item in items)
@@ -94,10 +112,7 @@ public class AdminDepartmentService : IAdminDepartmentService
             .OrderBy(d => d.DepartmentName)
             .ToListAsync();
 
-        var facultyCounts = await _context.Set<FacultyMember>().AsNoTracking()
-            .Where(f => !f.IsDeleted)
-            .GroupBy(f => f.DepartmentId)
-            .ToDictionaryAsync(g => g.Key, g => g.Count());
+        var facultyCounts = await GetFacultyCountsAsync();
 
         var response = _mapper.Map<List<DepartmentResponse>>(departments);
         foreach (var item in response)
@@ -114,11 +129,8 @@ public class AdminDepartmentService : IAdminDepartmentService
             .FirstOrDefaultAsync(d => d.Id == id && !d.IsDeleted)
             ?? throw new KeyNotFoundException("Department not found");
 
-        var facultyCount = await _context.Set<FacultyMember>().AsNoTracking()
-            .CountAsync(f => f.DepartmentId == id && !f.IsDeleted);
-
         var response = _mapper.Map<DepartmentResponse>(department);
-        response.FacultyCount = facultyCount;
+        response.FacultyCount = await GetFacultyCountForDepartmentAsync(id);
         return response;
     }
 
@@ -153,7 +165,9 @@ public class AdminDepartmentService : IAdminDepartmentService
 
         await _context.Entry(department).Reference(d => d.College).LoadAsync();
 
-        return _mapper.Map<DepartmentResponse>(department);
+        var response = _mapper.Map<DepartmentResponse>(department);
+        response.FacultyCount = 0;
+        return response;
     }
 
     public async Task<DepartmentResponse> UpdateDepartmentAsync(Guid id, UpdateDepartmentRequest request)
@@ -183,7 +197,9 @@ public class AdminDepartmentService : IAdminDepartmentService
 
         await _context.SaveChangesAsync();
 
-        return _mapper.Map<DepartmentResponse>(department);
+        var response = _mapper.Map<DepartmentResponse>(department);
+        response.FacultyCount = await GetFacultyCountForDepartmentAsync(id);
+        return response;
     }
 
     public async Task DeleteDepartmentAsync(Guid id)

@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TechGalaxySolutions.ResearchHub.Application.DTOs.Common;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.UserManagement;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
 
@@ -19,10 +20,17 @@ public class AdminUsersController : ControllerBase
         _authService = authService;
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetAll()
+    [HttpGet("all")]
+    public async Task<IActionResult> GetAllUsers()
     {
-        var result = await _userManagementService.GetUsersAsync();
+        var result = await _userManagementService.GetAllUsersAsync();
+        return Ok(result);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll([FromQuery] PagedRequest request)
+    {
+        var result = await _userManagementService.GetUsersAsync(request);
         return Ok(result);
     }
 

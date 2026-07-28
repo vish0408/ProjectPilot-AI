@@ -72,6 +72,8 @@ public class AuthService : IAuthService
         user.LastLoginAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
+        await _auditLogService.LogAsync(user.Id, "Login", "User", user.Id.ToString(), null, user.FullName);
+
         return await GenerateTokenResponseAsync(user);
     }
 
@@ -297,6 +299,8 @@ public class AuthService : IAuthService
 
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
+
+        await _auditLogService.LogAsync(user.Id, "User Registered", "User", user.Id.ToString(), null, user.FullName);
     }
 
     public async Task<TokenResponse> RefreshTokenAsync(RefreshTokenRequest request)
@@ -347,6 +351,8 @@ public class AuthService : IAuthService
         }
 
         await _tokenService.RevokeUserRefreshTokensAsync(userId);
+
+        await _auditLogService.LogAsync(userId, "Logout", "User", userId.ToString(), null, null);
     }
 
     private async Task<TokenResponse> GenerateTokenResponseAsync(User user)

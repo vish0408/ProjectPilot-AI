@@ -166,6 +166,7 @@ export interface UserResponse {
   emailVerified?: boolean;
   passwordChangedAt?: string | null;
   lastLoginAt?: string | null;
+  updatedAt?: string | null;
   failedLoginCount?: number;
   lockedUntil?: string | null;
   temporaryPasswordExpiresAt?: string | null;
@@ -311,6 +312,7 @@ export interface AuditLogResponse {
   oldValues: string;
   newValues: string;
   ipAddress: string;
+  userAgent?: string | null;
   timestamp: string;
 }
 

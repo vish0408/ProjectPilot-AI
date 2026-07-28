@@ -43,7 +43,9 @@ public class AdminMappingProfile : Profile
             .ForMember(dest => dest.DepartmentName, opt => opt.MapFrom(src => src.Department.DepartmentName));
 
         CreateMap<User, UserResponse>()
-            .ForMember(dest => dest.RoleName, opt => opt.MapFrom(src => src.Role.Name));
+            .ForMember(dest => dest.RoleName, opt => opt.MapFrom(src => src.Role.Name))
+            .ForMember(dest => dest.Department, opt => opt.MapFrom(src => src.DepartmentEntity != null ? src.DepartmentEntity.DepartmentName : null))
+            .ForMember(dest => dest.College, opt => opt.MapFrom(src => src.CollegeEntity != null ? src.CollegeEntity.Name : null));
 
         CreateMap<Role, RoleResponse>()
             .ForMember(dest => dest.UserCount, opt => opt.MapFrom(src => src.Users.Count(u => !u.IsDeleted)))

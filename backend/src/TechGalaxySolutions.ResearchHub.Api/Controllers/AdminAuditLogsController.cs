@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.AuditLog;
+using TechGalaxySolutions.ResearchHub.Application.DTOs.Common;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
 
 namespace TechGalaxySolutions.ResearchHub.Api.Controllers;
@@ -17,10 +18,17 @@ public class AdminAuditLogsController : ControllerBase
         _auditLogService = auditLogService;
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetAll()
+    [HttpGet("all")]
+    public async Task<IActionResult> GetAllAuditLogs()
     {
-        var result = await _auditLogService.GetAuditLogsAsync();
+        var result = await _auditLogService.GetAllAuditLogsAsync();
+        return Ok(result);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll([FromQuery] PagedRequest request)
+    {
+        var result = await _auditLogService.GetAuditLogsAsync(request);
         return Ok(result);
     }
 
