@@ -5,6 +5,9 @@ export interface PagedRequest {
   roleFilter?: string;
   departmentFilter?: string;
   collegeFilter?: string;
+  guideFilter?: string;
+  academicYearFilter?: string;
+  semesterFilter?: string;
   statusFilter?: string;
   sortField?: string;
   sortDirection?: string;

@@ -21,4 +21,24 @@ public class HodResponse
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+
+    public string? UserStatus { get; set; }
+    public DateTime? ActivatedAt { get; set; }
+    public DateTime? LastLoginAt { get; set; }
+    public bool EmailVerified { get; set; }
+
+    public string AccountStatus
+    {
+        get
+        {
+            if (UserStatus == "Locked") return "Locked";
+            if (UserStatus == "Disabled") return "Disabled";
+            if (UserStatus == "Draft") return "Pending Activation";
+            if (UserStatus == "InvitationSent") return "Invitation Sent";
+            if (UserStatus == "Active") return "Active";
+            if (!IsActive) return "Inactive";
+            if (ActivatedAt.HasValue) return "Active";
+            return "Pending Activation";
+        }
+    }
 }

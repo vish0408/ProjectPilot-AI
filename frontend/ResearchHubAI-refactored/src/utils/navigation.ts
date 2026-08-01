@@ -31,6 +31,7 @@ import {
   Upload,
   User,
   UserCheck,
+  UserCog,
   Users,
   Wrench
 } from "lucide-react";
@@ -75,6 +76,7 @@ export const COLLEGE_ADMIN_NAV = [
   { id: "student-management", label: "Student Management",  icon: GraduationCap,   badge: null },
   { id: "guide-management",   label: "Guide Management",    icon: UserCheck,       badge: null },
   { id: "department-mgmt",    label: "Departments",         icon: Building,        badge: null },
+  { id: "hod-mgmt",           label: "HOD Management",      icon: GraduationCap,   badge: null },
   { id: "university-mgmt",    label: "University",          icon: Globe,           badge: null },
   { id: "research-topics",    label: "Research Topics",     icon: Telescope,       badge: null },
   { id: "ai-playground",      label: "AI Playground",       icon: Brain,           badge: null },
@@ -96,7 +98,10 @@ export const SUPER_ADMIN_NAV = [
   { id: "dashboard",          label: "Dashboard",           icon: LayoutDashboard, badge: null },
   { id: "university-mgmt",    label: "Colleges",            icon: Globe,           badge: null },
   { id: "department-mgmt",    label: "Departments",         icon: Building,        badge: null },
+  { id: "college-admin-mgmt", label: "College Admin Management", icon: UserCog,    badge: null },
   { id: "hod-mgmt",           label: "HOD Management",     icon: GraduationCap,    badge: null },
+  { id: "guide-management",   label: "Guide Management",    icon: UserCheck,       badge: null },
+  { id: "student-management", label: "Student Management",  icon: GraduationCap,   badge: null },
   { id: "user-management",    label: "User Management",     icon: Users,           badge: null },
   { id: "analytics",          label: "Reports & Analytics", icon: ChartNoAxesColumnIncreasing, badge: null },
   { id: "ai-config",          label: "AI Configuration",    icon: Cpu,             badge: null },

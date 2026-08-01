@@ -61,20 +61,28 @@ public class AuditLogService : IAuditLogService
         return httpContext.Request.Headers["User-Agent"].FirstOrDefault();
     }
 
-    public async Task<List<AuditLogResponse>> GetAllAuditLogsAsync()
+    public async Task<List<AuditLogResponse>> GetAllAuditLogsAsync(Guid? collegeId = null)
     {
-        var logs = await _context.Set<AuditLog>().AsNoTracking()
-            .Include(al => al.User)
+        IQueryable<AuditLog> query = _context.Set<AuditLog>().AsNoTracking()
+            .Include(al => al.User);
+
+        if (collegeId.HasValue)
+            query = query.Where(al => al.User != null && al.User.CollegeId == collegeId.Value);
+
+        var logs = await query
             .OrderByDescending(al => al.Timestamp)
             .ToListAsync();
 
         return _mapper.Map<List<AuditLogResponse>>(logs);
     }
 
-    public async Task<PagedResponse<AuditLogResponse>> GetAuditLogsAsync(PagedRequest request)
+    public async Task<PagedResponse<AuditLogResponse>> GetAuditLogsAsync(PagedRequest request, Guid? collegeId = null)
     {
         IQueryable<AuditLog> query = _context.Set<AuditLog>().AsNoTracking()
             .Include(al => al.User);
+
+        if (collegeId.HasValue)
+            query = query.Where(al => al.User != null && al.User.CollegeId == collegeId.Value);
 
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
         {
@@ -112,11 +120,16 @@ public class AuditLogService : IAuditLogService
         };
     }
 
-    public async Task<AuditLogResponse> GetAuditLogAsync(Guid id)
+    public async Task<AuditLogResponse> GetAuditLogAsync(Guid id, Guid? collegeId = null)
     {
-        var log = await _context.Set<AuditLog>().AsNoTracking()
+        var query = _context.Set<AuditLog>().AsNoTracking()
             .Include(al => al.User)
-            .FirstOrDefaultAsync(al => al.Id == id)
+            .Where(al => al.Id == id);
+
+        if (collegeId.HasValue)
+            query = query.Where(al => al.User != null && al.User.CollegeId == collegeId.Value);
+
+        var log = await query.FirstOrDefaultAsync()
             ?? throw new KeyNotFoundException("Audit log not found");
 
         return _mapper.Map<AuditLogResponse>(log);

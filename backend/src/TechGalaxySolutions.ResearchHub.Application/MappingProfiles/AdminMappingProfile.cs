@@ -71,6 +71,10 @@ public class AdminMappingProfile : Profile
             .ForMember(dest => dest.Designation, opt => opt.MapFrom(src => src.User.Designation))
             .ForMember(dest => dest.DepartmentName, opt => opt.MapFrom(src => src.Department.DepartmentName))
             .ForMember(dest => dest.DepartmentCode, opt => opt.MapFrom(src => src.Department.DepartmentCode))
-            .ForMember(dest => dest.CollegeName, opt => opt.MapFrom(src => src.College.Name));
+            .ForMember(dest => dest.CollegeName, opt => opt.MapFrom(src => src.College.Name))
+            .ForMember(dest => dest.UserStatus, opt => opt.MapFrom(src => src.User.Status))
+            .ForMember(dest => dest.ActivatedAt, opt => opt.MapFrom(src => src.User.ActivatedAt))
+            .ForMember(dest => dest.LastLoginAt, opt => opt.MapFrom(src => src.User.LastLoginAt))
+            .ForMember(dest => dest.EmailVerified, opt => opt.MapFrom(src => src.User.EmailVerified));
     }
 }

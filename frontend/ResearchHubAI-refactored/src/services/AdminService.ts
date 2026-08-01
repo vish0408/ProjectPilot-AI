@@ -242,10 +242,13 @@ export class AdminService {
     if (request?.searchTerm) params.set("searchTerm", request.searchTerm);
     if (request?.sortField) params.set("sortField", request.sortField);
     if (request?.sortDirection) params.set("sortDirection", request.sortDirection);
-    if (request?.roleFilter) params.set("roleFilter", request.roleFilter);
-    if (request?.statusFilter) params.set("statusFilter", request.statusFilter);
-    if (request?.departmentFilter) params.set("departmentFilter", request.departmentFilter);
-    if (request?.collegeFilter) params.set("collegeFilter", request.collegeFilter);
+  if (request?.roleFilter) params.set("roleFilter", request.roleFilter);
+  if (request?.statusFilter) params.set("statusFilter", request.statusFilter);
+  if (request?.departmentFilter) params.set("departmentFilter", request.departmentFilter);
+  if (request?.collegeFilter) params.set("collegeFilter", request.collegeFilter);
+  if (request?.guideFilter) params.set("guideFilter", request.guideFilter);
+  if (request?.academicYearFilter) params.set("academicYearFilter", request.academicYearFilter);
+  if (request?.semesterFilter) params.set("semesterFilter", request.semesterFilter);
     const qs = params.toString();
     const res = await apiClient.get<PagedResponse<UserResponse>>(`/admin/users${qs ? `?${qs}` : ""}`, signal);
     if (!res.success || !res.data) throw new Error(res.message || "Failed");

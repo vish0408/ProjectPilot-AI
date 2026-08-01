@@ -29,6 +29,23 @@ public class UserResponse
     public DateTime? ActivatedAt { get; set; }
     public DateTime? TemporaryPasswordExpiresAt { get; set; }
 
+    // Role-specific profile fields (populated from StudentProfile / GuideProfile / Hod)
+    public string? Enrollment { get; set; }
+    public string? ResearchTopic { get; set; }
+    public Guid? GuideId { get; set; }
+    public string? GuideName { get; set; }
+    public Guid? AcademicYearId { get; set; }
+    public string? AcademicYearName { get; set; }
+    public Guid? SemesterId { get; set; }
+    public string? SemesterName { get; set; }
+    public string? Section { get; set; }
+    public string? Specialization { get; set; }
+    public string? Bio { get; set; }
+    public string? Qualification { get; set; }
+    public int? YearsOfExperience { get; set; }
+    public int AssignedStudents { get; set; }
+    public string? ResearchStatus { get; set; }
+
     public string AccountStatus
     {
         get

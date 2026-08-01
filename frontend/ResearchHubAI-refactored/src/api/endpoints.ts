@@ -7,9 +7,11 @@ export const ENDPOINTS = {
     refresh: "/auth/refresh",
     activate: "/auth/activate",
     activateValidate: "/auth/activate/validate",
+    activateResend: "/auth/activate/resend",
     forgotPassword: "/auth/forgot-password",
     resetPassword: "/auth/reset-password",
     resetPasswordValidate: "/auth/reset-password/validate",
+    resetPasswordResend: "/auth/reset-password/resend",
     resendWelcome: (id: string) => `/admin/users/${id}/resend-invitation`,
   },
   student: {

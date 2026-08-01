@@ -3,6 +3,7 @@ import { Edit2, Filter, GraduationCap, Key, Plus, Search, Trash2, Eye, UserCheck
 import StatCard from "../../components/cards/StatCard";
 import Avatar from "../../components/common/Avatar";
 import Badge from "../../components/common/Badge";
+import AccountStatusBadge from "../../components/common/AccountStatusBadge";
 import Card from "../../components/common/Card";
 import Pagination from "../../components/common/Pagination";
 import UserFormModal from "../../components/admin/UserFormModal";
@@ -11,28 +12,6 @@ import DeleteConfirmDialog from "../../components/admin/DeleteConfirmDialog";
 import { adminService } from "../../services/AdminService";
 import type { PagedRequest } from "../../types/Pagination";
 import type { UserResponse, RoleResponse } from "../../types/Admin";
-
-function AccountStatusBadge({ status }: { status?: string }) {
-  if (!status) return <Badge variant="outline">Unknown</Badge>;
-  switch (status.toLowerCase()) {
-    case "active":
-      return <Badge variant="success">Active</Badge>;
-    case "draft":
-      return <Badge variant="outline">Draft</Badge>;
-    case "invitationsent":
-    case "invitation sent":
-      return <Badge variant="warning">Invitation Sent</Badge>;
-    case "emailverified":
-    case "email verified":
-      return <Badge variant="info">Email Verified</Badge>;
-    case "locked":
-      return <Badge variant="danger">Locked</Badge>;
-    case "disabled":
-      return <Badge variant="danger">Disabled</Badge>;
-    default:
-      return <Badge variant="outline">{status}</Badge>;
-  }
-}
 
 export default function AdminUserManagement() {
   const [users, setUsers] = useState<UserResponse[]>([]);
@@ -305,6 +284,7 @@ export default function AdminUserManagement() {
               <tr>
                 {[
                   { key: "fullName", label: "User" },
+                  { key: "employeeId", label: "ID" },
                   { key: "email", label: "Email" },
                   { key: "roleName", label: "Role" },
                   { key: "accountStatus", label: "Status" },
@@ -335,6 +315,7 @@ export default function AdminUserManagement() {
                       <span className="text-xs font-bold text-foreground truncate max-w-[120px] sm:max-w-none">{u.fullName}</span>
                     </div>
                   </td>
+                  <td className="px-3 sm:px-5 py-3 sm:py-3.5 text-[10px] sm:text-xs font-mono font-semibold text-foreground whitespace-nowrap">{u.enrollment || u.employeeId || "—"}</td>
                   <td className="px-3 sm:px-5 py-3 sm:py-3.5 text-[10px] sm:text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-none">{u.email}</td>
                   <td className="px-3 sm:px-5 py-3 sm:py-3.5">
                     <Badge

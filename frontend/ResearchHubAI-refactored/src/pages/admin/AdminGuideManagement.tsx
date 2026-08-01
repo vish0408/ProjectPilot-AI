@@ -5,6 +5,7 @@ import {
 import StatCard from "../../components/cards/StatCard";
 import Avatar from "../../components/common/Avatar";
 import Badge from "../../components/common/Badge";
+import AccountStatusBadge from "../../components/common/AccountStatusBadge";
 import Card from "../../components/common/Card";
 import { adminService } from "../../services/AdminService";
 import type { UserResponse } from "../../types/Admin";
@@ -43,8 +44,8 @@ export default function AdminGuideManagement() {
       )}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard label="Total Guides" value={`${users.length}`} icon={UserCheck} color="bg-indigo-500"/>
-        <StatCard label="Active" value={`${users.filter(u => u.isActive).length}`} icon={Clock} color="bg-green-500"/>
-        <StatCard label="Inactive" value={`${users.filter(u => !u.isActive).length}`} icon={AlertCircle} color="bg-amber-500"/>
+        <StatCard label="Active" value={`${users.filter(u => u.accountStatus === "Active").length}`} icon={Clock} color="bg-green-500"/>
+        <StatCard label="Pending" value={`${users.filter(u => u.accountStatus === "Pending Activation" || u.accountStatus === "Invitation Sent").length}`} icon={AlertCircle} color="bg-amber-500"/>
       </div>
       <Card p={false}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-border"><h3 className="font-bold text-foreground">Guide Directory</h3></div>
@@ -56,7 +57,7 @@ export default function AdminGuideManagement() {
                 <tr key={g.id} className="border-t border-border hover:bg-muted/20 transition-colors">
                   <td className="px-4 py-3.5"><div className="flex items-center gap-3"><Avatar name={g.fullName} size="sm"/><span className="text-xs font-bold text-foreground">{g.fullName}</span></div></td>
                   <td className="px-4 py-3.5 text-xs text-muted-foreground">{g.email}</td>
-                  <td className="px-4 py-3.5"><Badge variant={g.isActive ? "success" : "danger"}>{g.isActive ? "Active" : "Inactive"}</Badge></td>
+                  <td className="px-4 py-3.5"><AccountStatusBadge status={g.accountStatus} /></td>
                   <td className="px-4 py-3.5 text-xs text-muted-foreground">{new Date(g.createdAt).toLocaleDateString()}</td>
                   <td className="px-4 py-3.5"><div className="flex gap-1">
                     <button onClick={() => setViewUser(g)} className="w-7 h-7 rounded-lg hover:bg-muted flex items-center justify-center" title="View"><Eye className="w-3.5 h-3.5 text-muted-foreground"/></button>
@@ -95,7 +96,7 @@ export default function AdminGuideManagement() {
             <div className="flex items-center gap-3 mb-4"><Avatar name={viewUser.fullName} size="md"/><div><p className="font-bold text-foreground text-sm">{viewUser.fullName}</p><p className="text-xs text-muted-foreground">{viewUser.email}</p></div></div>
             <div className="flex flex-col gap-2 text-sm">
               <div className="flex justify-between"><span className="text-muted-foreground">Role</span><span className="font-medium">{viewUser.roleName}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Status</span><Badge variant={viewUser.isActive ? "success" : "danger"}>{viewUser.isActive ? "Active" : "Inactive"}</Badge></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Status</span><AccountStatusBadge status={viewUser.accountStatus} /></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Created</span><span>{new Date(viewUser.createdAt).toLocaleDateString()}</span></div>
             </div>
           </div>

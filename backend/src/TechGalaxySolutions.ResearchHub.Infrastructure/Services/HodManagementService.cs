@@ -1,6 +1,7 @@
 using AutoMapper;
 using BCrypt.Net;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.Common;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.HodManagement;
 using TechGalaxySolutions.ResearchHub.Application.Exceptions;
@@ -14,11 +15,17 @@ public class HodManagementService : IHodManagementService
 {
     private readonly ApplicationDbContext _context;
     private readonly IMapper _mapper;
+    private readonly IEmailService _emailService;
+    private readonly IAuditLogService _auditLogService;
+    private readonly ILogger<HodManagementService> _logger;
 
-    public HodManagementService(ApplicationDbContext context, IMapper mapper)
+    public HodManagementService(ApplicationDbContext context, IMapper mapper, IEmailService emailService, IAuditLogService auditLogService, ILogger<HodManagementService> logger)
     {
         _context = context;
         _mapper = mapper;
+        _emailService = emailService;
+        _auditLogService = auditLogService;
+        _logger = logger;
     }
 
     public async Task<PagedResponse<HodResponse>> GetHodsAsync(PagedRequest request, Guid? collegeId = null, Guid? departmentId = null)
@@ -111,11 +118,18 @@ public class HodManagementService : IHodManagementService
         return _mapper.Map<HodResponse>(hod);
     }
 
-    public async Task<HodResponse> CreateHodAsync(CreateHodRequest request)
+    public async Task<HodResponse> CreateHodAsync(CreateHodRequest request, Guid? collegeId = null)
     {
         var hodRole = await _context.Set<Role>().AsNoTracking()
             .FirstOrDefaultAsync(r => r.Name == "HOD" && !r.IsDeleted)
             ?? throw new InvalidOperationException("HOD role not found");
+
+        var department = await _context.Set<Department>().AsNoTracking()
+            .FirstOrDefaultAsync(d => d.Id == request.DepartmentId && !d.IsDeleted)
+            ?? throw new KeyNotFoundException("Department not found");
+
+        if (collegeId.HasValue && department.CollegeId != collegeId.Value)
+            throw new ForbiddenException("You are not allowed to create HODs in another college");
 
         var emailExists = await _context.Set<User>().AsNoTracking()
             .AnyAsync(u => u.Email == request.Email && !u.IsDeleted);
@@ -130,10 +144,6 @@ public class HodManagementService : IHodManagementService
                 throw new ConflictException("Employee ID already exists");
         }
 
-        var department = await _context.Set<Department>().AsNoTracking()
-            .FirstOrDefaultAsync(d => d.Id == request.DepartmentId && !d.IsDeleted)
-            ?? throw new KeyNotFoundException("Department not found");
-
         var activeHodExists = await _context.Set<Hod>().AsNoTracking()
             .AnyAsync(h => h.DepartmentId == request.DepartmentId && h.IsActive && !h.IsDeleted);
         if (activeHodExists)
@@ -144,6 +154,7 @@ public class HodManagementService : IHodManagementService
         if (string.IsNullOrWhiteSpace(employeeId))
             employeeId = await GenerateEmployeeIdAsync();
 
+        var activationToken = Guid.NewGuid().ToString();
         var user = new User
         {
             FullName = request.FullName,
@@ -154,9 +165,11 @@ public class HodManagementService : IHodManagementService
             RoleId = hodRole.Id,
             CollegeId = department.CollegeId,
             DepartmentId = request.DepartmentId,
-            IsActive = true,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
-            EmailVerified = false
+            TemporaryPasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+            TemporaryPasswordExpiresAt = DateTime.UtcNow.AddHours(72),
+            ActivationToken = activationToken,
+            ActivationExpiry = DateTime.UtcNow.AddHours(24),
+            Status = "Draft",
         };
 
         _context.Set<User>().Add(user);
@@ -171,7 +184,7 @@ public class HodManagementService : IHodManagementService
             YearsOfExperience = request.YearsOfExperience,
             ProfilePhoto = request.ProfilePhoto,
             Status = request.Status,
-            IsActive = true
+            IsActive = false
         };
 
         _context.Set<Hod>().Add(hod);
@@ -181,10 +194,28 @@ public class HodManagementService : IHodManagementService
         await _context.Entry(hod).Reference(h => h.Department).LoadAsync();
         await _context.Entry(hod).Reference(h => h.College).LoadAsync();
 
+        try
+        {
+            _logger.LogInformation("Sending welcome email to {Recipient}...", user.Email);
+            await _emailService.SendWelcomeEmailAsync(user.Email, user.FullName, password, activationToken);
+            user.Status = "InvitationSent";
+            user.InvitationSentAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send welcome email for HOD {Email}", user.Email);
+            user.Status = "Draft";
+            await _context.SaveChangesAsync();
+        }
+
+        await _auditLogService.LogAsync(user.Id, "User Created", "User", user.Id.ToString(), null, request.FullName);
+        _logger.LogInformation("HOD created: {Email}, status: {Status}", user.Email, user.Status);
+
         return _mapper.Map<HodResponse>(hod);
     }
 
-    public async Task<HodResponse> UpdateHodAsync(Guid id, UpdateHodRequest request)
+    public async Task<HodResponse> UpdateHodAsync(Guid id, UpdateHodRequest request, Guid? collegeId = null)
     {
         var hod = await _context.Set<Hod>()
             .Include(h => h.User)
@@ -192,6 +223,9 @@ public class HodManagementService : IHodManagementService
             .Include(h => h.College)
             .FirstOrDefaultAsync(h => h.Id == id && !h.IsDeleted)
             ?? throw new KeyNotFoundException("HOD not found");
+
+        if (collegeId.HasValue && hod.CollegeId != collegeId.Value)
+            throw new ForbiddenException("You are not allowed to manage HODs in another college");
 
         var emailExists = await _context.Set<User>().AsNoTracking()
             .AnyAsync(u => u.Email == request.Email && u.Id != hod.UserId && !u.IsDeleted);
@@ -209,6 +243,9 @@ public class HodManagementService : IHodManagementService
         var department = await _context.Set<Department>().AsNoTracking()
             .FirstOrDefaultAsync(d => d.Id == request.DepartmentId && !d.IsDeleted)
             ?? throw new KeyNotFoundException("Department not found");
+
+        if (collegeId.HasValue && department.CollegeId != collegeId.Value)
+            throw new ForbiddenException("You are not allowed to move HODs to another college");
 
         if (request.DepartmentId != hod.DepartmentId)
         {

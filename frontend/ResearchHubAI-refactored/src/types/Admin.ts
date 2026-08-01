@@ -171,6 +171,21 @@ export interface UserResponse {
   lockedUntil?: string | null;
   temporaryPasswordExpiresAt?: string | null;
   accountStatus?: string;
+  enrollment?: string | null;
+  researchTopic?: string | null;
+  guideId?: string | null;
+  guideName?: string | null;
+  academicYearId?: string | null;
+  academicYearName?: string | null;
+  semesterId?: string | null;
+  semesterName?: string | null;
+  section?: string | null;
+  specialization?: string | null;
+  bio?: string | null;
+  qualification?: string | null;
+  yearsOfExperience?: number | null;
+  assignedStudents?: number;
+  researchStatus?: string | null;
 }
 
 export interface CreateUserRequest {
@@ -185,6 +200,16 @@ export interface CreateUserRequest {
   phoneNumber?: string;
   employeeId?: string;
   designation?: string;
+  enrollment?: string;
+  guideId?: string;
+  academicYearId?: string;
+  semesterId?: string;
+  section?: string;
+  researchTopic?: string;
+  specialization?: string;
+  bio?: string;
+  qualification?: string;
+  yearsOfExperience?: number;
 }
 
 export interface UpdateUserRequest {
@@ -194,9 +219,20 @@ export interface UpdateUserRequest {
   roleId: string;
   collegeId?: string;
   departmentId?: string;
+  password?: string;
   phoneNumber?: string;
   employeeId?: string;
   designation?: string;
+  enrollment?: string;
+  guideId?: string;
+  academicYearId?: string;
+  semesterId?: string;
+  section?: string;
+  researchTopic?: string;
+  specialization?: string;
+  bio?: string;
+  qualification?: string;
+  yearsOfExperience?: number;
 }
 
 export interface RoleResponse {
@@ -390,6 +426,11 @@ export interface HodResponse {
   isActive: boolean;
   createdAt: string;
   updatedAt?: string | null;
+  userStatus?: string | null;
+  activatedAt?: string | null;
+  lastLoginAt?: string | null;
+  emailVerified?: boolean;
+  accountStatus?: string;
 }
 
 export interface CreateHodRequest {

@@ -33,20 +33,7 @@ public class UserManagementService : IUserManagementService
         _logger = logger;
     }
 
-    public async Task<List<UserResponse>> GetAllUsersAsync()
-    {
-        var users = await _context.Set<User>().AsNoTracking()
-            .Include(u => u.Role)
-            .Include(u => u.DepartmentEntity)
-            .Include(u => u.CollegeEntity)
-            .Where(u => !u.IsDeleted)
-            .OrderBy(u => u.FullName)
-            .ToListAsync();
-
-        return _mapper.Map<List<UserResponse>>(users);
-    }
-
-    public async Task<PagedResponse<UserResponse>> GetUsersAsync(PagedRequest request)
+    public async Task<List<UserResponse>> GetAllUsersAsync(Guid? collegeId = null)
     {
         var query = _context.Set<User>().AsNoTracking()
             .Include(u => u.Role)
@@ -54,9 +41,57 @@ public class UserManagementService : IUserManagementService
             .Include(u => u.CollegeEntity)
             .Where(u => !u.IsDeleted);
 
+        if (collegeId.HasValue)
+            query = query.Where(u => u.CollegeId == collegeId.Value);
+
+        var users = await query
+            .OrderBy(u => u.FullName)
+            .ToListAsync();
+
+        var items = _mapper.Map<List<UserResponse>>(users);
+        await PopulateRoleDetailsAsync(items);
+        return items;
+    }
+
+    public async Task<PagedResponse<UserResponse>> GetUsersAsync(PagedRequest request, Guid? collegeId = null)
+    {
+        var query = _context.Set<User>().AsNoTracking()
+            .Include(u => u.Role)
+            .Include(u => u.DepartmentEntity)
+            .Include(u => u.CollegeEntity)
+            .Where(u => !u.IsDeleted);
+
+        if (collegeId.HasValue)
+            query = query.Where(u => u.CollegeId == collegeId.Value);
+
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
         {
             var term = request.SearchTerm.ToLower();
+
+            var enrollmentUserIds = await _context.Set<StudentProfile>().AsNoTracking()
+                .Where(sp => !sp.IsDeleted && sp.Enrollment != null && sp.Enrollment.ToLower().Contains(term))
+                .Select(sp => sp.UserId)
+                .ToListAsync();
+
+            var academicYearIds = await _context.Set<AcademicYear>().AsNoTracking()
+                .Where(a => !a.IsDeleted && a.Name.ToLower().Contains(term))
+                .Select(a => a.Id)
+                .ToListAsync();
+
+            var semesterIds = await _context.Set<Semester>().AsNoTracking()
+                .Where(s => !s.IsDeleted && s.Name.ToLower().Contains(term))
+                .Select(s => s.Id)
+                .ToListAsync();
+
+            var academicMatchedUserIds = await _context.Set<StudentProfile>().AsNoTracking()
+                .Where(sp => !sp.IsDeleted &&
+                    ((sp.AcademicYearId.HasValue && academicYearIds.Contains(sp.AcademicYearId.Value)) ||
+                     (sp.SemesterId.HasValue && semesterIds.Contains(sp.SemesterId.Value))))
+                .Select(sp => sp.UserId)
+                .ToListAsync();
+
+            var allMatchedUserIds = enrollmentUserIds.Concat(academicMatchedUserIds).Distinct().ToList();
+
             query = query.Where(u =>
                 (u.EmployeeId != null && u.EmployeeId.ToLower().Contains(term)) ||
                 u.FullName.ToLower().Contains(term) ||
@@ -65,7 +100,8 @@ public class UserManagementService : IUserManagementService
                 u.Role.Name.ToLower().Contains(term) ||
                 (u.DepartmentEntity != null && u.DepartmentEntity.DepartmentName.ToLower().Contains(term)) ||
                 (u.CollegeEntity != null && u.CollegeEntity.Name.ToLower().Contains(term)) ||
-                u.Status.ToLower().Contains(term));
+                u.Status.ToLower().Contains(term) ||
+                allMatchedUserIds.Contains(u.Id));
         }
 
         if (!string.IsNullOrWhiteSpace(request.RoleFilter))
@@ -77,7 +113,12 @@ public class UserManagementService : IUserManagementService
         if (!string.IsNullOrWhiteSpace(request.StatusFilter))
         {
             var statusTerm = request.StatusFilter.ToLower();
-            query = query.Where(u => u.Status.ToLower() == statusTerm);
+            if (statusTerm == "inactive")
+                query = query.Where(u => !u.IsActive);
+            else if (statusTerm == "pending")
+                query = query.Where(u => u.Status.ToLower() == "draft" || u.Status.ToLower() == "invitationsent");
+            else
+                query = query.Where(u => u.Status.ToLower() == statusTerm);
         }
 
         if (!string.IsNullOrWhiteSpace(request.DepartmentFilter) && Guid.TryParse(request.DepartmentFilter, out var deptId))
@@ -85,9 +126,36 @@ public class UserManagementService : IUserManagementService
             query = query.Where(u => u.DepartmentId == deptId);
         }
 
-        if (!string.IsNullOrWhiteSpace(request.CollegeFilter) && Guid.TryParse(request.CollegeFilter, out var collegeId))
+        if (!string.IsNullOrWhiteSpace(request.CollegeFilter) && Guid.TryParse(request.CollegeFilter, out var reqCollegeId))
         {
-            query = query.Where(u => u.CollegeId == collegeId);
+            query = query.Where(u => u.CollegeId == reqCollegeId);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.GuideFilter) && Guid.TryParse(request.GuideFilter, out var guideId))
+        {
+            var studentUserIds = await _context.Set<StudentProfile>().AsNoTracking()
+                .Where(sp => sp.GuideId == guideId && !sp.IsDeleted)
+                .Select(sp => sp.UserId)
+                .ToListAsync();
+            query = query.Where(u => studentUserIds.Contains(u.Id));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.AcademicYearFilter) && Guid.TryParse(request.AcademicYearFilter, out var academicYearId))
+        {
+            var studentUserIds = await _context.Set<StudentProfile>().AsNoTracking()
+                .Where(sp => sp.AcademicYearId == academicYearId && !sp.IsDeleted)
+                .Select(sp => sp.UserId)
+                .ToListAsync();
+            query = query.Where(u => studentUserIds.Contains(u.Id));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.SemesterFilter) && Guid.TryParse(request.SemesterFilter, out var semesterId))
+        {
+            var studentUserIds = await _context.Set<StudentProfile>().AsNoTracking()
+                .Where(sp => sp.SemesterId == semesterId && !sp.IsDeleted)
+                .Select(sp => sp.UserId)
+                .ToListAsync();
+            query = query.Where(u => studentUserIds.Contains(u.Id));
         }
 
         query = (request.SortField?.ToLower()) switch
@@ -95,6 +163,7 @@ public class UserManagementService : IUserManagementService
             "fullname" => request.SortDirection == "desc" ? query.OrderByDescending(u => u.FullName) : query.OrderBy(u => u.FullName),
             "email" => request.SortDirection == "desc" ? query.OrderByDescending(u => u.Email) : query.OrderBy(u => u.Email),
             "employeeid" => request.SortDirection == "desc" ? query.OrderByDescending(u => u.EmployeeId) : query.OrderBy(u => u.EmployeeId),
+            "enrollment" => request.SortDirection == "desc" ? query.OrderByDescending(u => u.EmployeeId) : query.OrderBy(u => u.EmployeeId),
             "rolename" => request.SortDirection == "desc" ? query.OrderByDescending(u => u.Role.Name) : query.OrderBy(u => u.Role.Name),
             "department" => request.SortDirection == "desc" ? query.OrderByDescending(u => u.DepartmentEntity!.DepartmentName) : query.OrderBy(u => u.DepartmentEntity!.DepartmentName),
             "college" => request.SortDirection == "desc" ? query.OrderByDescending(u => u.CollegeEntity!.Name) : query.OrderBy(u => u.CollegeEntity!.Name),
@@ -110,6 +179,7 @@ public class UserManagementService : IUserManagementService
             .ToListAsync();
 
         var items = _mapper.Map<List<UserResponse>>(users);
+        await PopulateRoleDetailsAsync(items);
         return new PagedResponse<UserResponse>
         {
             Items = items,
@@ -119,20 +189,153 @@ public class UserManagementService : IUserManagementService
         };
     }
 
-    public async Task<UserResponse> GetUserAsync(Guid id)
+    public async Task<UserResponse> GetUserAsync(Guid id, Guid? collegeId = null)
     {
-        var user = await _context.Set<User>().AsNoTracking()
+        var query = _context.Set<User>().AsNoTracking()
             .Include(u => u.Role)
             .Include(u => u.DepartmentEntity)
             .Include(u => u.CollegeEntity)
-            .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted)
+            .Where(u => u.Id == id && !u.IsDeleted);
+
+        if (collegeId.HasValue)
+            query = query.Where(u => u.CollegeId == collegeId.Value);
+
+        var user = await query.FirstOrDefaultAsync()
             ?? throw new KeyNotFoundException("User not found");
 
-        return _mapper.Map<UserResponse>(user);
+        var response = _mapper.Map<UserResponse>(user);
+        await PopulateRoleDetailsAsync(new List<UserResponse> { response });
+        return response;
     }
 
-    public async Task<UserResponse> CreateUserAsync(CreateUserRequest request)
+    private async Task PopulateRoleDetailsAsync(List<UserResponse> users)
     {
+        if (users.Count == 0)
+            return;
+
+        var userIds = users.Select(u => u.Id).ToList();
+
+        var studentProfiles = await _context.Set<StudentProfile>().AsNoTracking()
+            .Where(sp => userIds.Contains(sp.UserId))
+            .ToDictionaryAsync(sp => sp.UserId);
+
+        var guideProfiles = await _context.Set<GuideProfile>().AsNoTracking()
+            .Where(gp => userIds.Contains(gp.UserId))
+            .ToDictionaryAsync(gp => gp.UserId);
+
+        var hods = await _context.Set<Hod>().AsNoTracking()
+            .Where(h => userIds.Contains(h.UserId))
+            .ToDictionaryAsync(h => h.UserId);
+
+        var guideUserIds = studentProfiles.Values
+            .Where(sp => sp.GuideId.HasValue)
+            .Select(sp => sp.GuideId!.Value)
+            .Distinct()
+            .ToList();
+
+        var guideNames = new Dictionary<Guid, string>();
+        if (guideUserIds.Count > 0)
+        {
+            guideNames = await _context.Set<User>().AsNoTracking()
+                .Where(u => guideUserIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => u.FullName);
+        }
+
+        var academicYears = new Dictionary<Guid, string>();
+        var semesterNames = new Dictionary<Guid, string>();
+        var studentSemesterIds = studentProfiles.Values
+            .Where(sp => sp.SemesterId.HasValue)
+            .Select(sp => sp.SemesterId!.Value)
+            .Distinct()
+            .ToList();
+        if (studentSemesterIds.Count > 0)
+        {
+            semesterNames = await _context.Set<Semester>().AsNoTracking()
+                .Where(s => studentSemesterIds.Contains(s.Id))
+                .ToDictionaryAsync(s => s.Id, s => s.Name);
+        }
+        var studentAcademicYearIds = studentProfiles.Values
+            .Where(sp => sp.AcademicYearId.HasValue)
+            .Select(sp => sp.AcademicYearId!.Value)
+            .Distinct()
+            .ToList();
+        if (studentAcademicYearIds.Count > 0)
+        {
+            academicYears = await _context.Set<AcademicYear>().AsNoTracking()
+                .Where(a => studentAcademicYearIds.Contains(a.Id))
+                .ToDictionaryAsync(a => a.Id, a => a.Name);
+        }
+
+        var guideCounts = await _context.Set<StudentProfile>().AsNoTracking()
+            .Where(s => s.GuideId.HasValue && userIds.Contains(s.GuideId.Value) && !s.IsDeleted)
+            .GroupBy(s => s.GuideId!.Value)
+            .Select(g => new { GuideId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.GuideId, g => g.Count);
+
+        var studentUserIds = studentProfiles.Keys.ToList();
+        var researchStatus = new Dictionary<Guid, string>();
+        if (studentUserIds.Count > 0)
+        {
+            var projects = await _context.Set<Project>().AsNoTracking()
+                .Where(p => studentUserIds.Contains(p.StudentId) && !p.IsDeleted)
+                .OrderBy(p => p.StudentId)
+                .ThenByDescending(p => p.UpdatedAt)
+                .Select(p => new { p.StudentId, p.Status })
+                .ToListAsync();
+
+            researchStatus = projects
+                .GroupBy(p => p.StudentId)
+                .ToDictionary(g => g.Key, g => g.First().Status switch
+                {
+                    TechGalaxySolutions.ResearchHub.Domain.Entities.Enums.ProjectStatus.NotStarted => "Not Started",
+                    TechGalaxySolutions.ResearchHub.Domain.Entities.Enums.ProjectStatus.InProgress => "In Progress",
+                    TechGalaxySolutions.ResearchHub.Domain.Entities.Enums.ProjectStatus.Completed => "Completed",
+                    TechGalaxySolutions.ResearchHub.Domain.Entities.Enums.ProjectStatus.OnHold => "On Hold",
+                    _ => "Not Started"
+                });
+        }
+
+        foreach (var user in users)
+        {
+            if (studentProfiles.TryGetValue(user.Id, out var student))
+            {
+                user.Enrollment = string.IsNullOrEmpty(student.Enrollment) ? user.EmployeeId : student.Enrollment;
+                user.EmployeeId = string.IsNullOrEmpty(user.EmployeeId) ? student.Enrollment : user.EmployeeId;
+                user.ResearchTopic = student.ResearchTopic;
+                user.GuideId = student.GuideId;
+                user.Section = student.Section;
+                user.AcademicYearId = student.AcademicYearId;
+                user.SemesterId = student.SemesterId;
+                if (student.GuideId.HasValue && guideNames.TryGetValue(student.GuideId.Value, out var guideName))
+                    user.GuideName = guideName;
+                if (user.SemesterId.HasValue && semesterNames.TryGetValue(user.SemesterId.Value, out var semesterName))
+                    user.SemesterName = semesterName;
+                if (user.AcademicYearId.HasValue && academicYears.TryGetValue(user.AcademicYearId.Value, out var academicYearName))
+                    user.AcademicYearName = academicYearName;
+                user.Designation ??= "Student";
+                user.ResearchStatus = researchStatus.TryGetValue(user.Id, out var status) ? status : "No Project";
+            }
+
+            if (guideProfiles.TryGetValue(user.Id, out var guide))
+            {
+                user.Specialization = guide.Specialization;
+                user.Bio = guide.Bio;
+                user.Designation ??= guide.Designation;
+                user.AssignedStudents = guideCounts.TryGetValue(user.Id, out var count) ? count : 0;
+            }
+
+            if (hods.TryGetValue(user.Id, out var hod))
+            {
+                user.Qualification = hod.Qualification;
+                user.YearsOfExperience = hod.YearsOfExperience;
+            }
+        }
+    }
+
+    public async Task<UserResponse> CreateUserAsync(CreateUserRequest request, Guid? collegeId = null)
+    {
+        var effectiveCollegeId = collegeId ?? request.CollegeId;
+
         var emailExists = await _context.Set<User>().AsNoTracking()
             .AnyAsync(u => u.Email == request.Email && !u.IsDeleted);
 
@@ -171,16 +374,45 @@ public class UserManagementService : IUserManagementService
         var isStudent = roleName == "student";
         var needsCollegeDept = isStudent || isGuide || isHod;
 
-        if (!isSuperAdmin && !request.CollegeId.HasValue)
+        if (!isSuperAdmin && !effectiveCollegeId.HasValue)
             throw new InvalidOperationException("College is required for this role");
 
         if (needsCollegeDept && !request.DepartmentId.HasValue)
             throw new InvalidOperationException("Department is required for this role");
 
-        if (request.CollegeId.HasValue)
+        if (isStudent)
+        {
+            var studentId = !string.IsNullOrWhiteSpace(request.EmployeeId) ? request.EmployeeId : request.Enrollment;
+            if (string.IsNullOrWhiteSpace(studentId))
+                throw new InvalidOperationException("Student ID is required for the Student role");
+            if (!request.GuideId.HasValue)
+                throw new InvalidOperationException("Assigned guide is required for the Student role");
+            if (!request.AcademicYearId.HasValue)
+                throw new InvalidOperationException("Academic Year is required for the Student role");
+            if (!request.SemesterId.HasValue)
+                throw new InvalidOperationException("Semester is required for the Student role");
+        }
+
+        if (isStudent && request.AcademicYearId.HasValue)
+        {
+            var academicYearExists = await _context.Set<AcademicYear>().AsNoTracking()
+                .AnyAsync(a => a.Id == request.AcademicYearId.Value && !a.IsDeleted);
+            if (!academicYearExists)
+                throw new KeyNotFoundException("Selected academic year not found");
+        }
+
+        if (isStudent && request.SemesterId.HasValue)
+        {
+            var semesterExists = await _context.Set<Semester>().AsNoTracking()
+                .AnyAsync(s => s.Id == request.SemesterId.Value && !s.IsDeleted);
+            if (!semesterExists)
+                throw new KeyNotFoundException("Selected semester not found");
+        }
+
+        if (effectiveCollegeId.HasValue)
         {
             var collegeExists = await _context.Set<College>().AsNoTracking()
-                .AnyAsync(c => c.Id == request.CollegeId.Value && !c.IsDeleted);
+                .AnyAsync(c => c.Id == effectiveCollegeId.Value && !c.IsDeleted);
 
             if (!collegeExists)
                 throw new KeyNotFoundException("Selected college not found");
@@ -194,10 +426,10 @@ public class UserManagementService : IUserManagementService
             if (!departmentExists)
                 throw new KeyNotFoundException("Selected department not found");
 
-            if (request.CollegeId.HasValue)
+            if (effectiveCollegeId.HasValue)
             {
                 var departmentBelongs = await _context.Set<Department>().AsNoTracking()
-                    .AnyAsync(d => d.Id == request.DepartmentId.Value && d.CollegeId == request.CollegeId.Value && !d.IsDeleted);
+                    .AnyAsync(d => d.Id == request.DepartmentId.Value && d.CollegeId == effectiveCollegeId.Value && !d.IsDeleted);
 
                 if (!departmentBelongs)
                     throw new InvalidOperationException("Department does not belong to the selected college");
@@ -206,15 +438,21 @@ public class UserManagementService : IUserManagementService
 
         var password = GenerateRandomPassword();
         var activationToken = Guid.NewGuid().ToString();
+
+        var isStudentRole = role.Name.ToLowerInvariant() == "student";
+        var effectiveEmployeeId = isStudentRole
+            ? (!string.IsNullOrWhiteSpace(request.EmployeeId) ? request.EmployeeId : request.Enrollment)
+            : request.EmployeeId;
+
         var user = new User
         {
             FullName = request.FullName,
             Email = request.Email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
             RoleId = request.RoleId,
-            CollegeId = request.CollegeId,
+            CollegeId = effectiveCollegeId,
             DepartmentId = request.DepartmentId,
-            EmployeeId = request.EmployeeId,
+            EmployeeId = effectiveEmployeeId,
             PhoneNumber = request.PhoneNumber,
             Designation = request.Designation,
             IsFirstLogin = request.Password == null,
@@ -234,8 +472,14 @@ public class UserManagementService : IUserManagementService
             _context.Set<StudentProfile>().Add(new StudentProfile
             {
                 UserId = user.Id,
-                Department = "",
-                Institution = ""
+                Enrollment = !string.IsNullOrWhiteSpace(request.Enrollment) ? request.Enrollment : (request.EmployeeId ?? ""),
+                Department = request.DepartmentId.HasValue ? await GetDepartmentNameAsync(request.DepartmentId.Value) : "",
+                Institution = effectiveCollegeId.HasValue ? await GetCollegeNameAsync(effectiveCollegeId.Value) : "",
+                ResearchTopic = request.ResearchTopic,
+                GuideId = request.GuideId,
+                AcademicYearId = request.AcademicYearId,
+                SemesterId = request.SemesterId,
+                Section = request.Section
             });
             await _context.SaveChangesAsync();
         }
@@ -244,8 +488,11 @@ public class UserManagementService : IUserManagementService
             _context.Set<GuideProfile>().Add(new GuideProfile
             {
                 UserId = user.Id,
-                Department = "",
-                Institution = ""
+                Department = request.DepartmentId.HasValue ? await GetDepartmentNameAsync(request.DepartmentId.Value) : "",
+                Institution = effectiveCollegeId.HasValue ? await GetCollegeNameAsync(effectiveCollegeId.Value) : "",
+                Specialization = request.Specialization ?? "",
+                Bio = request.Bio ?? "",
+                Designation = request.Designation ?? ""
             });
             await _context.SaveChangesAsync();
         }
@@ -255,7 +502,11 @@ public class UserManagementService : IUserManagementService
             {
                 UserId = user.Id,
                 DepartmentId = user.DepartmentId.Value,
-                CollegeId = user.CollegeId.Value
+                CollegeId = user.CollegeId.Value,
+                Qualification = request.Qualification ?? "",
+                YearsOfExperience = request.YearsOfExperience ?? 0,
+                Status = request.IsActive ? "Active" : "Inactive",
+                IsActive = request.IsActive
             });
             await _context.SaveChangesAsync();
         }
@@ -280,14 +531,24 @@ public class UserManagementService : IUserManagementService
         await _auditLogService.LogAsync(user.Id, "User Created", "User", user.Id.ToString(), null, request.FullName);
         _logger.LogInformation("User created: {Email}, status: {Status}", user.Email, user.Status);
 
-        return _mapper.Map<UserResponse>(user);
+        await _context.Entry(user).Reference(u => u.DepartmentEntity).LoadAsync();
+        await _context.Entry(user).Reference(u => u.CollegeEntity).LoadAsync();
+
+        var response = _mapper.Map<UserResponse>(user);
+        await PopulateRoleDetailsAsync(new List<UserResponse> { response });
+        return response;
     }
 
-    public async Task<UserResponse> UpdateUserAsync(Guid id, UpdateUserRequest request)
+    public async Task<UserResponse> UpdateUserAsync(Guid id, UpdateUserRequest request, Guid? collegeId = null)
     {
-        var user = await _context.Set<User>()
+        var query = _context.Set<User>()
             .Include(u => u.Role)
-            .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted)
+            .Where(u => u.Id == id && !u.IsDeleted);
+
+        if (collegeId.HasValue)
+            query = query.Where(u => u.CollegeId == collegeId.Value);
+
+        var user = await query.FirstOrDefaultAsync()
             ?? throw new KeyNotFoundException("User not found");
 
         var emailExists = await _context.Set<User>().AsNoTracking()
@@ -295,12 +556,6 @@ public class UserManagementService : IUserManagementService
 
         if (emailExists)
             throw new ConflictException("Email is already in use by another user");
-
-        var roleExists = await _context.Set<Role>().AsNoTracking()
-            .AnyAsync(r => r.Id == request.RoleId && !r.IsDeleted);
-
-        if (!roleExists)
-            throw new InvalidOperationException("Role is invalid");
 
         if (request.EmployeeId is { Length: > 0 })
         {
@@ -320,30 +575,156 @@ public class UserManagementService : IUserManagementService
                 throw new ConflictException("Phone number already exists");
         }
 
+        var role = await _context.Set<Role>().AsNoTracking()
+            .FirstOrDefaultAsync(r => r.Id == request.RoleId && !r.IsDeleted);
+        if (role == null)
+            throw new InvalidOperationException("Role is invalid");
+
+        var roleName = role.Name.ToLowerInvariant();
+        var isSuperAdmin = roleName == "superadmin";
+        var isStudent = roleName == "student";
+        var isGuide = roleName == "guide";
+        var isHod = roleName == "hod";
+        var needsCollegeDept = isStudent || isGuide || isHod;
+
+        if (!isSuperAdmin && !request.CollegeId.HasValue)
+            throw new InvalidOperationException("College is required for this role");
+
+        if (needsCollegeDept && !request.DepartmentId.HasValue)
+            throw new InvalidOperationException("Department is required for this role");
+
+        if (isStudent)
+        {
+            var studentId = !string.IsNullOrWhiteSpace(request.EmployeeId) ? request.EmployeeId : request.Enrollment;
+            if (string.IsNullOrWhiteSpace(studentId))
+                throw new InvalidOperationException("Student ID is required for the Student role");
+            if (!request.GuideId.HasValue)
+                throw new InvalidOperationException("Assigned guide is required for the Student role");
+            if (!request.AcademicYearId.HasValue)
+                throw new InvalidOperationException("Academic Year is required for the Student role");
+            if (!request.SemesterId.HasValue)
+                throw new InvalidOperationException("Semester is required for the Student role");
+        }
+
+        if (isStudent && request.AcademicYearId.HasValue)
+        {
+            var academicYearExists = await _context.Set<AcademicYear>().AsNoTracking()
+                .AnyAsync(a => a.Id == request.AcademicYearId.Value && !a.IsDeleted);
+            if (!academicYearExists)
+                throw new KeyNotFoundException("Selected academic year not found");
+        }
+
+        if (isStudent && request.SemesterId.HasValue)
+        {
+            var semesterExists = await _context.Set<Semester>().AsNoTracking()
+                .AnyAsync(s => s.Id == request.SemesterId.Value && !s.IsDeleted);
+            if (!semesterExists)
+                throw new KeyNotFoundException("Selected semester not found");
+        }
+
+        var effectiveEmployeeId = isStudent
+            ? (!string.IsNullOrWhiteSpace(request.EmployeeId) ? request.EmployeeId : request.Enrollment)
+            : request.EmployeeId;
+
         user.FullName = request.FullName;
         user.Email = request.Email;
         user.IsActive = request.IsActive;
         user.RoleId = request.RoleId;
         user.CollegeId = request.CollegeId;
         user.DepartmentId = request.DepartmentId;
-        user.EmployeeId = request.EmployeeId;
+        user.EmployeeId = effectiveEmployeeId;
         user.PhoneNumber = request.PhoneNumber;
         user.Designation = request.Designation;
         user.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
 
+        if (isStudent)
+        {
+            var student = await _context.Set<StudentProfile>()
+                .FirstOrDefaultAsync(sp => sp.UserId == user.Id && !sp.IsDeleted);
+
+            if (student == null)
+            {
+                student = new StudentProfile { UserId = user.Id };
+                _context.Set<StudentProfile>().Add(student);
+            }
+
+            student.Enrollment = !string.IsNullOrWhiteSpace(request.Enrollment) ? request.Enrollment : (request.EmployeeId ?? "");
+            student.Department = request.DepartmentId.HasValue ? await GetDepartmentNameAsync(request.DepartmentId.Value) : "";
+            student.Institution = request.CollegeId.HasValue ? await GetCollegeNameAsync(request.CollegeId.Value) : "";
+            student.ResearchTopic = request.ResearchTopic;
+            student.GuideId = request.GuideId;
+            student.AcademicYearId = request.AcademicYearId;
+            student.SemesterId = request.SemesterId;
+            student.Section = request.Section;
+            student.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+        else if (isGuide)
+        {
+            var guide = await _context.Set<GuideProfile>()
+                .FirstOrDefaultAsync(gp => gp.UserId == user.Id && !gp.IsDeleted);
+
+            if (guide == null)
+            {
+                guide = new GuideProfile { UserId = user.Id };
+                _context.Set<GuideProfile>().Add(guide);
+            }
+
+            guide.Department = request.DepartmentId.HasValue ? await GetDepartmentNameAsync(request.DepartmentId.Value) : "";
+            guide.Institution = request.CollegeId.HasValue ? await GetCollegeNameAsync(request.CollegeId.Value) : "";
+            guide.Specialization = request.Specialization ?? "";
+            guide.Bio = request.Bio ?? "";
+            guide.Designation = request.Designation ?? "";
+            guide.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+        else if (isHod)
+        {
+            var hod = await _context.Set<Hod>()
+                .FirstOrDefaultAsync(h => h.UserId == user.Id && !h.IsDeleted);
+
+            if (hod == null)
+            {
+                hod = new Hod
+                {
+                    UserId = user.Id,
+                    DepartmentId = request.DepartmentId.GetValueOrDefault(),
+                    CollegeId = request.CollegeId.GetValueOrDefault()
+                };
+                _context.Set<Hod>().Add(hod);
+            }
+
+            hod.DepartmentId = request.DepartmentId.GetValueOrDefault();
+            hod.CollegeId = request.CollegeId.GetValueOrDefault();
+            hod.Qualification = request.Qualification ?? "";
+            hod.YearsOfExperience = request.YearsOfExperience ?? 0;
+            hod.Status = request.IsActive ? "Active" : "Inactive";
+            hod.IsActive = request.IsActive;
+            hod.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+
         await _auditLogService.LogAsync(user.Id, "User Updated", "User", user.Id.ToString(), null, request.FullName);
 
-        return _mapper.Map<UserResponse>(user);
+        await _context.Entry(user).Reference(u => u.DepartmentEntity).LoadAsync();
+        await _context.Entry(user).Reference(u => u.CollegeEntity).LoadAsync();
+
+        var response = _mapper.Map<UserResponse>(user);
+        await PopulateRoleDetailsAsync(new List<UserResponse> { response });
+        return response;
     }
 
-    public async Task DeleteUserAsync(Guid id)
+    public async Task DeleteUserAsync(Guid id, Guid? collegeId = null)
     {
         _logger.LogInformation("DeleteUserAsync called with Id: {UserId}", id);
 
-        var user = await _context.Set<User>()
-            .FirstOrDefaultAsync(u => u.Id == id);
+        var query = _context.Set<User>().Where(u => u.Id == id);
+        if (collegeId.HasValue)
+            query = query.Where(u => u.CollegeId == collegeId.Value);
+
+        var user = await query.FirstOrDefaultAsync();
 
         if (user == null)
         {
@@ -516,5 +897,21 @@ public class UserManagementService : IUserManagementService
         for (int i = 0; i < 12; i++)
             password[i] = chars[random.Next(chars.Length)];
         return new string(password);
+    }
+
+    private async Task<string> GetDepartmentNameAsync(Guid departmentId)
+    {
+        return await _context.Set<Department>().AsNoTracking()
+            .Where(d => d.Id == departmentId && !d.IsDeleted)
+            .Select(d => d.DepartmentName)
+            .FirstOrDefaultAsync() ?? "";
+    }
+
+    private async Task<string> GetCollegeNameAsync(Guid collegeId)
+    {
+        return await _context.Set<College>().AsNoTracking()
+            .Where(c => c.Id == collegeId && !c.IsDeleted)
+            .Select(c => c.Name)
+            .FirstOrDefaultAsync() ?? "";
     }
 }

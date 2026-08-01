@@ -20,38 +20,44 @@ public class AdminUsersController : ControllerBase
         _authService = authService;
     }
 
+    private Guid? GetCollegeId()
+    {
+        var claim = User.FindFirst("CollegeId")?.Value;
+        return !string.IsNullOrEmpty(claim) && Guid.TryParse(claim, out var cid) ? cid : null;
+    }
+
     [HttpGet("all")]
     public async Task<IActionResult> GetAllUsers()
     {
-        var result = await _userManagementService.GetAllUsersAsync();
+        var result = await _userManagementService.GetAllUsersAsync(GetCollegeId());
         return Ok(result);
     }
 
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] PagedRequest request)
     {
-        var result = await _userManagementService.GetUsersAsync(request);
+        var result = await _userManagementService.GetUsersAsync(request, GetCollegeId());
         return Ok(result);
     }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var result = await _userManagementService.GetUserAsync(id);
+        var result = await _userManagementService.GetUserAsync(id, GetCollegeId());
         return Ok(result);
     }
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateUserRequest request)
     {
-        var result = await _userManagementService.CreateUserAsync(request);
+        var result = await _userManagementService.CreateUserAsync(request, GetCollegeId());
         return Created(string.Empty, result);
     }
 
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserRequest request)
     {
-        var result = await _userManagementService.UpdateUserAsync(id, request);
+        var result = await _userManagementService.UpdateUserAsync(id, request, GetCollegeId());
         return Ok(result);
     }
 
@@ -60,7 +66,7 @@ public class AdminUsersController : ControllerBase
     {
         try
         {
-            await _userManagementService.DeleteUserAsync(id);
+            await _userManagementService.DeleteUserAsync(id, GetCollegeId());
             return Ok(new { message = "User deleted successfully." });
         }
         catch (KeyNotFoundException)

@@ -90,15 +90,54 @@ public class AuthService : IAuthService
 
         if (user.Status == "Active")
         {
-            return new ValidateActivationTokenResult { Valid = false };
+            return new ValidateActivationTokenResult { Valid = false, Used = true, FullName = user.FullName, Email = user.Email, UserId = user.Id };
         }
 
         if (user.ActivationExpiry.HasValue && user.ActivationExpiry.Value < DateTime.UtcNow)
         {
-            return new ValidateActivationTokenResult { Valid = false, Expired = true };
+            return new ValidateActivationTokenResult { Valid = false, Expired = true, FullName = user.FullName, Email = user.Email, UserId = user.Id };
         }
 
-        return new ValidateActivationTokenResult { Valid = true, FullName = user.FullName };
+        return new ValidateActivationTokenResult { Valid = true, FullName = user.FullName, Email = user.Email, UserId = user.Id };
+    }
+
+    public async Task ResendActivationByTokenAsync(string token)
+    {
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.ActivationToken == token && !u.IsDeleted)
+            ?? throw new KeyNotFoundException("User not found");
+
+        if (user.Status != "Draft" && user.Status != "InvitationSent")
+        {
+            throw new InvalidOperationException("Account is already active. Cannot resend invitation.");
+        }
+
+        var temporaryPassword = GenerateRandomPassword();
+        var activationToken = Guid.NewGuid().ToString();
+
+        user.TemporaryPasswordHash = BCrypt.Net.BCrypt.HashPassword(temporaryPassword);
+        user.TemporaryPasswordExpiresAt = DateTime.UtcNow.AddHours(72);
+        user.ActivationToken = activationToken;
+        user.ActivationExpiry = DateTime.UtcNow.AddHours(24);
+        user.InvitationSentAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Resending invitation email to {Recipient}...", user.Email);
+
+        try
+        {
+            await _emailService.SendWelcomeEmailAsync(user.Email, user.FullName, temporaryPassword, activationToken);
+            user.Status = "InvitationSent";
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to resend invitation email to {Email}", user.Email);
+            throw new InvalidOperationException($"Invitation email failed: {ex.Message}", ex);
+        }
+
+        await _auditLogService.LogAsync(user.Id, "Invitation Resent", "User", user.Id.ToString(), "", user.FullName);
+        _logger.LogInformation("Invitation resent to {Email}", user.Email);
     }
 
     public async Task ActivateAccountAsync(ActivateAccountRequest request)
@@ -128,6 +167,7 @@ public class AuthService : IAuthService
         user.TemporaryPasswordExpiresAt = null;
         user.EmailVerified = true;
         user.Status = "Active";
+        user.IsActive = true;
         user.ActivatedAt = DateTime.UtcNow;
         user.IsFirstLogin = false;
         await _context.SaveChangesAsync();
@@ -162,15 +202,41 @@ public class AuthService : IAuthService
     public async Task<ValidatePasswordResetTokenResult> ValidatePasswordResetTokenAsync(string token)
     {
         var user = await _context.Users
+            .AsNoTracking()
             .FirstOrDefaultAsync(u => u.PasswordResetToken == token && !u.IsDeleted);
 
         if (user == null)
+        {
+            var usedUser = await _context.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.PasswordChangedAt != null && !u.IsDeleted);
+
             return new ValidatePasswordResetTokenResult { Valid = false };
+        }
 
         if (user.PasswordResetExpiresAt.HasValue && user.PasswordResetExpiresAt.Value < DateTime.UtcNow)
-            return new ValidatePasswordResetTokenResult { Valid = false, Expired = true };
+            return new ValidatePasswordResetTokenResult { Valid = false, Expired = true, FullName = user.FullName, Email = user.Email, UserId = user.Id };
 
-        return new ValidatePasswordResetTokenResult { Valid = true, FullName = user.FullName };
+        return new ValidatePasswordResetTokenResult { Valid = true, FullName = user.FullName, Email = user.Email, UserId = user.Id };
+    }
+
+    public async Task ResendPasswordResetByTokenAsync(string token)
+    {
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.PasswordResetToken == token && !u.IsDeleted)
+            ?? throw new KeyNotFoundException("User not found");
+
+        var newToken = Guid.NewGuid().ToString();
+        user.PasswordResetToken = newToken;
+        user.PasswordResetExpiresAt = DateTime.UtcNow.AddMinutes(30);
+        await _context.SaveChangesAsync();
+
+        var baseUrl = _frontend.BaseUrl.TrimEnd('/');
+        var resetLink = $"{baseUrl}/reset-password?token={newToken}&email={user.Email}";
+        await _emailService.SendPasswordResetEmailAsync(user.Email, user.FullName, resetLink);
+
+        await _auditLogService.LogAsync(user.Id, "Password Reset Resent", "User", user.Id.ToString(), "", user.FullName);
+        _logger.LogInformation("Password reset link resent to {Email}", user.Email);
     }
 
     public async Task ResetPasswordAsync(ResetPasswordRequest request)
@@ -367,6 +433,10 @@ public class AuthService : IAuthService
             AccessToken = accessToken,
             RefreshToken = refreshTokenEntity.Token,
             ExpiresAt = DateTime.UtcNow.AddMinutes(15),
+            FullName = user.FullName,
+            Email = user.Email,
+            Role = user.Role.Name,
+            CollegeId = user.CollegeId?.ToString(),
         };
     }
 

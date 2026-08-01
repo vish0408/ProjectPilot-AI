@@ -10,4 +10,8 @@ export interface CurrentUser {
   enrollment?: string;
   designation?: string;
   isFirstLogin?: boolean;
+  phoneNumber?: string | null;
+  employeeId?: string | null;
+  collegeId?: string | null;
+  collegeName?: string | null;
 }

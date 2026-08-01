@@ -17,4 +17,14 @@ public class StudentProfile : BaseEntity
     public Guid? GuideId { get; set; }
 
     public User? Guide { get; set; }
+
+    public Guid? AcademicYearId { get; set; }
+
+    public AcademicYear? AcademicYear { get; set; }
+
+    public Guid? SemesterId { get; set; }
+
+    public Semester? Semester { get; set; }
+
+    public string? Section { get; set; }
 }

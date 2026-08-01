@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Mail, Phone, Building, Calendar, Shield, Hash, MapPin, Activity, UserCheck, Loader2, BadgeCheck, Clock } from "lucide-react";
 import Badge from "../common/Badge";
+import AccountStatusBadge from "../common/AccountStatusBadge";
 import { adminService } from "../../services/AdminService";
 import type { UserResponse } from "../../types/Admin";
 
@@ -45,17 +46,6 @@ export default function UserViewDrawer({ open, userId, user: initialUser, onClos
     return "outline" as const;
   };
 
-  const statusColor = (status?: string) => {
-    if (!status) return "outline" as const;
-    const s = status.toLowerCase();
-    if (s === "active") return "success" as const;
-    if (s === "draft") return "outline" as const;
-    if (s === "invitationsent" || s === "invitation sent") return "warning" as const;
-    if (s === "emailverified" || s === "email verified") return "info" as const;
-    if (s === "locked" || s === "disabled") return "danger" as const;
-    return "outline" as const;
-  };
-
   const initials = user?.fullName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "??";
 
   return (
@@ -90,7 +80,7 @@ export default function UserViewDrawer({ open, userId, user: initialUser, onClos
               </div>
               <div className="flex gap-2 flex-wrap justify-center">
                 <Badge variant={roleColor(user.roleName)}>{user.roleName}</Badge>
-                <Badge variant={statusColor(user.accountStatus)}>{user.accountStatus || (user.isActive ? "Active" : "Inactive")}</Badge>
+                <AccountStatusBadge status={user.accountStatus} />
                 {user.emailVerified && (
                   <span className="inline-flex items-center gap-1 text-[10px] text-green-600 dark:text-green-400 font-medium">
                     <BadgeCheck className="w-3 h-3" /> Verified
@@ -166,6 +156,45 @@ export default function UserViewDrawer({ open, userId, user: initialUser, onClos
               </div>
             </div>
 
+            {(() => {
+              const r = user.roleName.toLowerCase();
+              const cells: { label: string; value?: string | number | null }[] = [];
+              if (r === "student") {
+                cells.push({ label: "Roll Number", value: user.employeeId });
+                cells.push({ label: "Enrollment", value: user.enrollment || user.employeeId });
+                cells.push({ label: "Academic Year", value: user.academicYearName });
+                cells.push({ label: "Semester", value: user.semesterName });
+                cells.push({ label: "Section", value: user.section });
+                cells.push({ label: "Research Topic", value: user.researchTopic });
+                cells.push({ label: "Guide", value: user.guideName });
+              } else if (r === "guide") {
+                cells.push({ label: "Specialization", value: user.specialization });
+              } else if (r === "hod") {
+                cells.push({ label: "Qualification", value: user.qualification });
+                cells.push({ label: "Years of Experience", value: user.yearsOfExperience != null ? `${user.yearsOfExperience} yrs` : null });
+              }
+              if (!cells.length) return null;
+              return (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Role Details</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {cells.map((c) => (
+                      <div key={c.label} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                        <p className="text-[10px] text-slate-500 truncate">{c.label}</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{c.value || "Not assigned"}</p>
+                      </div>
+                    ))}
+                    {r === "guide" && user.bio && (
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 col-span-2">
+                        <p className="text-[10px] text-slate-500 truncate">Bio</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white">{user.bio}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="space-y-3">
               <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Account</h4>
               <div className="grid grid-cols-2 gap-2">
@@ -181,7 +210,7 @@ export default function UserViewDrawer({ open, userId, user: initialUser, onClos
                     <Activity className="w-3 h-3 text-slate-400 flex-shrink-0" />
                     <p className="text-[10px] text-slate-500 truncate">Account Status</p>
                   </div>
-                  <Badge variant={statusColor(user.accountStatus)}>{user.accountStatus || (user.isActive ? "Active" : "Inactive")}</Badge>
+                  <AccountStatusBadge status={user.accountStatus} />
                 </div>
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
                   <div className="flex items-center gap-1.5 mb-1">

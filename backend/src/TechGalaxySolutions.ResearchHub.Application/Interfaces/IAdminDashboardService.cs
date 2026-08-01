@@ -4,5 +4,5 @@ namespace TechGalaxySolutions.ResearchHub.Application.Interfaces;
 
 public interface IAdminDashboardService
 {
-    Task<AdminDashboardResponse> GetDashboardAsync();
+    Task<AdminDashboardResponse> GetDashboardAsync(Guid? collegeId = null);
 }

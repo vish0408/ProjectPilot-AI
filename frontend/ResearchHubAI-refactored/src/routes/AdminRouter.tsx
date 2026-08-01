@@ -12,6 +12,10 @@ const AdminBackupRestore = React.lazy(() => import("../pages/admin/AdminBackupRe
 const AdminDashboard = React.lazy(() => import("../pages/admin/AdminDashboard"));
 const AdminDepartmentMgmt = React.lazy(() => import("../pages/admin/AdminDepartmentMgmt"));
 const AdminHodManagement = React.lazy(() => import("../pages/admin/AdminHodManagement"));
+const CollegeAdminHodManagement = React.lazy(() => import("../pages/admin/CollegeAdminHodManagement"));
+const SuperAdminCollegeAdminManagement = React.lazy(() => import("../pages/admin/SuperAdminCollegeAdminManagement"));
+const SuperAdminGuideManagement = React.lazy(() => import("../pages/admin/SuperAdminGuideManagement"));
+const SuperAdminStudentManagement = React.lazy(() => import("../pages/admin/SuperAdminStudentManagement"));
 const AdminFaculties = React.lazy(() => import("../pages/admin/AdminFaculties"));
 const AdminGlobalAnnouncements = React.lazy(() => import("../pages/admin/AdminGlobalAnnouncements"));
 const AdminGuideManagement = React.lazy(() => import("../pages/admin/AdminGuideManagement"));
@@ -37,10 +41,11 @@ export default function AdminRouter() {
         switch(screen) {
           case "dashboard": return <AdminDashboard/>;
           case "user-management": return <AdminUserManagement/>;
-          case "student-management": return <AdminStudentManagement/>;
-          case "guide-management": return <AdminGuideManagement/>;
           case "department-mgmt": return <AdminDepartmentMgmt/>;
-          case "hod-mgmt":        return <AdminHodManagement/>;
+          case "college-admin-mgmt": return <SuperAdminCollegeAdminManagement/>;
+          case "hod-mgmt":        return isSuperAdmin ? <AdminHodManagement/> : <CollegeAdminHodManagement/>;
+          case "guide-management": return isSuperAdmin ? <SuperAdminGuideManagement/> : <AdminGuideManagement/>;
+          case "student-management": return isSuperAdmin ? <SuperAdminStudentManagement/> : <AdminStudentManagement/>;
           case "university-mgmt": return <AdminUniversityMgmt/>;
           case "research-topics": return <AdminResearchTopics/>;
           case "ai-playground": return <AIPlayground/>;

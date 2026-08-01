@@ -5,6 +5,7 @@ import {
 import StatCard from "../../components/cards/StatCard";
 import Avatar from "../../components/common/Avatar";
 import Badge from "../../components/common/Badge";
+import AccountStatusBadge from "../../components/common/AccountStatusBadge";
 import Card from "../../components/common/Card";
 import { adminService } from "../../services/AdminService";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -26,7 +27,10 @@ export default function AdminStudentManagement() {
 
   const filtered = users.filter(u =>
     !debouncedSearch || u.fullName.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-    u.email.toLowerCase().includes(debouncedSearch.toLowerCase())
+    u.email.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+    (u.enrollment || u.employeeId || "").toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+    (u.academicYearName || "").toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+    (u.semesterName || "").toLowerCase().includes(debouncedSearch.toLowerCase())
   );
 
   const handleDelete = async (id: string) => {
@@ -37,8 +41,8 @@ export default function AdminStudentManagement() {
   };
 
   const exportCSV = () => {
-    let csv = "Name,Email,Role,Status,Created\n";
-    users.forEach(u => { csv += `${u.fullName},${u.email},${u.roleName},${u.isActive ? "Active" : "Inactive"},${new Date(u.createdAt).toLocaleDateString()}\n`; });
+    let csv = "Name,Email,Student ID,Role,Status,Created\n";
+    users.forEach(u => { csv += `${u.fullName},${u.email},"${u.enrollment || u.employeeId || ""}",${u.roleName},${u.accountStatus || "Unknown"},${new Date(u.createdAt).toLocaleDateString()}\n`; });
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = "students.csv"; a.click();
@@ -54,8 +58,8 @@ export default function AdminStudentManagement() {
       )}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard label="Total Students" value={`${users.length}`} icon={GraduationCap} color="bg-blue-500"/>
-        <StatCard label="Active" value={`${users.filter(u => u.isActive).length}`} icon={FlaskConical} color="bg-indigo-500"/>
-        <StatCard label="Inactive" value={`${users.filter(u => !u.isActive).length}`} icon={AlertCircle} color="bg-amber-500"/>
+        <StatCard label="Active" value={`${users.filter(u => u.accountStatus === "Active").length}`} icon={FlaskConical} color="bg-indigo-500"/>
+        <StatCard label="Pending" value={`${users.filter(u => u.accountStatus === "Pending Activation" || u.accountStatus === "Invitation Sent").length}`} icon={AlertCircle} color="bg-amber-500"/>
       </div>
       <Card p={false}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
@@ -67,14 +71,15 @@ export default function AdminStudentManagement() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-muted/40"><tr>{["Student","Email","Role","Status","Created","Actions"].map(h=><th key={h} className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground">{h}</th>)}</tr></thead>
+            <thead className="bg-muted/40"><tr>{["Student","Student ID","Email","Role","Status","Created","Actions"].map(h=><th key={h} className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground">{h}</th>)}</tr></thead>
             <tbody>
               {filtered.map(s => (
                 <tr key={s.id} className="border-t border-border hover:bg-muted/20 transition-colors">
                   <td className="px-5 py-3.5"><div className="flex items-center gap-3"><Avatar name={s.fullName} size="sm"/><div><p className="text-xs font-bold text-foreground">{s.fullName}</p></div></div></td>
+                  <td className="px-5 py-3.5 text-xs font-mono font-semibold text-foreground whitespace-nowrap">{s.enrollment || s.employeeId || "—"}</td>
                   <td className="px-5 py-3.5 text-xs text-muted-foreground">{s.email}</td>
                   <td className="px-5 py-3.5"><Badge variant="outline">{s.roleName}</Badge></td>
-                  <td className="px-5 py-3.5"><Badge variant={s.isActive ? "success" : "danger"}>{s.isActive ? "Active" : "Inactive"}</Badge></td>
+                  <td className="px-5 py-3.5"><AccountStatusBadge status={s.accountStatus} /></td>
                   <td className="px-5 py-3.5 text-xs text-muted-foreground">{new Date(s.createdAt).toLocaleDateString()}</td>
                   <td className="px-5 py-3.5"><div className="flex gap-1">
                     <button onClick={() => setViewUser(s)} className="w-7 h-7 rounded-lg hover:bg-muted flex items-center justify-center" title="View"><Eye className="w-3.5 h-3.5 text-muted-foreground"/></button>
@@ -112,8 +117,9 @@ export default function AdminStudentManagement() {
             </div>
             <div className="flex items-center gap-3 mb-4"><Avatar name={viewUser.fullName} size="md"/><div><p className="font-bold text-foreground text-sm">{viewUser.fullName}</p><p className="text-xs text-muted-foreground">{viewUser.email}</p></div></div>
             <div className="flex flex-col gap-2 text-sm">
+              <div className="flex justify-between"><span className="text-muted-foreground">Student ID</span><span className="font-medium">{viewUser.enrollment || viewUser.employeeId || "—"}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Role</span><span className="font-medium">{viewUser.roleName}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Status</span><Badge variant={viewUser.isActive ? "success" : "danger"}>{viewUser.isActive ? "Active" : "Inactive"}</Badge></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Status</span><AccountStatusBadge status={viewUser.accountStatus} /></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Created</span><span>{new Date(viewUser.createdAt).toLocaleDateString()}</span></div>
             </div>
           </div>

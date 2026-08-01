@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, CheckCircle, Eye, EyeOff, FlaskConical, Loader2, Lock } from "lucide-react";
+import { AlertCircle, CheckCircle, Eye, EyeOff, FlaskConical, Loader2, Lock, RefreshCw } from "lucide-react";
 import { authService } from "../../services/AuthService";
 
 interface ResetPasswordPageProps {
@@ -52,6 +52,8 @@ export default function ResetPasswordPage({ token, email, onSuccess }: ResetPass
   const [tokenValid, setTokenValid] = useState(false);
   const [tokenExpired, setTokenExpired] = useState(false);
   const [tokenError, setTokenError] = useState("");
+  const [resending, setResending] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState("");
 
   useEffect(() => {
     if (!token) {
@@ -80,6 +82,20 @@ export default function ResetPasswordPage({ token, email, onSuccess }: ResetPass
   }, [token]);
 
   const strength = getStrength(newPassword);
+
+  const handleResend = async () => {
+    setResending(true);
+    setTokenError("");
+    setResendSuccess("");
+    try {
+      await authService.resendPasswordReset(token);
+      setResendSuccess("A new password reset link has been sent to your email.");
+    } catch (err) {
+      setTokenError(err instanceof Error ? err.message : "Failed to resend password reset link");
+    } finally {
+      setResending(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,23 +137,34 @@ export default function ResetPasswordPage({ token, email, onSuccess }: ResetPass
             </>
           )}
 
-          {!validating && !tokenValid && (
+          {!validating && !tokenValid && !tokenExpired && (
             <>
               <div className="w-16 h-16 mx-auto mb-6 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
                 <AlertCircle className="w-8 h-8 text-red-600" />
               </div>
-              <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-2 text-center">{
-                tokenExpired ? "Link Expired" : "Invalid Link"
-              }</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-2 text-center">Invalid Link</h1>
               <p className="text-muted-foreground text-sm mb-6 text-center">{tokenError}</p>
-              <div className="flex flex-col gap-3">
-                <a href="/forgot-password" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 sm:py-3 rounded-xl transition-all hover:shadow-lg hover:shadow-blue-500/25 text-center block touch-target">
-                  Request New Reset Link
-                </a>
-                <a href="/login" className="text-sm text-blue-600 hover:underline text-center block py-2 touch-target">
-                  Back to Login
-                </a>
+              <a href="/login" className="text-sm text-blue-600 hover:underline text-center block py-2 touch-target">Back to Login</a>
+            </>
+          )}
+
+          {!validating && tokenExpired && (
+            <>
+              <div className="w-16 h-16 mx-auto mb-6 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                <AlertCircle className="w-8 h-8 text-red-600" />
               </div>
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-2 text-center">Reset Link Expired</h1>
+              <p className="text-muted-foreground text-sm mb-6 text-center">{tokenError}</p>
+              {!resendSuccess ? (
+                <div className="flex flex-col gap-3">
+                  <button onClick={handleResend} disabled={resending} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 sm:py-3 rounded-xl transition-all hover:shadow-lg hover:shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed touch-target">
+                    {resending ? <><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Sending...</> : <><RefreshCw className="w-4 h-4 inline mr-2" />Send New Reset Link</>}
+                  </button>
+                  <a href="/login" className="text-sm text-blue-600 hover:underline text-center block py-2 touch-target">Back to Login</a>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2 p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-xl text-xs text-green-700 dark:text-green-300 text-left"><CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />{resendSuccess}</div>
+              )}
             </>
           )}
 

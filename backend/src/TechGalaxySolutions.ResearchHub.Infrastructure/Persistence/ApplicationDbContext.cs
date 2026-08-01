@@ -86,6 +86,8 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(sp => sp.UserId).IsUnique();
             entity.HasOne(sp => sp.User).WithMany().HasForeignKey(sp => sp.UserId).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(sp => sp.Guide).WithMany().HasForeignKey(sp => sp.GuideId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(sp => sp.AcademicYear).WithMany().HasForeignKey(sp => sp.AcademicYearId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(sp => sp.Semester).WithMany().HasForeignKey(sp => sp.SemesterId).OnDelete(DeleteBehavior.NoAction);
             entity.HasIndex(sp => sp.GuideId).HasDatabaseName("IX_StudentProfiles_GuideId");
         });
 

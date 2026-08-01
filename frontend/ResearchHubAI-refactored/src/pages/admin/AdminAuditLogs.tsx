@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { Activity, Download, Search, Server, ShieldCheck, Users, X } from "lucide-react";
+import { Activity, Download, Search, Server, ShieldCheck, Users, X, Copy, Check, Info } from "lucide-react";
 import StatCard from "../../components/cards/StatCard";
 import Badge from "../../components/common/Badge";
 import Card from "../../components/common/Card";
 import Pagination from "../../components/common/Pagination";
+import UserAgentPopover from "../../components/admin/UserAgentPopover";
 import { adminService } from "../../services/AdminService";
 import type { AuditLogResponse } from "../../types/Admin";
 import type { PagedRequest } from "../../types/Pagination";
@@ -20,6 +21,9 @@ export default function AdminAuditLogs() {
   const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState("");
+  const [uaPopoverOpen, setUaPopoverOpen] = useState(false);
+  const [selectedUA, setSelectedUA] = useState("");
+  const [copiedUA, setCopiedUA] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -163,7 +167,32 @@ export default function AdminAuditLogs() {
                   </td>
                   <td className="px-5 py-3 text-xs text-muted-foreground">{log.entityName}</td>
                   <td className="px-5 py-3 font-mono text-xs text-muted-foreground" title={log.ipAddress || ""}>{log.ipAddress || "Unknown"}</td>
-                  <td className="px-5 py-3 text-xs text-muted-foreground max-w-40 truncate" title={log.userAgent || ""}>{log.userAgent || "—"}</td>
+                  <td className="px-5 py-3 text-xs text-muted-foreground">
+                    {log.userAgent ? (
+                      <span className="inline-flex items-center gap-1.5 max-w-full">
+                        <button
+                          onClick={() => { setSelectedUA(log.userAgent); setUaPopoverOpen(true); }}
+                          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedUA(log.userAgent); setUaPopoverOpen(true); } }}
+                          className="group inline-flex items-center gap-1.5 max-w-full cursor-pointer text-left"
+                          title={log.userAgent}
+                          aria-label="View full user agent details"
+                        >
+                          <span className="truncate max-w-[180px] sm:max-w-[220px] md:max-w-[260px] block">
+                            {log.userAgent}
+                          </span>
+                          <Info className="w-3 h-3 shrink-0 text-muted-foreground/50 group-hover:text-blue-500 transition-colors" />
+                        </button>
+                        <button
+                          onClick={async (e) => { e.stopPropagation(); try { await navigator.clipboard.writeText(log.userAgent); setCopiedUA(log.id); setTimeout(() => setCopiedUA(null), 2000); } catch {} }}
+                          className="shrink-0 p-0.5 rounded hover:bg-muted transition-colors text-muted-foreground/50 hover:text-foreground"
+                          aria-label="Copy user agent"
+                          title="Copy user agent"
+                        >
+                          {copiedUA === log.id ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                      </span>
+                    ) : <span className="text-muted-foreground/50">—</span>}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -181,6 +210,7 @@ export default function AdminAuditLogs() {
           onPageSizeChange={handlePageSizeChange}
         />
       </Card>
+      <UserAgentPopover userAgent={selectedUA} open={uaPopoverOpen} onOpenChange={setUaPopoverOpen} />
     </div>
   );
 }

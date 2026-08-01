@@ -13,11 +13,13 @@ public interface IAuthService
     // Activation
     Task ActivateAccountAsync(ActivateAccountRequest request);
     Task<ValidateActivationTokenResult> ValidateActivationTokenAsync(string token);
+    Task ResendActivationByTokenAsync(string token);
 
     // Password
     Task ForgotPasswordAsync(ForgotPasswordRequest request);
     Task<ValidatePasswordResetTokenResult> ValidatePasswordResetTokenAsync(string token);
     Task ResetPasswordAsync(ResetPasswordRequest request);
+    Task ResendPasswordResetByTokenAsync(string token);
 
     // Admin
     Task ResendInvitationAsync(Guid userId, Guid currentUserId);

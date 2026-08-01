@@ -79,6 +79,13 @@ public class ExceptionMiddleware
             context.Response.ContentType = "application/json";
             await WriteErrorAsync(context, "Conflict", ex.Message);
         }
+        catch (ForbiddenException ex)
+        {
+            await LogExceptionAsync(context, ex);
+            context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
+            context.Response.ContentType = "application/json";
+            await WriteErrorAsync(context, "Forbidden", ex.Message);
+        }
         catch (UnauthorizedAccessException ex)
         {
             await LogExceptionAsync(context, ex);

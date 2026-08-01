@@ -59,11 +59,53 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("activate/resend")]
+    public async Task<IActionResult> ResendActivation([FromBody] ValidateActivationTokenRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Token))
+            return BadRequest(new { message = "Token is required." });
+
+        try
+        {
+            await _authService.ResendActivationByTokenAsync(request.Token);
+            return Ok(new { message = "A new invitation has been sent to your email." });
+        }
+        catch (KeyNotFoundException)
+        {
+            return BadRequest(new { message = "Invalid activation token." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
     {
         await _authService.ResetPasswordAsync(request);
         return Ok(new { message = "Password reset successfully. You can now log in with your new password." });
+    }
+
+    [HttpPost("reset-password/resend")]
+    public async Task<IActionResult> ResendPasswordReset([FromBody] ValidateActivationTokenRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Token))
+            return BadRequest(new { message = "Token is required." });
+
+        try
+        {
+            await _authService.ResendPasswordResetByTokenAsync(request.Token);
+            return Ok(new { message = "A new password reset link has been sent to your email." });
+        }
+        catch (KeyNotFoundException)
+        {
+            return BadRequest(new { message = "Invalid password reset token." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPost("refresh")]

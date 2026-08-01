@@ -12,4 +12,20 @@ public class UpdateUserRequest
     public string? PhoneNumber { get; set; }
     public string? EmployeeId { get; set; }
     public string? Designation { get; set; }
+
+    // Student-specific
+    public string? Enrollment { get; set; }
+    public Guid? GuideId { get; set; }
+    public Guid? AcademicYearId { get; set; }
+    public Guid? SemesterId { get; set; }
+    public string? Section { get; set; }
+    public string? ResearchTopic { get; set; }
+
+    // Guide-specific
+    public string? Specialization { get; set; }
+    public string? Bio { get; set; }
+
+    // HOD-specific
+    public string? Qualification { get; set; }
+    public int? YearsOfExperience { get; set; }
 }

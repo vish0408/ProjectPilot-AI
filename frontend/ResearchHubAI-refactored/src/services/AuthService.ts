@@ -21,6 +21,11 @@ export interface BackendCurrentUser {
   isFirstLogin?: boolean;
   emailVerified?: boolean;
   accountStatus?: string;
+  phoneNumber?: string | null;
+  employeeId?: string | null;
+  collegeId?: string | null;
+  collegeName?: string | null;
+  departmentName?: string | null;
 }
 
 export class AuthService {
@@ -73,16 +78,16 @@ export class AuthService {
     }
   }
 
-  async validateActivationToken(token: string): Promise<{ valid: boolean; expired?: boolean; fullName?: string }> {
-    const response = await apiClient.post<{ valid: boolean; expired?: boolean; fullName?: string }>(ENDPOINTS.auth.activateValidate, { token });
+  async validateActivationToken(token: string): Promise<{ valid: boolean; expired?: boolean; used?: boolean; fullName?: string; email?: string; userId?: string }> {
+    const response = await apiClient.post<{ valid: boolean; expired?: boolean; used?: boolean; fullName?: string; email?: string; userId?: string }>(ENDPOINTS.auth.activateValidate, { token });
     if (!response.success || !response.data) {
       throw new Error(response.message || "Failed to validate token");
     }
     return response.data;
   }
 
-  async validatePasswordResetToken(token: string): Promise<{ valid: boolean; expired?: boolean; fullName?: string }> {
-    const response = await apiClient.post<{ valid: boolean; expired?: boolean; fullName?: string }>(ENDPOINTS.auth.resetPasswordValidate, { token });
+  async validatePasswordResetToken(token: string): Promise<{ valid: boolean; expired?: boolean; used?: boolean; fullName?: string; email?: string; userId?: string }> {
+    const response = await apiClient.post<{ valid: boolean; expired?: boolean; used?: boolean; fullName?: string; email?: string; userId?: string }>(ENDPOINTS.auth.resetPasswordValidate, { token });
     if (!response.success || !response.data) {
       throw new Error(response.message || "Failed to validate reset token");
     }
@@ -115,6 +120,20 @@ export class AuthService {
     }
   }
 
+  async resendActivation(token: string): Promise<void> {
+    const response = await apiClient.post(ENDPOINTS.auth.activateResend, { token });
+    if (!response.success) {
+      throw new Error(response.message || "Failed to resend invitation");
+    }
+  }
+
+  async resendPasswordReset(token: string): Promise<void> {
+    const response = await apiClient.post(ENDPOINTS.auth.resetPasswordResend, { token });
+    if (!response.success) {
+      throw new Error(response.message || "Failed to resend password reset link");
+    }
+  }
+
   private mapToCurrentUser(backendUser: BackendCurrentUser): CurrentUser {
     const roleMap: Record<string, CurrentUser["role"]> = {
       superadmin: "superadmin",
@@ -128,8 +147,8 @@ export class AuthService {
       name: backendUser.fullName,
       email: backendUser.email,
       role,
-      dept: "",
-      institution: "",
+      dept: backendUser.departmentName ?? "",
+      institution: backendUser.collegeName ?? "",
       avatar: backendUser.fullName
         .split(" ")
         .map((n) => n[0])
@@ -137,6 +156,10 @@ export class AuthService {
         .toUpperCase()
         .slice(0, 2),
       isFirstLogin: backendUser.isFirstLogin,
+      phoneNumber: backendUser.phoneNumber,
+      employeeId: backendUser.employeeId,
+      collegeId: backendUser.collegeId,
+      collegeName: backendUser.collegeName,
     };
   }
 

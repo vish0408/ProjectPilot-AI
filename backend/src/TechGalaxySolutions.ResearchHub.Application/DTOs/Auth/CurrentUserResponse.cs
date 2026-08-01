@@ -9,6 +9,8 @@ public class CurrentUserResponse
     public bool IsActive { get; set; }
     public bool IsFirstLogin { get; set; }
     public bool EmailVerified { get; set; }
+    public string? PhoneNumber { get; set; }
+    public string? EmployeeId { get; set; }
     public string? CollegeId { get; set; }
     public string? DepartmentId { get; set; }
     public string? CollegeName { get; set; }

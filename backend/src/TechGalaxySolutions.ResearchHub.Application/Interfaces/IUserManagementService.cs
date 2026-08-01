@@ -5,10 +5,10 @@ namespace TechGalaxySolutions.ResearchHub.Application.Interfaces;
 
 public interface IUserManagementService
 {
-    Task<PagedResponse<UserResponse>> GetUsersAsync(PagedRequest request);
-    Task<List<UserResponse>> GetAllUsersAsync();
-    Task<UserResponse> GetUserAsync(Guid id);
-    Task<UserResponse> CreateUserAsync(CreateUserRequest request);
-    Task<UserResponse> UpdateUserAsync(Guid id, UpdateUserRequest request);
-    Task DeleteUserAsync(Guid id);
+    Task<PagedResponse<UserResponse>> GetUsersAsync(PagedRequest request, Guid? collegeId = null);
+    Task<List<UserResponse>> GetAllUsersAsync(Guid? collegeId = null);
+    Task<UserResponse> GetUserAsync(Guid id, Guid? collegeId = null);
+    Task<UserResponse> CreateUserAsync(CreateUserRequest request, Guid? collegeId = null);
+    Task<UserResponse> UpdateUserAsync(Guid id, UpdateUserRequest request, Guid? collegeId = null);
+    Task DeleteUserAsync(Guid id, Guid? collegeId = null);
 }

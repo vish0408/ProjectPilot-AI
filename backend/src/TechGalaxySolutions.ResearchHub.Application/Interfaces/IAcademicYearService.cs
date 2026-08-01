@@ -10,4 +10,5 @@ public interface IAcademicYearService
     Task<AcademicYearResponse> UpdateAsync(Guid id, UpdateAcademicYearRequest request);
     Task DeleteAsync(Guid id);
     Task SetCurrentAsync(Guid id);
+    Task EnsureProvisionedAsync();
 }

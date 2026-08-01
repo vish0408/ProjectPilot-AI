@@ -8,9 +8,12 @@ public class PagedRequest
     public string? RoleFilter { get; set; }
     public string? DepartmentFilter { get; set; }
     public string? CollegeFilter { get; set; }
+    public string? GuideFilter { get; set; }
+    public string? AcademicYearFilter { get; set; }
+    public string? SemesterFilter { get; set; }
     public string? StatusFilter { get; set; }
     public string? SortField { get; set; }
-    public string? SortDirection { get; set; } = "asc";
+    public string? SortDirection { get; set; } = "desc";
 }
 
 public class PagedResponse<T>

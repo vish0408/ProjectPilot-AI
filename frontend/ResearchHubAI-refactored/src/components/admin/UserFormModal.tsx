@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { X, Loader2, AlertCircle, Check, ChevronDown, Search } from "lucide-react";
 import { adminService } from "../../services/AdminService";
+import AcademicYearSelect from "./AcademicYearSelect";
+import SemesterSelect from "./SemesterSelect";
 import type { UserResponse, CreateUserRequest, UpdateUserRequest, RoleResponse, CollegeResponse, DepartmentResponse } from "../../types/Admin";
 
 interface UserFormModalProps {
@@ -8,9 +10,10 @@ interface UserFormModalProps {
   user: UserResponse | null;
   onClose: () => void;
   onSaved: () => void;
+  lockedRoleName?: string;
 }
 
-export default function UserFormModal({ open, user, onClose, onSaved }: UserFormModalProps) {
+export default function UserFormModal({ open, user, onClose, onSaved, lockedRoleName }: UserFormModalProps) {
   const isEdit = !!user;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,36 +21,61 @@ export default function UserFormModal({ open, user, onClose, onSaved }: UserForm
   const [roles, setRoles] = useState<RoleResponse[]>([]);
   const [colleges, setColleges] = useState<CollegeResponse[]>([]);
   const [departments, setDepartments] = useState<DepartmentResponse[]>([]);
+  const [guides, setGuides] = useState<UserResponse[]>([]);
   const [departmentsLoading, setDepartmentsLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const overlayRef = useRef<HTMLDivElement>(null);
 
   const [collegeSearch, setCollegeSearch] = useState("");
   const [deptSearch, setDeptSearch] = useState("");
+  const [guideSearch, setGuideSearch] = useState("");
   const [collegeOpen, setCollegeOpen] = useState(false);
   const [deptOpen, setDeptOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const collegeRef = useRef<HTMLDivElement>(null);
   const deptRef = useRef<HTMLDivElement>(null);
+  const guideRef = useRef<HTMLDivElement>(null);
   const collegeInputRef = useRef<HTMLInputElement>(null);
   const deptInputRef = useRef<HTMLInputElement>(null);
+  const guideInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     fullName: "",
     email: "",
     phoneNumber: "",
     employeeId: "",
+    password: "",
     roleId: "",
     collegeId: "",
     departmentId: "",
     designation: "",
     isActive: true,
     sendWelcomeEmail: false,
+    enrollment: "",
+    guideId: "",
+    academicYearId: "",
+    semesterId: "",
+    section: "",
+    researchTopic: "",
+    specialization: "",
+    bio: "",
+    qualification: "",
+    yearsOfExperience: "",
   });
 
   useEffect(() => {
     if (!open) return;
-    adminService.getRoles().then(setRoles).catch(() => {});
+    adminService.getRoles().then((rs) => {
+      setRoles(rs);
+      if (!user && lockedRoleName) {
+        const matched = rs.find((r) => r.name.toLowerCase() === lockedRoleName.toLowerCase());
+        if (matched) setForm((prev) => ({ ...prev, roleId: matched.id }));
+      }
+    }).catch(() => {});
     adminService.getColleges().then(setColleges).catch(() => {});
+    adminService.getUsersPaged({ pageNumber: 1, pageSize: 500, roleFilter: "Guide" })
+      .then((res) => setGuides(res.items || []))
+      .catch(() => setGuides([]));
 
     if (user) {
       setForm({
@@ -55,12 +83,23 @@ export default function UserFormModal({ open, user, onClose, onSaved }: UserForm
         email: user.email,
         phoneNumber: user.phoneNumber || "",
         employeeId: user.employeeId || "",
+        password: "",
         roleId: user.roleId,
         collegeId: user.collegeId || "",
         departmentId: user.departmentId || "",
         designation: user.designation || "",
         isActive: user.isActive,
         sendWelcomeEmail: false,
+        enrollment: user.enrollment || "",
+        guideId: user.guideId || "",
+        academicYearId: user.academicYearId || "",
+        semesterId: user.semesterId || "",
+        section: user.section || "",
+        researchTopic: user.researchTopic || "",
+        specialization: user.specialization || "",
+        bio: user.bio || "",
+        qualification: user.qualification || "",
+        yearsOfExperience: user.yearsOfExperience != null ? String(user.yearsOfExperience) : "",
       });
       if (user.collegeId) loadDepartments(user.collegeId);
     } else {
@@ -69,12 +108,23 @@ export default function UserFormModal({ open, user, onClose, onSaved }: UserForm
         email: "",
         phoneNumber: "",
         employeeId: "",
+        password: "",
         roleId: "",
         collegeId: "",
         departmentId: "",
         designation: "",
         isActive: true,
         sendWelcomeEmail: false,
+        enrollment: "",
+        guideId: "",
+        academicYearId: "",
+        semesterId: "",
+        section: "",
+        researchTopic: "",
+        specialization: "",
+        bio: "",
+        qualification: "",
+        yearsOfExperience: "",
       });
       setDepartments([]);
     }
@@ -83,12 +133,14 @@ export default function UserFormModal({ open, user, onClose, onSaved }: UserForm
     setFieldErrors({});
     setCollegeSearch("");
     setDeptSearch("");
+    setGuideSearch("");
   }, [open, user]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (collegeRef.current && !collegeRef.current.contains(e.target as Node)) setCollegeOpen(false);
       if (deptRef.current && !deptRef.current.contains(e.target as Node)) setDeptOpen(false);
+      if (guideRef.current && !guideRef.current.contains(e.target as Node)) setGuideOpen(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -124,6 +176,7 @@ export default function UserFormModal({ open, user, onClose, onSaved }: UserForm
 
   const selectedCollege = colleges.find((c) => c.id === form.collegeId);
   const selectedDepartment = departments.find((d) => d.id === form.departmentId);
+  const selectedGuide = guides.find((g) => g.id === form.guideId);
 
   const filteredColleges = colleges.filter((c) =>
     c.name.toLowerCase().includes(collegeSearch.toLowerCase())
@@ -131,6 +184,10 @@ export default function UserFormModal({ open, user, onClose, onSaved }: UserForm
 
   const filteredDepartments = departments.filter((d) =>
     d.departmentName.toLowerCase().includes(deptSearch.toLowerCase())
+  );
+
+  const filteredGuides = guides.filter((g) =>
+    `${g.fullName} ${g.designation || ""}`.toLowerCase().includes(guideSearch.toLowerCase())
   );
 
   const validate = (): boolean => {
@@ -142,6 +199,11 @@ export default function UserFormModal({ open, user, onClose, onSaved }: UserForm
     if (!form.roleId) errors.roleId = "Role is required";
     if (requireCollege && !form.collegeId) errors.collegeId = "Please select a college.";
     if (requireDepartment && !form.departmentId) errors.departmentId = "Please select a department.";
+    if (isStudentRole && !form.employeeId.trim() && !form.enrollment.trim()) errors.employeeId = "Student ID is required";
+    if (isStudentRole && !form.guideId) errors.guideId = "Assigned guide is required";
+    if (isStudentRole && !form.academicYearId) errors.academicYearId = "Academic year is required";
+    if (isStudentRole && !form.semesterId) errors.semesterId = "Semester is required";
+    if (isHodRole && !form.qualification.trim()) errors.qualification = "Qualification is required";
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -152,32 +214,41 @@ export default function UserFormModal({ open, user, onClose, onSaved }: UserForm
     setSaving(true);
     setError(null);
     try {
+      const common = {
+        fullName: form.fullName.trim(),
+        email: form.email.trim(),
+        roleId: form.roleId,
+        collegeId: form.collegeId || undefined,
+        departmentId: form.departmentId || undefined,
+        phoneNumber: form.phoneNumber || undefined,
+        employeeId: form.employeeId || undefined,
+        designation: form.designation || undefined,
+        enrollment: form.enrollment || undefined,
+        guideId: form.guideId || undefined,
+        academicYearId: form.academicYearId || undefined,
+        semesterId: form.semesterId || undefined,
+        section: form.section || undefined,
+        researchTopic: form.researchTopic || undefined,
+        specialization: form.specialization || undefined,
+        bio: form.bio || undefined,
+        qualification: form.qualification || undefined,
+        yearsOfExperience: form.yearsOfExperience ? Number(form.yearsOfExperience) : undefined,
+      };
       if (isEdit) {
         const data: UpdateUserRequest = {
-          fullName: form.fullName.trim(),
-          email: form.email.trim(),
+          ...common,
           isActive: form.isActive,
-          roleId: form.roleId,
-          collegeId: form.collegeId || undefined,
-          departmentId: form.departmentId || undefined,
-          phoneNumber: form.phoneNumber || undefined,
-          employeeId: form.employeeId || undefined,
-          designation: form.designation || undefined,
+          password: form.password || undefined,
         };
         await adminService.updateUser(user!.id, data);
         setSuccess("User updated successfully");
         setTimeout(() => { onSaved(); onClose(); }, 800);
       } else {
         const data: CreateUserRequest = {
-          fullName: form.fullName.trim(),
-          email: form.email.trim(),
-          roleId: form.roleId,
-          collegeId: form.collegeId || undefined,
-          departmentId: form.departmentId || undefined,
+          ...common,
           isActive: form.isActive,
-          phoneNumber: form.phoneNumber || undefined,
-          employeeId: form.employeeId || undefined,
-          designation: form.designation || undefined,
+          password: form.password || undefined,
+          sendWelcomeEmail: form.sendWelcomeEmail,
         };
         const createdUser = await adminService.createUser(data);
         setSuccess(`User "${createdUser.fullName}" created successfully! An activation email has been sent to ${createdUser.email}.`);
@@ -214,6 +285,23 @@ export default function UserFormModal({ open, user, onClose, onSaved }: UserForm
     setDeptSearch("");
     setFieldErrors((prev) => ({ ...prev, departmentId: "" }));
   };
+
+  const handleGuideSelect = (guideId: string) => {
+    setForm((prev) => ({ ...prev, guideId }));
+    setGuideOpen(false);
+    setGuideSearch("");
+    setFieldErrors((prev) => ({ ...prev, guideId: "" }));
+  };
+
+  const handleAcademicYearSelect = (academicYearId: string) => {
+    setForm((prev) => ({ ...prev, academicYearId, semesterId: "" }));
+  };
+
+  const inputCls = (hasError?: string) =>
+    `w-full px-3 py-2.5 text-sm rounded-xl border ${hasError ? "border-red-400" : "border-slate-300 dark:border-slate-600"} bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/40 transition-all`;
+
+  const selectCls = (hasError?: string) =>
+    `w-full px-3 py-2.5 text-sm rounded-xl border ${hasError ? "border-red-400" : "border-slate-300 dark:border-slate-600"} bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/40 transition-all`;
 
   if (!open) return null;
 
@@ -254,7 +342,7 @@ export default function UserFormModal({ open, user, onClose, onSaved }: UserForm
               <input
                 value={form.fullName}
                 onChange={(e) => update("fullName", e.target.value)}
-                className={`w-full px-3 py-2.5 text-sm rounded-xl border ${fieldErrors.fullName ? "border-red-400" : "border-slate-300 dark:border-slate-600"} bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/40 transition-all`}
+                className={inputCls(fieldErrors.fullName)}
                 placeholder="Enter full name"
               />
               {fieldErrors.fullName && <p className="text-xs text-red-500 mt-1">{fieldErrors.fullName}</p>}
@@ -265,7 +353,7 @@ export default function UserFormModal({ open, user, onClose, onSaved }: UserForm
               <input
                 value={form.email}
                 onChange={(e) => update("email", e.target.value)}
-                className={`w-full px-3 py-2.5 text-sm rounded-xl border ${fieldErrors.email ? "border-red-400" : "border-slate-300 dark:border-slate-600"} bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/40 transition-all`}
+                className={inputCls(fieldErrors.email)}
                 placeholder="user@institution.edu"
               />
               {fieldErrors.email && <p className="text-xs text-red-500 mt-1">{fieldErrors.email}</p>}
@@ -276,28 +364,32 @@ export default function UserFormModal({ open, user, onClose, onSaved }: UserForm
               <input
                 value={form.phoneNumber}
                 onChange={(e) => update("phoneNumber", e.target.value)}
-                className={`w-full px-3 py-2.5 text-sm rounded-xl border ${fieldErrors.phoneNumber ? "border-red-400" : "border-slate-300 dark:border-slate-600"} bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/40 transition-all`}
+                className={inputCls(fieldErrors.phoneNumber)}
                 placeholder="+1 (555) 123-4567"
               />
               {fieldErrors.phoneNumber && <p className="text-xs text-red-500 mt-1">{fieldErrors.phoneNumber}</p>}
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Employee / Student ID</label>
-              <input
-                value={form.employeeId}
-                onChange={(e) => update("employeeId", e.target.value)}
-                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/40 transition-all"
-                placeholder="EMP-001 or STU-2024-001"
-              />
-            </div>
+            {!isEdit && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Password {!isEdit && <span className="text-red-500">*</span>}</label>
+                <input
+                  type="password"
+                  value={form.password}
+                  onChange={(e) => update("password", e.target.value)}
+                  className={inputCls()}
+                  placeholder="Minimum 6 characters"
+                />
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Role <span className="text-red-500">*</span></label>
               <select
                 value={form.roleId}
                 onChange={(e) => update("roleId", e.target.value)}
-                className={`w-full px-3 py-2.5 text-sm rounded-xl border ${fieldErrors.roleId ? "border-red-400" : "border-slate-300 dark:border-slate-600"} bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/40 transition-all`}
+                disabled={!!lockedRoleName}
+                className={`${selectCls(fieldErrors.roleId)} ${lockedRoleName ? "opacity-70 cursor-not-allowed" : ""}`}
               >
                 <option value="">Select role...</option>
                 {roles.map((r) => (
@@ -305,6 +397,21 @@ export default function UserFormModal({ open, user, onClose, onSaved }: UserForm
                 ))}
               </select>
               {fieldErrors.roleId && <p className="text-xs text-red-500 mt-1">{fieldErrors.roleId}</p>}
+              {lockedRoleName && <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Role is locked to {lockedRoleName}.</p>}
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                {isStudentRole ? "Student ID" : "Employee ID"}
+                {isStudentRole && <span className="text-red-500">*</span>}
+              </label>
+              <input
+                value={form.employeeId}
+                onChange={(e) => update("employeeId", e.target.value)}
+                className={inputCls(fieldErrors.employeeId)}
+                placeholder={isStudentRole ? "STU-2024-001" : "EMP-001"}
+              />
+              {fieldErrors.employeeId && <p className="text-xs text-red-500 mt-1">{fieldErrors.employeeId}</p>}
             </div>
 
             {/* College - shown for all except SuperAdmin */}
@@ -422,30 +529,195 @@ export default function UserFormModal({ open, user, onClose, onSaved }: UserForm
               </div>
             )}
 
+            {/* Guide-specific fields */}
             {isGuideRole && (
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Designation</label>
-                <input
-                  value={form.designation}
-                  onChange={(e) => update("designation", e.target.value)}
-                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/40 transition-all"
-                  placeholder="Professor / Associate Professor"
-                />
-              </div>
+              <>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Designation</label>
+                  <input
+                    value={form.designation}
+                    onChange={(e) => update("designation", e.target.value)}
+                    className={inputCls()}
+                    placeholder="Professor / Associate Professor"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Specialization</label>
+                  <input
+                    value={form.specialization}
+                    onChange={(e) => update("specialization", e.target.value)}
+                    className={inputCls()}
+                    placeholder="e.g. Machine Learning"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Bio</label>
+                  <textarea
+                    value={form.bio}
+                    onChange={(e) => update("bio", e.target.value)}
+                    rows={2}
+                    className={inputCls()}
+                    placeholder="Short professional bio"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* HOD-specific fields */}
+            {isHodRole && (
+              <>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Designation</label>
+                  <input
+                    value={form.designation}
+                    onChange={(e) => update("designation", e.target.value)}
+                    className={inputCls()}
+                    placeholder="Head of Department"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Qualification <span className="text-red-500">*</span></label>
+                  <input
+                    value={form.qualification}
+                    onChange={(e) => update("qualification", e.target.value)}
+                    className={inputCls(fieldErrors.qualification)}
+                    placeholder="e.g. Ph.D. in Computer Science"
+                  />
+                  {fieldErrors.qualification && <p className="text-xs text-red-500 mt-1">{fieldErrors.qualification}</p>}
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Years of Experience</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.yearsOfExperience}
+                    onChange={(e) => update("yearsOfExperience", e.target.value)}
+                    className={inputCls()}
+                    placeholder="e.g. 10"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Student-specific fields */}
+            {isStudentRole && (
+              <>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Enrollment Number</label>
+                  <input
+                    value={form.enrollment}
+                    onChange={(e) => update("enrollment", e.target.value)}
+                    className={inputCls()}
+                    placeholder="e.g. 2021CS1234"
+                  />
+                </div>
+                <div ref={guideRef} className="relative">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Assigned Guide <span className="text-red-500">*</span>
+                  </label>
+                  <div
+                    onClick={() => { setGuideOpen((o) => !o); setTimeout(() => guideInputRef.current?.focus(), 50); }}
+                    className={`w-full px-3 py-2.5 text-sm rounded-xl border cursor-pointer flex items-center justify-between ${fieldErrors.guideId ? "border-red-400" : "border-slate-300 dark:border-slate-600"} bg-white dark:bg-slate-800 text-slate-900 dark:text-white transition-all`}
+                  >
+                    <span className={selectedGuide ? "" : "text-slate-400 dark:text-slate-500"}>
+                      {selectedGuide ? `${selectedGuide.fullName}${selectedGuide.designation ? ` (${selectedGuide.designation})` : ""}` : "Select a guide..."}
+                    </span>
+                    <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  </div>
+                  {fieldErrors.guideId && <p className="text-xs text-red-500 mt-1">{fieldErrors.guideId}</p>}
+
+                  {guideOpen && (
+                    <div className="absolute z-20 mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg overflow-hidden">
+                      <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-200 dark:border-slate-700">
+                        <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                        <input
+                          ref={guideInputRef}
+                          value={guideSearch}
+                          onChange={(e) => setGuideSearch(e.target.value)}
+                          className="w-full bg-transparent text-sm text-slate-900 dark:text-white outline-none placeholder:text-slate-400"
+                          placeholder="Search guides..."
+                        />
+                      </div>
+                      <div className="max-h-48 overflow-y-auto">
+                        {filteredGuides.length === 0 ? (
+                          <p className="px-3 py-3 text-xs text-slate-400 text-center">No guides found</p>
+                        ) : (
+                          filteredGuides.map((g) => (
+                            <button
+                              key={g.id}
+                              type="button"
+                              onClick={() => handleGuideSelect(g.id)}
+                              className={`w-full text-left px-3 py-2.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors ${g.id === form.guideId ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-medium" : "text-slate-700 dark:text-slate-300"}`}
+                            >
+                              {g.fullName}{g.designation ? ` (${g.designation})` : ""}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <AcademicYearSelect
+                    value={form.academicYearId}
+                    onChange={handleAcademicYearSelect}
+                    required
+                    error={fieldErrors.academicYearId}
+                  />
+                </div>
+                <div>
+                  <SemesterSelect
+                    value={form.semesterId}
+                    academicYearId={form.academicYearId}
+                    onChange={(v) => update("semesterId", v)}
+                    required
+                    error={fieldErrors.semesterId}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Section</label>
+                  <input
+                    value={form.section}
+                    onChange={(e) => update("section", e.target.value)}
+                    className={inputCls()}
+                    placeholder="e.g. A"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Research Topic</label>
+                  <textarea
+                    value={form.researchTopic}
+                    onChange={(e) => update("researchTopic", e.target.value)}
+                    rows={2}
+                    className={inputCls()}
+                    placeholder="Brief description of the research topic"
+                  />
+                </div>
+              </>
             )}
           </div>
 
           <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-slate-200 dark:border-slate-700">
-            <label className="flex items-center gap-2 cursor-pointer">
+            <label className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
               <input
                 type="checkbox"
                 checked={form.isActive}
                 onChange={(e) => update("isActive", e.target.checked)}
-                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500/40"
               />
-              <span className="text-xs font-medium text-slate-700 dark:text-slate-300">Active</span>
+              Active
             </label>
-            <span className="text-xs text-slate-400 dark:text-slate-500">An activation email will be sent automatically upon creation.</span>
+            {!isEdit && (
+              <label className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.sendWelcomeEmail}
+                  onChange={(e) => update("sendWelcomeEmail", e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500/40"
+                />
+                Send welcome email
+              </label>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-2">

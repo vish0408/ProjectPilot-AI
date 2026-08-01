@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Edit2, Plus, Trash2, Search, X, Check, GraduationCap, Shield, Mail, RefreshCw, Lock, AlertTriangle, Eye, User } from "lucide-react";
+import { Edit2, Plus, Trash2, Search, X, Check, GraduationCap, Shield, Mail, RefreshCw, Lock, AlertTriangle, Eye, User, Users, UserX, MailPlus } from "lucide-react";
 import StatCard from "../../components/cards/StatCard";
-import Badge from "../../components/common/Badge";
 import AccountStatusBadge from "../../components/common/AccountStatusBadge";
 import Card from "../../components/common/Card";
 import SectionHead from "../../components/common/SectionHead";
 import Pagination from "../../components/common/Pagination";
+import { useApp } from "../../context/AppContext";
 import { adminService } from "../../services/AdminService";
 import { authService } from "../../services/AuthService";
-import type { HodResponse, CollegeResponse, DepartmentResponse } from "../../types/Admin";
+import type { HodResponse, DepartmentResponse } from "../../types/Admin";
 
 function fmtDate(d: string) {
   try { return new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }); } catch { return d; }
@@ -24,11 +24,14 @@ const INIT_FORM = {
   profilePhoto: "", status: "Active"
 };
 
-export default function AdminHodManagement() {
+export default function CollegeAdminHodManagement() {
+  const { user } = useApp();
+  const collegeId = user?.collegeId;
+  const collegeName = user?.collegeName ?? "Your college";
+
   const [response, setResponse] = useState<{ items: HodResponse[]; pageNumber: number; pageSize: number; totalCount: number }>({ items: [], pageNumber: 1, pageSize: 10, totalCount: 0 });
-  const [colleges, setColleges] = useState<CollegeResponse[]>([]);
+  const [allHods, setAllHods] = useState<HodResponse[]>([]);
   const [departments, setDepartments] = useState<DepartmentResponse[]>([]);
-  const [allDepartments, setAllDepartments] = useState<DepartmentResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -36,7 +39,6 @@ export default function AdminHodManagement() {
   const [editing, setEditing] = useState<HodResponse | null>(null);
   const [viewing, setViewing] = useState<HodResponse | null>(null);
   const [search, setSearch] = useState("");
-  const [filterCollege, setFilterCollege] = useState("");
   const [filterDepartment, setFilterDepartment] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [sortField, setSortField] = useState("fullname");
@@ -53,7 +55,16 @@ export default function AdminHodManagement() {
   const showSuccess = (msg: string) => { setSuccess(msg); setTimeout(() => setSuccess(null), 3000); };
   const showError = (msg: string) => { setError(msg); setTimeout(() => setError(null), 5000); };
 
+  const loadDepartments = useCallback(async () => {
+    if (!collegeId) return;
+    try {
+      const depts = await adminService.getAllDepartments(collegeId);
+      setDepartments(depts.filter(d => d.isActive));
+    } catch { setDepartments([]); }
+  }, [collegeId]);
+
   const fetchData = useCallback(async (page?: number, size?: number, searchTerm?: string, pageChanged?: boolean) => {
+    if (!collegeId) return;
     if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -62,7 +73,7 @@ export default function AdminHodManagement() {
     const s = size ?? pageSize;
     const term = searchTerm ?? search;
     try {
-      const [hodRes, colls] = await Promise.all([
+      const [hodRes, hodAll] = await Promise.all([
         adminService.getHodsPaged(
           {
             pageNumber: p,
@@ -72,15 +83,15 @@ export default function AdminHodManagement() {
             sortDirection,
             statusFilter: filterStatus || undefined,
           },
-          filterCollege || undefined,
+          collegeId,
           filterDepartment || undefined,
           controller.signal
         ),
-        adminService.getColleges(),
+        adminService.getAllHods(collegeId),
       ]);
       if (controller.signal.aborted) return;
       setResponse(hodRes);
-      setColleges(colls);
+      setAllHods(hodAll);
       setPageNumber(p);
       setPageSize(s);
     } catch (e) {
@@ -88,25 +99,11 @@ export default function AdminHodManagement() {
       if (e instanceof Error) showError(e.message);
     }
     finally { if (!controller.signal.aborted) setLoading(false); }
-  }, [search, filterCollege, filterDepartment, filterStatus, sortField, sortDirection, pageNumber, pageSize]);
+  }, [search, collegeId, filterDepartment, filterStatus, sortField, sortDirection, pageNumber, pageSize]);
 
   useEffect(() => { fetchData(1); }, []);
 
-  const loadAllDepartments = useCallback(async () => {
-    try {
-      const depts = await adminService.getAllDepartments();
-      setAllDepartments(depts);
-    } catch { setAllDepartments([]); }
-  }, []);
-
-  useEffect(() => { loadAllDepartments(); }, []);
-
-  const loadDepartments = useCallback(async (collegeId: string) => {
-    try {
-      const depts = collegeId ? await adminService.getAllDepartments(collegeId) : [];
-      setDepartments(depts);
-    } catch { setDepartments([]); }
-  }, []);
+  useEffect(() => { loadDepartments(); }, []);
 
   const handleSearch = useCallback((term: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -128,7 +125,6 @@ export default function AdminHodManagement() {
     setForm(INIT_FORM);
     setEditing(null);
     setShowForm(false);
-    setDepartments([]);
   };
 
   const openEdit = (h: HodResponse) => {
@@ -147,7 +143,6 @@ export default function AdminHodManagement() {
       status: h.status
     });
     setShowForm(true);
-    if (h.collegeId) loadDepartments(h.collegeId);
   };
 
   const handleSave = async () => {
@@ -197,6 +192,7 @@ export default function AdminHodManagement() {
   };
 
   const handleToggleActive = async (h: HodResponse) => {
+    setActionLoading(`toggle-${h.id}`);
     try {
       await adminService.updateHod(h.id, {
         fullName: h.fullName,
@@ -215,8 +211,10 @@ export default function AdminHodManagement() {
         ...prev,
         items: prev.items.map(item => item.id === h.id ? { ...item, isActive: !item.isActive } : item)
       }));
+      setAllHods(prev => prev.map(item => item.id === h.id ? { ...item, isActive: !item.isActive } : item));
       showSuccess(`HOD ${h.isActive ? "deactivated" : "activated"} successfully.`);
     } catch (e) { if (e instanceof Error) showError(e.message); }
+    finally { setActionLoading(null); }
   };
 
   const handleDelete = async () => {
@@ -236,6 +234,7 @@ export default function AdminHodManagement() {
     try {
       await adminService.sendInvitation(h.userId);
       showSuccess("Invitation sent successfully.");
+      await fetchData();
     } catch (e) { if (e instanceof Error) showError(e.message); }
     finally { setActionLoading(null); }
   };
@@ -245,6 +244,7 @@ export default function AdminHodManagement() {
     try {
       await adminService.resendInvitation(h.userId);
       showSuccess("Invitation resent successfully.");
+      await fetchData();
     } catch (e) { if (e instanceof Error) showError(e.message); }
     finally { setActionLoading(null); }
   };
@@ -259,6 +259,18 @@ export default function AdminHodManagement() {
   };
 
   const totalPages = Math.ceil(response.totalCount / pageSize);
+
+  const pendingInvitations = allHods.filter(h => h.accountStatus === "Pending Activation" || h.accountStatus === "Invitation Sent").length;
+  const activeCount = allHods.filter(h => h.isActive).length;
+  const inactiveCount = allHods.filter(h => !h.isActive).length;
+
+  if (!collegeId) {
+    return (
+      <div className="flex items-center justify-center h-64 text-sm text-muted-foreground">
+        College context is not available. Please log in again.
+      </div>
+    );
+  }
 
   if (loading && !response.items.length) {
     return (
@@ -286,10 +298,12 @@ export default function AdminHodManagement() {
         </div>
       )}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard label="Total HODs" value={`${response.totalCount}`} icon={GraduationCap} color="bg-purple-500"/>
-        <StatCard label="Active HODs" value={`${response.items.filter(h => h.isActive).length}`} sub="Active" icon={Shield} color="bg-green-500"/>
+        <StatCard label="Total HODs" value={`${allHods.length}`} icon={GraduationCap} color="bg-purple-500" />
+        <StatCard label="Active HODs" value={`${activeCount}`} sub="Active" icon={Shield} color="bg-green-500" />
+        <StatCard label="Pending Invitations" value={`${pendingInvitations}`} sub="Awaiting activation" icon={MailPlus} color="bg-amber-500" />
+        <StatCard label="Inactive HODs" value={`${inactiveCount}`} sub="Inactive" icon={UserX} color="bg-red-500" />
       </div>
-      <SectionHead title="HOD Management" desc="Manage Heads of Departments across colleges"
+      <SectionHead title="HOD Management" desc={`Manage Heads of Departments at ${collegeName}`}
         action={
           <button onClick={() => { resetForm(); setShowForm(true); }}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
@@ -325,20 +339,18 @@ export default function AdminHodManagement() {
                 className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-foreground mb-1">College *</label>
-              <select value={form.departmentId ? departments.find(d => d.id === form.departmentId)?.collegeId || "" : ""}
-                onChange={e => { setForm({...form, departmentId: "" }); loadDepartments(e.target.value); }}
-                className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary">
-                <option value="">Select a college</option>
-                {colleges.filter(c => c.isActive).map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
-              </select>
+              <label className="block text-xs font-semibold text-foreground mb-1">College</label>
+              <div className="flex items-center gap-2 w-full bg-slate-50 dark:bg-slate-800/50 border border-border rounded-xl px-3 py-2 text-sm text-muted-foreground">
+                <Users className="w-4 h-4 shrink-0" />
+                <span className="truncate">{collegeName}</span>
+              </div>
             </div>
             <div>
               <label className="block text-xs font-semibold text-foreground mb-1">Department *</label>
               <select value={form.departmentId} onChange={e => setForm({...form, departmentId: e.target.value})}
-                className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary" disabled={departments.length === 0}>
-                <option value="">{departments.length ? "Select department" : "Select a college first"}</option>
-                {departments.filter(d => d.isActive).map(d => <option key={d.id} value={d.id}>{d.departmentName} ({d.departmentCode})</option>)}
+                className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary">
+                <option value="">Select department</option>
+                {departments.map(d => <option key={d.id} value={d.id}>{d.departmentName} ({d.departmentCode})</option>)}
               </select>
             </div>
             <div>
@@ -386,19 +398,14 @@ export default function AdminHodManagement() {
         <div className="flex items-center gap-3 px-1 pb-4 flex-wrap">
           <div className="flex items-center gap-2 flex-1 min-w-[200px]">
             <Search className="w-4 h-4 text-muted-foreground shrink-0" />
-            <input onChange={e => handleSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && fetchData(1)} placeholder="Search by Employee ID, Name, Email, Phone, Department, College..."
+            <input onChange={e => handleSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && fetchData(1)} placeholder="Search by Employee ID, Name, Email, Phone, Department..."
               className="flex-1 bg-transparent text-sm outline-none text-foreground placeholder:text-muted-foreground" />
             {search && <button onClick={() => { setSearch(""); setPageNumber(1); }}><X className="w-4 h-4 text-muted-foreground" /></button>}
           </div>
-          <select value={filterCollege} onChange={e => { setFilterCollege(e.target.value); setFilterDepartment(""); setPageNumber(1); loadDepartments(e.target.value); }}
-            className="bg-input-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none focus:border-primary">
-            <option value="">All Colleges</option>
-            {colleges.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
           <select value={filterDepartment} onChange={e => { setFilterDepartment(e.target.value); setPageNumber(1); }}
             className="bg-input-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none focus:border-primary">
             <option value="">All Departments</option>
-            {(filterCollege ? departments : allDepartments).filter(d => d.isActive).map(d => (
+            {departments.map(d => (
               <option key={d.id} value={d.id}>{d.departmentName}</option>
             ))}
           </select>
@@ -414,7 +421,6 @@ export default function AdminHodManagement() {
             <option value="employeeid">Employee ID</option>
             <option value="email">Email</option>
             <option value="departmentname">Department</option>
-            <option value="collegename">College</option>
             <option value="isactive">Status</option>
             <option value="createdat">Created Date</option>
           </select>
@@ -431,7 +437,6 @@ export default function AdminHodManagement() {
                 <th className="text-left py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap">Name</th>
                 <th className="text-left py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap">Email</th>
                 <th className="text-left py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap hidden md:table-cell">Phone</th>
-                <th className="text-left py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap hidden lg:table-cell">College</th>
                 <th className="text-left py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap">Department</th>
                 <th className="text-center py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap">Status</th>
                 <th className="text-left py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap hidden lg:table-cell">Created</th>
@@ -455,7 +460,6 @@ export default function AdminHodManagement() {
                   </td>
                   <td className="py-3 px-3 text-xs text-muted-foreground whitespace-nowrap">{h.email}</td>
                   <td className="py-3 px-3 text-xs text-muted-foreground whitespace-nowrap hidden md:table-cell">{h.phone || "—"}</td>
-                  <td className="py-3 px-3 text-xs text-muted-foreground whitespace-nowrap hidden lg:table-cell">{h.collegeName}</td>
                   <td className="py-3 px-3 text-xs text-muted-foreground whitespace-nowrap">{h.departmentName}</td>
                   <td className="py-3 px-3 text-center whitespace-nowrap">
                     <AccountStatusBadge status={h.accountStatus} />
@@ -473,10 +477,10 @@ export default function AdminHodManagement() {
                         title="Edit HOD">
                         <Edit2 className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleToggleActive(h)}
-                        className="w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 hover:scale-105 transition-all flex items-center justify-center touch-target"
+                      <button onClick={() => handleToggleActive(h)} disabled={actionLoading === `toggle-${h.id}`}
+                        className="w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 hover:scale-105 transition-all flex items-center justify-center touch-target disabled:opacity-50"
                         title={h.isActive ? "Deactivate HOD" : "Activate HOD"}>
-                        <Shield className="w-4 h-4" />
+                        {actionLoading === `toggle-${h.id}` ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
                       </button>
                       <div className="relative group">
                         <button
@@ -513,7 +517,7 @@ export default function AdminHodManagement() {
               ))}
               {loading && (
                 <tr>
-                  <td colSpan={9} className="py-4 text-center">
+                  <td colSpan={8} className="py-4 text-center">
                     <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                       <RefreshCw className="w-4 h-4 animate-spin" /> Loading...
                     </div>
@@ -522,8 +526,8 @@ export default function AdminHodManagement() {
               )}
               {!loading && !response.items.length && (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
-                    {search || filterCollege || filterDepartment || filterStatus ? "No HODs match your filters" : "No HODs found. Add the first HOD above."}
+                  <td colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                    {search || filterDepartment || filterStatus ? "No HODs match your filters" : "No HODs found. Add the first HOD above."}
                   </td>
                 </tr>
               )}
@@ -608,8 +612,8 @@ export default function AdminHodManagement() {
                 <p className="text-sm text-foreground mt-0.5">{viewing.phone || "—"}</p>
               </div>
               <div>
-                <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Designation</p>
-                <p className="text-sm text-foreground mt-0.5">{viewing.designation || "—"}</p>
+                <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Role</p>
+                <p className="text-sm text-foreground mt-0.5">HOD</p>
               </div>
               <div>
                 <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">College</p>
@@ -620,22 +624,14 @@ export default function AdminHodManagement() {
                 <p className="text-sm text-foreground mt-0.5">{viewing.departmentName}</p>
               </div>
               <div>
-                <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Qualification</p>
-                <p className="text-sm text-foreground mt-0.5">{viewing.qualification || "—"}</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Experience</p>
-                <p className="text-sm text-foreground mt-0.5">{viewing.yearsOfExperience} years</p>
-              </div>
-              <div>
                 <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Status</p>
                 <div className="mt-0.5">
                   <AccountStatusBadge status={viewing.accountStatus} />
                 </div>
               </div>
               <div>
-                <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Status (Workflow)</p>
-                <p className="text-sm text-foreground mt-0.5">{viewing.status}</p>
+                <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Email Verified</p>
+                <p className="text-sm text-foreground mt-0.5">{viewing.emailVerified ? "Yes" : "No"}</p>
               </div>
               <div>
                 <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Created</p>
@@ -644,6 +640,10 @@ export default function AdminHodManagement() {
               <div>
                 <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Last Updated</p>
                 <p className="text-sm text-foreground mt-0.5">{viewing.updatedAt ? fmtDateTime(viewing.updatedAt) : "—"}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Last Login</p>
+                <p className="text-sm text-foreground mt-0.5">{viewing.lastLoginAt ? fmtDateTime(viewing.lastLoginAt) : "Never"}</p>
               </div>
             </div>
             <div className="flex gap-2 mt-5 pt-4 border-t border-border justify-end">

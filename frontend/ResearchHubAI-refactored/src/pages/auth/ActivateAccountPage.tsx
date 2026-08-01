@@ -20,6 +20,7 @@ export default function ActivateAccountPage() {
   const [validating, setValidating] = useState(true);
   const [valid, setValid] = useState(false);
   const [expired, setExpired] = useState(false);
+  const [used, setUsed] = useState(false);
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -53,9 +54,10 @@ export default function ActivateAccountPage() {
         setFullName(result.fullName ?? "");
       } else if (result.expired) {
         setExpired(true);
-        setError("This activation link has expired.");
+      } else if (result.used) {
+        setUsed(true);
       } else {
-        setError("Invalid activation link. Please request a new invitation.");
+        setError("This invitation link is invalid or has already been used.");
       }
     } catch {
       setError("Failed to validate activation link. Please try again.");
@@ -92,15 +94,10 @@ export default function ActivateAccountPage() {
   const handleResend = async () => {
     setResending(true);
     setError("");
+    setSuccess("");
     try {
-      const params = new URLSearchParams(window.location.search);
-      const userId = params.get("userId");
-      if (userId) {
-        await authService.resendInvitation(userId);
-        setSuccess("A new invitation has been sent to your email.");
-      } else {
-        setError("Unable to resend invitation. Please contact your administrator.");
-      }
+      await authService.resendActivation(token);
+      setSuccess("A new invitation has been sent to your email.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to resend invitation");
     } finally {
@@ -125,7 +122,7 @@ export default function ActivateAccountPage() {
     );
   }
 
-  if (expired || (!valid && error)) {
+  if (expired) {
     return (
       <div className="min-h-screen flex bg-background">
         <div className="hidden lg:flex flex-col flex-1 bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 p-10 justify-between relative overflow-hidden">
@@ -137,15 +134,60 @@ export default function ActivateAccountPage() {
             <div className="w-16 h-16 mx-auto mb-6 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
               <AlertCircle className="w-8 h-8 text-red-600" />
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-2">Link Expired</h1>
-            <p className="text-muted-foreground text-sm mb-6">{error}</p>
-            <div className="flex flex-col gap-3">
-              <button onClick={handleResend} disabled={resending} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 sm:py-3 rounded-xl transition-all hover:shadow-lg hover:shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed touch-target">
-                {resending ? <><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Sending...</> : <><RefreshCw className="w-4 h-4 inline mr-2" />Resend Invitation</>}
-              </button>
-              <a href="/login" className="text-sm text-blue-600 hover:underline py-2 block">Back to Login</a>
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-2">Invitation Link Expired</h1>
+            <p className="text-muted-foreground text-sm mb-6">This invitation link has expired or is no longer valid.</p>
+            {!success ? (
+              <div className="flex flex-col gap-3">
+                <button onClick={handleResend} disabled={resending} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 sm:py-3 rounded-xl transition-all hover:shadow-lg hover:shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed touch-target">
+                  {resending ? <><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Sending...</> : <><RefreshCw className="w-4 h-4 inline mr-2" />Resend Invitation</>}
+                </button>
+                <a href="/login" className="text-sm text-blue-600 hover:underline py-2 block">Back to Login</a>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2 p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-xl text-xs text-green-700 dark:text-green-300 text-left"><CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />{success}</div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (used) {
+    return (
+      <div className="min-h-screen flex bg-background">
+        <div className="hidden lg:flex flex-col flex-1 bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 p-10 justify-between relative overflow-hidden">
+          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, #2563EB 1px, transparent 1px), radial-gradient(circle at 80% 80%, #4F46E5 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
+          <div className="relative"><div className="flex items-center gap-2.5 mb-14"><div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center"><FlaskConical className="w-5 h-5 text-white" /></div><span className="font-bold text-xl text-white">ResearchHub <span className="text-blue-400">AI</span></span></div></div>
+        </div>
+        <div className="flex flex-1 items-center justify-center p-4 sm:p-6 lg:p-10">
+          <div className="w-full max-w-sm text-center">
+            <div className="w-16 h-16 mx-auto mb-6 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+              <CheckCircle className="w-8 h-8 text-blue-600" />
             </div>
-            {success && <div className="flex items-start gap-2 p-3 mt-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-xl text-xs text-green-700 dark:text-green-300"><CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />{success}</div>}
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-2">Already Activated</h1>
+            <p className="text-muted-foreground text-sm mb-6">This account has already been activated. Please log in.</p>
+            <a href="/login" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 sm:py-3 rounded-xl transition-all hover:shadow-lg hover:shadow-blue-500/25 text-center block touch-target">Go to Login</a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!valid && error) {
+    return (
+      <div className="min-h-screen flex bg-background">
+        <div className="hidden lg:flex flex-col flex-1 bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 p-10 justify-between relative overflow-hidden">
+          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, #2563EB 1px, transparent 1px), radial-gradient(circle at 80% 80%, #4F46E5 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
+          <div className="relative"><div className="flex items-center gap-2.5 mb-14"><div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center"><FlaskConical className="w-5 h-5 text-white" /></div><span className="font-bold text-xl text-white">ResearchHub <span className="text-blue-400">AI</span></span></div></div>
+        </div>
+        <div className="flex flex-1 items-center justify-center p-4 sm:p-6 lg:p-10">
+          <div className="w-full max-w-sm text-center">
+            <div className="w-16 h-16 mx-auto mb-6 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+              <AlertCircle className="w-8 h-8 text-red-600" />
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-2">Invalid Link</h1>
+            <p className="text-muted-foreground text-sm mb-6">{error}</p>
+            <a href="/login" className="text-sm text-blue-600 hover:underline py-2 block">Back to Login</a>
           </div>
         </div>
       </div>

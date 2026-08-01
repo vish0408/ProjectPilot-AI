@@ -24,7 +24,9 @@ public class AdminDashboardController : ControllerBase
     {
         try
         {
-            var result = await _dashboardService.GetDashboardAsync();
+            var collegeIdClaim = User.FindFirst("CollegeId")?.Value;
+            Guid? collegeId = !string.IsNullOrEmpty(collegeIdClaim) && Guid.TryParse(collegeIdClaim, out var cid) ? cid : null;
+            var result = await _dashboardService.GetDashboardAsync(collegeId);
             return Ok(result);
         }
         catch (Exception ex)
