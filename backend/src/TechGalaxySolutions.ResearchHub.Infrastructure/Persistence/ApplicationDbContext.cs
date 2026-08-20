@@ -309,11 +309,19 @@ public class ApplicationDbContext : DbContext
         });
 
         modelBuilder.Entity<RolePermission>(entity =>
-        {
-            entity.HasIndex(rp => new { rp.RoleId, rp.PermissionId }).IsUnique();
-            entity.HasOne(rp => rp.Role).WithMany().HasForeignKey(rp => rp.RoleId).OnDelete(DeleteBehavior.NoAction);
-            entity.HasOne(rp => rp.Permission).WithMany().HasForeignKey(rp => rp.PermissionId).OnDelete(DeleteBehavior.NoAction);
-        });
+{
+    entity.HasIndex(rp => new { rp.RoleId, rp.PermissionId }).IsUnique();
+
+    entity.HasOne(rp => rp.Role)
+        .WithMany(r => r.RolePermissions)
+        .HasForeignKey(rp => rp.RoleId)
+        .OnDelete(DeleteBehavior.NoAction);
+
+    entity.HasOne(rp => rp.Permission)
+        .WithMany()
+        .HasForeignKey(rp => rp.PermissionId)
+        .OnDelete(DeleteBehavior.NoAction);
+});
 
         modelBuilder.Entity<GlobalAnnouncement>(entity =>
         {
