@@ -10,7 +10,6 @@ import StatCard from "../../components/cards/StatCard";
 import Badge from "../../components/common/Badge";
 import Card from "../../components/common/Card";
 import SectionHead from "../../components/common/SectionHead";
-import Pagination from "../../components/common/Pagination";
 import { guideService } from "../../services/GuideService";
 import { Meeting } from "../../types/Guide";
 
@@ -25,22 +24,11 @@ export default function GuideMeetingScheduler() {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const [hasNextPage, setHasNextPage] = useState(false);
-  const [hasPreviousPage, setHasPreviousPage] = useState(false);
-  const [pageSize, setPageSize] = useState(20);
 
-  const fetchMeetings = async (page: number, size: number) => {
+  const fetchMeetings = async () => {
     try {
-      const m = await guideService.getMyMeetings({ pageNumber: page, pageSize: size });
-      setMeetings(m.items);
-      setPageNumber(m.pageNumber);
-      setTotalPages(m.totalPages);
-      setTotalCount(m.totalCount);
-      setHasNextPage(m.hasNextPage);
-      setHasPreviousPage(m.hasPreviousPage);
+      const m = await guideService.getMyMeetings();
+      setMeetings(m);
     } catch (e) {
       console.error("Failed to load meetings", e);
     } finally {
@@ -48,16 +36,7 @@ export default function GuideMeetingScheduler() {
     }
   };
 
-  useEffect(() => { fetchMeetings(pageNumber, pageSize); }, []);
-
-  const handlePageChange = (page: number) => {
-    fetchMeetings(page, pageSize);
-  };
-
-  const handlePageSizeChange = (size: number) => {
-    setPageSize(size);
-    fetchMeetings(1, size);
-  };
+  useEffect(() => { fetchMeetings(); }, []);
 
   const handleSchedule = async () => {
     if (!title.trim() || !date || !time) return;
@@ -70,7 +49,7 @@ export default function GuideMeetingScheduler() {
         participantIds: [],
       });
       setTitle(""); setDate(""); setTime("");
-      await fetchMeetings(pageNumber, pageSize);
+      await fetchMeetings();
     } catch (e) {
       console.error("Failed to create meeting", e);
     } finally {
@@ -90,7 +69,19 @@ export default function GuideMeetingScheduler() {
 
   const today = now.getDate();
 
-  const pendingRequests = meetings.filter(m => m.status === "pending").length;
+  const startOfWeek = new Date(now);
+  startOfWeek.setHours(0, 0, 0, 0);
+  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(endOfWeek.getDate() + 7);
+
+  const thisWeekMeetings = meetings.filter(m => {
+    const d = new Date(m.scheduledAt);
+    return d >= startOfWeek && d < endOfWeek;
+  }).length;
+  const thisMonthMeetings = meetings.filter(m => new Date(m.scheduledAt).getMonth() === month).length;
+
+  const upcomingMeetings = meetings.filter(m => new Date(m.scheduledAt) >= now && (m.status || "").toLowerCase() === "scheduled").length;
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" /></div>;
@@ -100,9 +91,9 @@ export default function GuideMeetingScheduler() {
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard label="Today" value={meetings.filter(m => new Date(m.scheduledAt).toDateString() === now.toDateString()).length.toString()} icon={Calendar} color="bg-indigo-500"/>
-        <StatCard label="This Page" value={meetings.length.toString()} icon={Activity} color="bg-blue-500"/>
-        <StatCard label="Pending Requests" value={pendingRequests.toString()} icon={Clock} color="bg-amber-500"/>
-        <StatCard label="Total" value={totalCount.toString()} icon={CheckCircle} color="bg-green-500"/>
+        <StatCard label="This Week" value={thisWeekMeetings.toString()} icon={Activity} color="bg-blue-500"/>
+        <StatCard label="Upcoming" value={upcomingMeetings.toString()} icon={Clock} color="bg-amber-500"/>
+        <StatCard label="Total (Month)" value={thisMonthMeetings.toString()} icon={CheckCircle} color="bg-green-500"/>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card>
@@ -127,21 +118,11 @@ export default function GuideMeetingScheduler() {
                 <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-950/30 rounded-xl flex items-center justify-center flex-shrink-0"><Calendar className="w-5 h-5 text-indigo-600"/></div>
                 <div className="flex-1"><p className="font-bold text-sm text-foreground">{m.title}</p><p className="text-xs text-muted-foreground">{new Date(m.scheduledAt).toLocaleDateString()} · {new Date(m.scheduledAt).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})} · {m.durationMinutes}min</p></div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={m.status==="scheduled"?"info":m.status==="completed"?"success":"warning"}>{m.status}</Badge>
+                  <Badge variant={(m.status||"").toLowerCase()==="scheduled"?"info":(m.status||"").toLowerCase()==="completed"?"success":"warning"}>{m.status}</Badge>
                   {m.meetingLink&&<button className="bg-indigo-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-indigo-700">Join</button>}
                 </div>
               </div>
             ))}
-            <Pagination
-              pageNumber={pageNumber}
-              totalPages={totalPages}
-              totalCount={totalCount}
-              hasNextPage={hasNextPage}
-              hasPreviousPage={hasPreviousPage}
-              onPageChange={handlePageChange}
-              pageSize={pageSize}
-              onPageSizeChange={handlePageSizeChange}
-            />
           </Card>
           <Card>
             <SectionHead title="Schedule New Meeting"/>

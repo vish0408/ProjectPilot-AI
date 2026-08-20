@@ -13,6 +13,14 @@ public class AdminDashboardResponse
     public int TotalColleges { get; set; }
     public int TotalDepartments { get; set; }
     public int ActiveAcademicYears { get; set; }
+
+    // PhD scholar metrics
+    public int CourseworkInProgress { get; set; }
+    public int CourseworkCompleted { get; set; }
+    public int ResearchInProgress { get; set; }
+    public int ThesisSubmitted { get; set; }
+    public int CompletedScholars { get; set; }
+
     public List<AuditLogSummary> RecentLogs { get; set; } = new();
     public Dictionary<string, int> UsersByRole { get; set; } = new();
     public List<MonthlyActivity> MonthlyActivity { get; set; } = new();

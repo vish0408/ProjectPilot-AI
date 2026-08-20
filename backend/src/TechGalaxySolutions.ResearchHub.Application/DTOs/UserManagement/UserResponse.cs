@@ -39,6 +39,19 @@ public class UserResponse
     public Guid? SemesterId { get; set; }
     public string? SemesterName { get; set; }
     public string? Section { get; set; }
+
+    // PhD scholar-specific
+    public DateTime? JoiningCohort { get; set; }
+    public DateTime? RegistrationDate { get; set; }
+    public string? PhdMode { get; set; }
+    public int? RequiredCredits { get; set; }
+    public Guid? ResearchStageId { get; set; }
+    public string? ResearchStageName { get; set; }
+    public int? EarnedCredits { get; set; }
+    public int? PassedPapers { get; set; }
+    public int? PendingPapers { get; set; }
+    public string? CourseworkStatus { get; set; }
+
     public string? Specialization { get; set; }
     public string? Bio { get; set; }
     public string? Qualification { get; set; }
@@ -48,19 +61,26 @@ public class UserResponse
 
     public string AccountStatus
     {
-        get
-        {
-            if (Status == "Locked") return "Locked";
-            if (Status == "Disabled") return "Disabled";
-            if (Status == "Draft") return "Draft";
-            if (Status == "InvitationSent") return "Invitation Sent";
-            if (Status == "EmailVerified") return "Email Verified";
-            if (Status == "Active") return "Active";
-            if (!IsActive) return "Inactive";
-            if (IsLocked) return "Locked";
-            if (IsFirstLogin) return "Pending Activation";
-            if (TemporaryPasswordExpiresAt.HasValue && TemporaryPasswordExpiresAt.Value < DateTime.UtcNow) return "Password Expired";
-            return "Active";
-        }
+        get => ComputeAccountStatus(Status, IsActive, IsLocked, IsFirstLogin, TemporaryPasswordExpiresAt);
+    }
+
+    public static string ComputeAccountStatus(
+        string status,
+        bool isActive,
+        bool isLocked,
+        bool isFirstLogin,
+        DateTime? temporaryPasswordExpiresAt)
+    {
+        if (status == "Locked") return "Locked";
+        if (status == "Disabled") return "Disabled";
+        if (status == "Draft") return "Draft";
+        if (status == "InvitationSent") return "Invitation Sent";
+        if (status == "EmailVerified") return "Email Verified";
+        if (status == "Active") return "Active";
+        if (!isActive) return "Inactive";
+        if (isLocked) return "Locked";
+        if (isFirstLogin) return "Pending Activation";
+        if (temporaryPasswordExpiresAt.HasValue && temporaryPasswordExpiresAt.Value < DateTime.UtcNow) return "Password Expired";
+        return "Active";
     }
 }

@@ -10,8 +10,10 @@ import UserViewDrawer from "../../components/admin/UserViewDrawer";
 import DeleteConfirmDialog from "../../components/admin/DeleteConfirmDialog";
 import AcademicYearSelect from "../../components/admin/AcademicYearSelect";
 import SemesterSelect from "../../components/admin/SemesterSelect";
+import ResearchStageSelect from "../../components/admin/ResearchStageSelect";
 import { adminService } from "../../services/AdminService";
 import { authService } from "../../services/AuthService";
+import { PHD_MODES } from "../../components/admin/UserFormModal";
 import type { UserResponse, CollegeResponse, DepartmentResponse } from "../../types/Admin";
 
 export type RoleBadgeVariant = "info" | "purple" | "success" | "outline";
@@ -31,6 +33,7 @@ export interface RoleManagementConfig {
   showAssignedStudents: boolean;
   showResearchStatus: boolean;
   showGuideColumn: boolean;
+  showScholarFields?: boolean;
 }
 
 function fmtDate(d: string) {
@@ -52,6 +55,9 @@ export default function SuperRoleManagement({ config }: { config: RoleManagement
   const [filterGuide, setFilterGuide] = useState("");
   const [filterAcademicYear, setFilterAcademicYear] = useState("");
   const [filterSemester, setFilterSemester] = useState("");
+  const [filterResearchStage, setFilterResearchStage] = useState("");
+  const [filterPhdMode, setFilterPhdMode] = useState("");
+  const [filterCourseworkStatus, setFilterCourseworkStatus] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [sortField, setSortField] = useState("fullname");
   const [sortDirection, setSortDirection] = useState("asc");
@@ -119,6 +125,9 @@ export default function SuperRoleManagement({ config }: { config: RoleManagement
         guideFilter: config.showGuideFilter ? (filterGuide || undefined) : undefined,
         academicYearFilter: config.showGuideFilter ? (filterAcademicYear || undefined) : undefined,
         semesterFilter: config.showGuideFilter ? (filterSemester || undefined) : undefined,
+        researchStageFilter: config.showScholarFields ? (filterResearchStage || undefined) : undefined,
+        phdModeFilter: config.showScholarFields ? (filterPhdMode || undefined) : undefined,
+        courseworkStatusFilter: config.showScholarFields ? (filterCourseworkStatus || undefined) : undefined,
         statusFilter: filterStatus || undefined,
         sortField,
         sortDirection,
@@ -133,7 +142,7 @@ export default function SuperRoleManagement({ config }: { config: RoleManagement
       if (e instanceof Error) showError(e.message);
     }
     finally { if (!controller.signal.aborted) setLoading(false); }
-  }, [search, filterCollege, filterDepartment, filterGuide, filterAcademicYear, filterSemester, filterStatus, sortField, sortDirection, pageNumber, pageSize, config.roleName, config.showGuideFilter]);
+  }, [search, filterCollege, filterDepartment, filterGuide, filterAcademicYear, filterSemester, filterResearchStage, filterPhdMode, filterCourseworkStatus, filterStatus, sortField, sortDirection, pageNumber, pageSize, config.roleName, config.showGuideFilter, config.showScholarFields]);
 
   useEffect(() => { fetchData(1); }, []);
 
@@ -188,6 +197,11 @@ export default function SuperRoleManagement({ config }: { config: RoleManagement
         bio: u.bio || undefined,
         qualification: u.qualification || undefined,
         yearsOfExperience: u.yearsOfExperience ?? undefined,
+        joiningCohort: u.joiningCohort || undefined,
+        registrationDate: u.registrationDate || undefined,
+        phdMode: u.phdMode || undefined,
+        requiredCredits: u.requiredCredits ?? undefined,
+        researchStageId: u.researchStageId || undefined,
       });
       setResponse(prev => prev.map(i => i.id === u.id ? { ...i, isActive: !i.isActive } : i));
       setAllUsers(prev => prev.map(i => i.id === u.id ? { ...i, isActive: !i.isActive } : i));
@@ -327,6 +341,33 @@ export default function SuperRoleManagement({ config }: { config: RoleManagement
               />
             </div>
           )}
+          {config.showScholarFields && (
+            <div className="min-w-[180px]">
+              <ResearchStageSelect
+                value={filterResearchStage}
+                onChange={(v) => { setFilterResearchStage(v); setPageNumber(1); }}
+                allowClear
+                placeholder="All Research Stages"
+              />
+            </div>
+          )}
+          {config.showScholarFields && (
+            <select value={filterPhdMode} onChange={e => { setFilterPhdMode(e.target.value); setPageNumber(1); }}
+              className="bg-input-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none focus:border-primary">
+              <option value="">All PhD Modes</option>
+              {PHD_MODES.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          )}
+          {config.showScholarFields && (
+            <select value={filterCourseworkStatus} onChange={e => { setFilterCourseworkStatus(e.target.value); setPageNumber(1); }}
+              className="bg-input-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none focus:border-primary">
+              <option value="">All Coursework</option>
+              <option value="Not Started">Not Started</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Eligible for Completion">Eligible for Completion</option>
+              <option value="Completed">Completed</option>
+            </select>
+          )}
           <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPageNumber(1); }}
             className="bg-input-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none focus:border-primary">
             <option value="">All Status</option>
@@ -365,6 +406,9 @@ export default function SuperRoleManagement({ config }: { config: RoleManagement
                 {config.showAssignedStudents && <th className="text-center py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap hidden lg:table-cell">Assigned Students</th>}
                 {config.showGuideColumn && <th className="text-left py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap hidden lg:table-cell">Guide</th>}
                 {config.showResearchStatus && <th className="text-left py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap">Research Status</th>}
+                {config.showScholarFields && <th className="text-left py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap">Research Stage</th>}
+                {config.showScholarFields && <th className="text-left py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap">PhD Mode</th>}
+                {config.showScholarFields && <th className="text-left py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap hidden xl:table-cell">Coursework</th>}
                 <th className="text-center py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap">Status</th>
                 <th className="text-left py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap hidden lg:table-cell">Created</th>
                 <th className="text-right py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap">Actions</th>
@@ -398,6 +442,24 @@ export default function SuperRoleManagement({ config }: { config: RoleManagement
                   {config.showResearchStatus && (
                     <td className="py-3 px-3 text-xs font-medium whitespace-nowrap">
                       <span className={researchStatusColor(u.researchStatus)}>{u.researchStatus || "No Project"}</span>
+                    </td>
+                  )}
+                  {config.showScholarFields && (
+                    <td className="py-3 px-3 text-xs text-muted-foreground whitespace-nowrap">{u.researchStageName || "—"}</td>
+                  )}
+                  {config.showScholarFields && (
+                    <td className="py-3 px-3 text-xs text-muted-foreground whitespace-nowrap">{u.phdMode || "—"}</td>
+                  )}
+                  {config.showScholarFields && (
+                    <td className="py-3 px-3 whitespace-nowrap hidden xl:table-cell">
+                      {u.courseworkStatus ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">{u.courseworkStatus}</span>
+                          <span className="text-[10px] text-muted-foreground">{u.earnedCredits ?? 0}/{u.requiredCredits ?? 0} credits</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </td>
                   )}
                   <td className="py-3 px-3 text-center whitespace-nowrap">

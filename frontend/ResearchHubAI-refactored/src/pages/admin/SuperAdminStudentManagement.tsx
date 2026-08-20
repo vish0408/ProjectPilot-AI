@@ -16,6 +16,7 @@ const config: RoleManagementConfig = {
   showAssignedStudents: false,
   showResearchStatus: true,
   showGuideColumn: true,
+  showScholarFields: true,
 };
 
 export default function SuperAdminStudentManagement() {

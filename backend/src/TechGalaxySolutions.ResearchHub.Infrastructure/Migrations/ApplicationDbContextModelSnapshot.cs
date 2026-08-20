@@ -1902,11 +1902,68 @@ namespace TechGalaxySolutions.ResearchHub.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<Guid?>("DepartmentProfileId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DisciplineGroup")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ResearchCategories_Code")
+                        .HasFilter("[IsDeleted] = 0 AND [Code] <> ''");
+
+                    b.HasIndex("DepartmentProfileId");
+
+                    b.HasIndex("DisciplineGroup")
+                        .HasDatabaseName("IX_ResearchCategories_DisciplineGroup");
+
+                    b.HasIndex("Name", "DisciplineGroup")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ResearchCategories_Name_DisciplineGroup")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("ResearchCategories");
+                });
+
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.ResearchStage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -1920,16 +1977,23 @@ namespace TechGalaxySolutions.ResearchHub.Infrastructure.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DepartmentProfileId");
+                    b.HasIndex("Name")
+                        .IsUnique();
 
-                    b.ToTable("ResearchCategories");
+                    b.HasIndex("SortOrder")
+                        .HasDatabaseName("IX_ResearchStages_SortOrder");
+
+                    b.ToTable("ResearchStages");
                 });
 
             modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.ResearchTopic", b =>
@@ -2098,6 +2162,74 @@ namespace TechGalaxySolutions.ResearchHub.Infrastructure.Migrations
                     b.ToTable("RolePermissions");
                 });
 
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.ScholarCoursework", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("AttemptDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("CompletedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Credits")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ExamStatus")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ExamType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Grade")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("Marks")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<string>("PaperCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("PaperName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Result")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("StudentProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentProfileId")
+                        .HasDatabaseName("IX_ScholarCoursework_StudentProfileId");
+
+                    b.HasIndex("StudentProfileId", "PaperCode")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("ScholarCoursework");
+                });
+
             modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.Semester", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2172,6 +2304,21 @@ namespace TechGalaxySolutions.ResearchHub.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime?>("JoiningCohort")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PhdMode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("RegistrationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("RequiredCredits")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("ResearchStageId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("ResearchTopic")
                         .HasColumnType("nvarchar(max)");
 
@@ -2193,6 +2340,9 @@ namespace TechGalaxySolutions.ResearchHub.Infrastructure.Migrations
 
                     b.HasIndex("GuideId")
                         .HasDatabaseName("IX_StudentProfiles_GuideId");
+
+                    b.HasIndex("ResearchStageId")
+                        .HasDatabaseName("IX_StudentProfiles_ResearchStageId");
 
                     b.HasIndex("SemesterId");
 
@@ -3126,6 +3276,17 @@ namespace TechGalaxySolutions.ResearchHub.Infrastructure.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.ScholarCoursework", b =>
+                {
+                    b.HasOne("TechGalaxySolutions.ResearchHub.Domain.Entities.StudentProfile", "StudentProfile")
+                        .WithMany("Coursework")
+                        .HasForeignKey("StudentProfileId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("StudentProfile");
+                });
+
             modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.Semester", b =>
                 {
                     b.HasOne("TechGalaxySolutions.ResearchHub.Domain.Entities.AcademicYear", "AcademicYear")
@@ -3149,6 +3310,11 @@ namespace TechGalaxySolutions.ResearchHub.Infrastructure.Migrations
                         .HasForeignKey("GuideId")
                         .OnDelete(DeleteBehavior.NoAction);
 
+                    b.HasOne("TechGalaxySolutions.ResearchHub.Domain.Entities.ResearchStage", "ResearchStage")
+                        .WithMany("Students")
+                        .HasForeignKey("ResearchStageId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("TechGalaxySolutions.ResearchHub.Domain.Entities.Semester", "Semester")
                         .WithMany()
                         .HasForeignKey("SemesterId")
@@ -3163,6 +3329,8 @@ namespace TechGalaxySolutions.ResearchHub.Infrastructure.Migrations
                     b.Navigation("AcademicYear");
 
                     b.Navigation("Guide");
+
+                    b.Navigation("ResearchStage");
 
                     b.Navigation("Semester");
 
@@ -3307,11 +3475,21 @@ namespace TechGalaxySolutions.ResearchHub.Infrastructure.Migrations
                     b.Navigation("ResearchTopics");
                 });
 
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.ResearchStage", b =>
+                {
+                    b.Navigation("Students");
+                });
+
             modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.Role", b =>
                 {
                     b.Navigation("RolePermissions");
 
                     b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("TechGalaxySolutions.ResearchHub.Domain.Entities.StudentProfile", b =>
+                {
+                    b.Navigation("Coursework");
                 });
 #pragma warning restore 612, 618
         }

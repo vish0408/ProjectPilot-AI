@@ -129,61 +129,43 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  *,
-  *::before,
-  *::after {
-    box-sizing: border-box;
   }
 
   body {
     @apply bg-background text-foreground;
-    overscroll-behavior: none;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    overflow-x: hidden;
-    width: 100%;
   }
+
+  /**
+  * Default typography styles for HTML elements (h1-h4, p, label, button, input).
+  * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
+  */
 
   html {
     font-size: var(--font-size);
-    scroll-behavior: smooth;
-    -webkit-text-size-adjust: 100%;
-  }
-
-  img, video, svg {
-    max-width: 100%;
-    height: auto;
-  }
-
-  input, select, textarea, button {
-    font-size: 16px;
   }
 
   h1 {
-    font-size: clamp(1.25rem, 4vw, 1.75rem);
+    font-size: var(--text-2xl);
     font-weight: var(--font-weight-medium);
-    line-height: 1.4;
+    line-height: 1.5;
   }
 
   h2 {
-    font-size: clamp(1.125rem, 3vw, 1.5rem);
+    font-size: var(--text-xl);
     font-weight: var(--font-weight-medium);
-    line-height: 1.4;
+    line-height: 1.5;
   }
 
   h3 {
-    font-size: clamp(1rem, 2.5vw, 1.25rem);
+    font-size: var(--text-lg);
     font-weight: var(--font-weight-medium);
-    line-height: 1.4;
+    line-height: 1.5;
   }
 
   h4 {
-    font-size: clamp(0.875rem, 2vw, 1rem);
+    font-size: var(--text-base);
     font-weight: var(--font-weight-medium);
-    line-height: 1.4;
+    line-height: 1.5;
   }
 
   label {
@@ -202,48 +184,5 @@
     font-size: var(--text-base);
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
-  }
-}
-
-@layer utilities {
-  .scrollbar-thin {
-    scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
-  }
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-  }
-  .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: var(--border);
-    border-radius: 4px;
-  }
-
-  .touch-target {
-    min-height: 44px;
-    min-width: 44px;
-  }
-
-  .line-clamp-1 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; }
-  .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-}
-
-@media (max-width: 639px) {
-  .hide-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  .hide-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-}
-
-@media (pointer: coarse) {
-  .touch-target {
-    min-height: 44px;
-    min-width: 44px;
   }
 }

@@ -26,7 +26,7 @@ import { guideService } from "../../services/GuideService";
 import { GuideDashboardData } from "../../types/Guide";
 
 export default function GuideDashboard() {
-  const { user, setScreen } = useApp();
+  const { user } = useApp();
   const [data, setData] = useState<GuideDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -114,29 +114,6 @@ export default function GuideDashboard() {
           </div>
         </Card>
       </div>
-
-      <Card>
-        <SectionHead title="Pending Thesis Reviews" action={data.pendingThesisReviews.length>0?<Badge variant="info">{data.pendingThesisReviews.length} pending</Badge>:undefined}/>
-        <div className="flex flex-col gap-3">
-          {data.pendingThesisReviews.length===0&&<p className="text-xs text-muted-foreground text-center py-6">No thesis documents to review</p>}
-          {data.pendingThesisReviews.map((d,i)=>(
-            <div key={d.documentId} className="border border-border rounded-xl p-3.5">
-              <div className="flex items-center justify-between mb-2.5">
-                <div className="flex items-center gap-2"><Avatar name={d.studentName} size="sm"/><div><p className="text-xs font-bold text-foreground">{d.studentName}</p><p className="text-xs text-muted-foreground truncate max-w-48">{d.fileName}</p></div></div>
-                <Badge variant={!d.reviewStatus?"warning":d.reviewStatus==="Approved"?"success":d.reviewStatus==="Rejected"?"danger":"default"}>{d.reviewStatus||"Pending"}</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">{d.projectTitle} · v{d.version} · {new Date(d.uploadedAt).toLocaleDateString()}</span>
-                <div className="flex gap-1.5">
-                  <button onClick={()=>setScreen("thesis-reviews")} className="bg-green-600 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg hover:bg-green-700">Approve</button>
-                  <button onClick={()=>setScreen("thesis-reviews")} className="bg-amber-500 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg hover:bg-amber-600">Revise</button>
-                  <button onClick={()=>setScreen("thesis-reviews")} className="border border-border text-xs font-medium text-muted-foreground px-2.5 py-1.5 rounded-lg hover:bg-muted">View</button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">

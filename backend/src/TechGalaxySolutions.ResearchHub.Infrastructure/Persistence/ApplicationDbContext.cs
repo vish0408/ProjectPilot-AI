@@ -60,6 +60,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<LoginHistory> LoginHistories => Set<LoginHistory>();
     public DbSet<EmailLog> EmailLogs => Set<EmailLog>();
     public DbSet<Hod> Hods => Set<Hod>();
+    public DbSet<ResearchStage> ResearchStages => Set<ResearchStage>();
+    public DbSet<ScholarCoursework> ScholarCoursework => Set<ScholarCoursework>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -88,7 +90,23 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(sp => sp.Guide).WithMany().HasForeignKey(sp => sp.GuideId).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(sp => sp.AcademicYear).WithMany().HasForeignKey(sp => sp.AcademicYearId).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(sp => sp.Semester).WithMany().HasForeignKey(sp => sp.SemesterId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(sp => sp.ResearchStage).WithMany(rs => rs.Students).HasForeignKey(sp => sp.ResearchStageId).OnDelete(DeleteBehavior.SetNull);
             entity.HasIndex(sp => sp.GuideId).HasDatabaseName("IX_StudentProfiles_GuideId");
+            entity.HasIndex(sp => sp.ResearchStageId).HasDatabaseName("IX_StudentProfiles_ResearchStageId");
+        });
+
+        modelBuilder.Entity<ResearchStage>(entity =>
+        {
+            entity.HasIndex(rs => rs.Name).IsUnique();
+            entity.HasIndex(rs => rs.SortOrder).HasDatabaseName("IX_ResearchStages_SortOrder");
+        });
+
+        modelBuilder.Entity<ScholarCoursework>(entity =>
+        {
+            entity.HasOne(c => c.StudentProfile).WithMany(sp => sp.Coursework).HasForeignKey(c => c.StudentProfileId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasIndex(c => c.StudentProfileId).HasDatabaseName("IX_ScholarCoursework_StudentProfileId");
+            entity.HasIndex(c => new { c.StudentProfileId, c.PaperCode }).IsUnique().HasFilter("[IsDeleted] = 0");
+            entity.Property(c => c.Marks).HasPrecision(5, 2);
         });
 
         modelBuilder.Entity<Project>(entity =>
@@ -193,6 +211,9 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<ResearchCategory>(entity =>
         {
             entity.HasOne(r => r.DepartmentProfile).WithMany().HasForeignKey(r => r.DepartmentProfileId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(r => new { r.Name, r.DisciplineGroup }).IsUnique().HasFilter("[IsDeleted] = 0").HasDatabaseName("IX_ResearchCategories_Name_DisciplineGroup");
+            entity.HasIndex(r => r.Code).IsUnique().HasFilter("[IsDeleted] = 0 AND [Code] <> ''").HasDatabaseName("IX_ResearchCategories_Code");
+            entity.HasIndex(r => r.DisciplineGroup).HasDatabaseName("IX_ResearchCategories_DisciplineGroup");
         });
 
         modelBuilder.Entity<ResearchTopic>(entity =>

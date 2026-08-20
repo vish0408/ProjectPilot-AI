@@ -21,6 +21,13 @@ public class UpdateUserRequest
     public string? Section { get; set; }
     public string? ResearchTopic { get; set; }
 
+    // PhD scholar-specific
+    public DateTime? JoiningCohort { get; set; }
+    public DateTime? RegistrationDate { get; set; }
+    public string? PhdMode { get; set; }
+    public int? RequiredCredits { get; set; }
+    public Guid? ResearchStageId { get; set; }
+
     // Guide-specific
     public string? Specialization { get; set; }
     public string? Bio { get; set; }

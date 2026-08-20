@@ -5,8 +5,12 @@ namespace TechGalaxySolutions.ResearchHub.Application.DTOs.HodDashboard;
 
 public class HodDashboardResponse
 {
+    // Header
+    public string HodName { get; set; } = string.Empty;
+    public string DepartmentName { get; set; } = string.Empty;
+    public string CollegeName { get; set; } = string.Empty;
+
     // Summary cards
-    public int TotalStudents { get; set; }
     public int ActiveResearchProjects { get; set; }
     public int PendingTopicApprovals { get; set; }
     public int PendingProposalApprovals { get; set; }
@@ -22,6 +26,14 @@ public class HodDashboardResponse
     public int ActiveProjects { get; set; }
     public int CompletedProjects { get; set; }
     public int PendingReviews { get; set; }
+
+    // PhD scholar metrics
+    public int TotalScholars { get; set; }
+    public int CourseworkInProgress { get; set; }
+    public int CourseworkCompleted { get; set; }
+    public int ResearchInProgress { get; set; }
+    public int ThesisSubmitted { get; set; }
+    public int CompletedScholars { get; set; }
 
     // Research stats
     public ResearchStatistics ResearchStats { get; set; } = new();

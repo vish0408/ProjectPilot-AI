@@ -395,6 +395,8 @@ public class AuthService : IAuthService
     {
         var user = await _context.Users.AsNoTracking()
             .Include(u => u.Role)
+            .Include(u => u.CollegeEntity)
+            .Include(u => u.DepartmentEntity)
             .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
 
         if (user == null)

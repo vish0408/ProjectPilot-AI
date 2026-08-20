@@ -7,8 +7,27 @@ export interface CollegeResponse {
   email: string;
   website: string;
   isActive: boolean;
+  status?: string;
+  subscriptionId?: string | null;
+  storageLimitBytes?: number;
   departmentCount: number;
   createdAt: string;
+}
+
+export interface CreateCollegeRequest {
+  name: string;
+  code: string;
+  address: string;
+  phone: string;
+  email: string;
+  website: string;
+  subscriptionId?: string | null;
+  storageLimitBytes?: number;
+}
+
+export interface UpdateCollegeRequest extends CreateCollegeRequest {
+  isActive: boolean;
+  status?: string;
 }
 
 export interface CollegeAnalyticsResponse {
@@ -25,25 +44,12 @@ export interface CollegeAnalyticsResponse {
   researchCount: number;
 }
 
-export interface CreateCollegeRequest {
-  name: string;
-  code: string;
-  address: string;
-  phone: string;
-  email: string;
-  website: string;
-}
-
-export interface UpdateCollegeRequest extends CreateCollegeRequest {
-  isActive: boolean;
-}
-
 export interface DepartmentResponse {
   id: string;
-  departmentName: string;
   departmentCode: string;
-  shortName: string;
-  description: string;
+  departmentName: string;
+  shortName?: string;
+  description?: string;
   collegeId: string;
   collegeName: string;
   hodId?: string | null;
@@ -54,19 +60,14 @@ export interface DepartmentResponse {
 }
 
 export interface CreateDepartmentRequest {
-  departmentName: string;
   departmentCode: string;
-  shortName: string;
-  description: string;
+  departmentName: string;
+  shortName?: string;
+  description?: string;
   collegeId: string;
 }
 
-export interface UpdateDepartmentRequest {
-  departmentName: string;
-  departmentCode: string;
-  shortName: string;
-  description: string;
-  collegeId: string;
+export interface UpdateDepartmentRequest extends CreateDepartmentRequest {
   isActive: boolean;
 }
 
@@ -157,20 +158,24 @@ export interface UserResponse {
   createdAt: string;
   phoneNumber?: string | null;
   employeeId?: string | null;
-  collegeId?: string | null;
-  departmentId?: string | null;
   department?: string | null;
   college?: string | null;
   designation?: string | null;
-  isFirstLogin?: boolean;
-  emailVerified?: boolean;
+
+  isFirstLogin: boolean;
+  emailVerified: boolean;
   passwordChangedAt?: string | null;
   lastLoginAt?: string | null;
   updatedAt?: string | null;
-  failedLoginCount?: number;
+  failedLoginCount: number;
   lockedUntil?: string | null;
+  isLocked: boolean;
+
+  status: string;
+  invitationSentAt?: string | null;
+  activatedAt?: string | null;
   temporaryPasswordExpiresAt?: string | null;
-  accountStatus?: string;
+
   enrollment?: string | null;
   researchTopic?: string | null;
   guideId?: string | null;
@@ -180,12 +185,28 @@ export interface UserResponse {
   semesterId?: string | null;
   semesterName?: string | null;
   section?: string | null;
+
+  joiningCohort?: string | null;
+  registrationDate?: string | null;
+  phdMode?: string | null;
+  requiredCredits?: number | null;
+  researchStageId?: string | null;
+  researchStageName?: string | null;
+  earnedCredits?: number | null;
+  passedPapers?: number | null;
+  pendingPapers?: number | null;
+  courseworkStatus?: string | null;
+
   specialization?: string | null;
   bio?: string | null;
   qualification?: string | null;
   yearsOfExperience?: number | null;
-  assignedStudents?: number;
+  assignedStudents: number;
   researchStatus?: string | null;
+  accountStatus: string;
+
+  collegeId?: string | null;
+  departmentId?: string | null;
 }
 
 export interface CreateUserRequest {
@@ -193,46 +214,36 @@ export interface CreateUserRequest {
   email: string;
   password?: string;
   roleId: string;
-  collegeId?: string;
-  departmentId?: string;
+  collegeId?: string | null;
+  departmentId?: string | null;
   isActive: boolean;
   sendWelcomeEmail?: boolean;
-  phoneNumber?: string;
-  employeeId?: string;
-  designation?: string;
-  enrollment?: string;
-  guideId?: string;
-  academicYearId?: string;
-  semesterId?: string;
-  section?: string;
-  researchTopic?: string;
-  specialization?: string;
-  bio?: string;
-  qualification?: string;
-  yearsOfExperience?: number;
+  phoneNumber?: string | null;
+  employeeId?: string | null;
+  designation?: string | null;
+
+  enrollment?: string | null;
+  guideId?: string | null;
+  academicYearId?: string | null;
+  semesterId?: string | null;
+  section?: string | null;
+  researchTopic?: string | null;
+
+  joiningCohort?: string | null;
+  registrationDate?: string | null;
+  phdMode?: string | null;
+  requiredCredits?: number | null;
+  researchStageId?: string | null;
+
+  specialization?: string | null;
+  bio?: string | null;
+
+  qualification?: string | null;
+  yearsOfExperience?: number | null;
 }
 
-export interface UpdateUserRequest {
-  fullName: string;
-  email: string;
+export interface UpdateUserRequest extends CreateUserRequest {
   isActive: boolean;
-  roleId: string;
-  collegeId?: string;
-  departmentId?: string;
-  password?: string;
-  phoneNumber?: string;
-  employeeId?: string;
-  designation?: string;
-  enrollment?: string;
-  guideId?: string;
-  academicYearId?: string;
-  semesterId?: string;
-  section?: string;
-  researchTopic?: string;
-  specialization?: string;
-  bio?: string;
-  qualification?: string;
-  yearsOfExperience?: number;
 }
 
 export interface RoleResponse {
@@ -263,16 +274,197 @@ export interface PermissionResponse {
   isActive: boolean;
 }
 
+export interface CreatePermissionRequest {
+  name: string;
+  description: string;
+  group: string;
+}
+
 export interface UpdatePermissionRequest {
   name: string;
   description: string;
   group: string;
 }
 
-export interface CreatePermissionRequest {
+export interface HodResponse {
+  id: string;
+  userId: string;
+  employeeId?: string | null;
+  fullName: string;
+  email: string;
+  phone?: string | null;
+  departmentId: string;
+  departmentName: string;
+  departmentCode: string;
+  collegeId: string;
+  collegeName: string;
+  designation?: string | null;
+  qualification: string;
+  yearsOfExperience: number;
+  profilePhoto?: string | null;
+  status: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt?: string | null;
+  userStatus?: string | null;
+  activatedAt?: string | null;
+  lastLoginAt?: string | null;
+  emailVerified: boolean;
+  accountStatus: string;
+}
+
+export interface CreateHodRequest {
+  fullName: string;
+  email: string;
+  phone?: string | null;
+  employeeId?: string | null;
+  designation?: string | null;
+  password?: string | null;
+  departmentId: string;
+  qualification: string;
+  yearsOfExperience: number;
+  profilePhoto?: string | null;
+  status?: string;
+}
+
+export interface UpdateHodRequest {
+  fullName: string;
+  email: string;
+  phone?: string | null;
+  employeeId?: string | null;
+  designation?: string | null;
+  departmentId: string;
+  qualification: string;
+  yearsOfExperience: number;
+  profilePhoto?: string | null;
+  status?: string;
+  isActive: boolean;
+}
+
+export interface ResearchStageResponse {
+  id: string;
   name: string;
+  description?: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface CreateResearchStageRequest {
+  name: string;
+  description?: string;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface UpdateResearchStageRequest extends CreateResearchStageRequest {}
+
+export interface ResearchCategoryResponse {
+  id: string;
+  name: string;
+  code: string;
   description: string;
-  group: string;
+  disciplineGroup: string;
+  sortOrder: number;
+  isActive: boolean;
+  researchTopicCount: number;
+}
+
+export interface CreateResearchCategoryRequest {
+  name: string;
+  code: string;
+  description: string;
+  disciplineGroup: string;
+  sortOrder: number;
+}
+
+export interface UpdateResearchCategoryRequest extends CreateResearchCategoryRequest {
+  isActive: boolean;
+}
+
+export interface ResearchTopicResponse {
+  id: string;
+  title: string;
+  description?: string;
+  categoryId: string;
+  categoryName: string;
+  isActive: boolean;
+  createdByName: string;
+  createdAt: string;
+  departmentId?: string | null;
+  departmentName?: string | null;
+}
+
+export interface CreateResearchTopicRequest {
+  title: string;
+  description?: string;
+  categoryId: string;
+  departmentId?: string | null;
+}
+
+export interface UpdateResearchTopicRequest {
+  title: string;
+  description?: string;
+  categoryId: string;
+  isActive: boolean;
+}
+
+export interface CourseworkResponse {
+  id: string;
+  studentProfileId: string;
+  paperCode: string;
+  paperName: string;
+  credits: number;
+  examType: string;
+  examStatus: string;
+  result?: string | null;
+  marks?: number | null;
+  grade?: string | null;
+  attemptDate?: string | null;
+  completedDate?: string | null;
+  isCompleted: boolean;
+  createdAt: string;
+  updatedAt?: string | null;
+}
+
+export interface CourseworkSummaryResponse {
+  requiredCredits?: number | null;
+  earnedCredits: number;
+  remainingCredits: number;
+  totalPapers: number;
+  passedPapers: number;
+  pendingPapers: number;
+  failedPapers: number;
+  courseworkStatus: string;
+  completionPercentage: number;
+}
+
+export interface CreateCourseworkRequest {
+  paperCode: string;
+  paperName: string;
+  credits: number;
+  examType: string;
+  examStatus: string;
+  result?: string | null;
+  marks?: number | null;
+  grade?: string | null;
+  attemptDate?: string | null;
+  completedDate?: string | null;
+}
+
+export interface UpdateCourseworkRequest extends CreateCourseworkRequest {}
+
+export interface MonthlyActivity {
+  month: string;
+  submissions: number;
+  approvals: number;
+  meetings: number;
+}
+
+export interface DepartmentStat {
+  name: string;
+  students: number;
+  completed: number;
 }
 
 export interface AdminDashboardResponse {
@@ -287,23 +479,15 @@ export interface AdminDashboardResponse {
   totalColleges: number;
   totalDepartments: number;
   activeAcademicYears: number;
+  courseworkInProgress: number;
+  courseworkCompleted: number;
+  researchInProgress: number;
+  thesisSubmitted: number;
+  completedScholars: number;
   recentLogs: AuditLogSummary[];
   usersByRole: Record<string, number>;
   monthlyActivity: MonthlyActivity[];
   departmentStats: DepartmentStat[];
-}
-
-export interface MonthlyActivity {
-  month: string;
-  submissions: number;
-  approvals: number;
-  meetings: number;
-}
-
-export interface DepartmentStat {
-  name: string;
-  students: number;
-  completed: number;
 }
 
 export interface AuditLogSummary {
@@ -364,99 +548,5 @@ export interface SystemSettingResponse {
 export interface UpdateSystemSettingRequest {
   value: string;
   description: string;
-  isActive: boolean;
-}
-
-export interface BackupRecordResponse {
-  id: string;
-  fileName: string;
-  fileSizeBytes: number;
-  fileSizeDisplay: string;
-  status: string;
-  errorMessage?: string;
-  createdByUserName: string;
-  createdAt: string;
-  completedAt?: string;
-}
-
-export interface ResearchTopicResponse {
-  id: string;
-  title: string;
-  description: string;
-  categoryId: string;
-  categoryName: string;
-  isActive: boolean;
-  createdByName: string;
-  createdAt: string;
-  departmentId?: string | null;
-  departmentName?: string | null;
-}
-
-export interface CreateResearchTopicRequest {
-  title: string;
-  description: string;
-  categoryId: string;
-  departmentId?: string | null;
-}
-
-export interface UpdateResearchTopicRequest {
-  title: string;
-  description: string;
-  categoryId: string;
-  isActive: boolean;
-}
-
-export interface HodResponse {
-  id: string;
-  userId: string;
-  employeeId: string;
-  fullName: string;
-  email: string;
-  phone?: string | null;
-  departmentId: string;
-  departmentName: string;
-  departmentCode: string;
-  collegeId: string;
-  collegeName: string;
-  designation: string;
-  qualification: string;
-  yearsOfExperience: number;
-  profilePhoto?: string | null;
-  status: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt?: string | null;
-  userStatus?: string | null;
-  activatedAt?: string | null;
-  lastLoginAt?: string | null;
-  emailVerified?: boolean;
-  accountStatus?: string;
-}
-
-export interface CreateHodRequest {
-  fullName: string;
-  email: string;
-  phone?: string;
-  employeeId?: string;
-  designation?: string;
-  password?: string;
-  departmentId: string;
-  qualification: string;
-  yearsOfExperience: number;
-  profilePhoto?: string;
-  status: string;
-}
-
-export interface UpdateHodRequest {
-  fullName: string;
-  email: string;
-  phone?: string;
-  employeeId?: string;
-  designation?: string;
-  departmentId: string;
-  qualification: string;
-  yearsOfExperience: number;
-  profilePhoto?: string;
-  status: string;
   isActive: boolean;
 }

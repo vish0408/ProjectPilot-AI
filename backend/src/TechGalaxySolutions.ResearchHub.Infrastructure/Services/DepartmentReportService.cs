@@ -22,36 +22,47 @@ public class DepartmentReportService : IDepartmentReportService
 
     public async Task<List<DepartmentReportResponse>> GetReportsAsync(Guid userId)
     {
+        var deptProfile = await GetDepartmentProfileAsync(userId);
+
         var reports = await _context.Set<DepartmentReport>().AsNoTracking()
             .Include(r => r.GeneratedByUser)
-            .Where(r => !r.IsDeleted)
+            .Where(r => !r.IsDeleted && r.DepartmentProfileId == deptProfile.Id)
             .OrderByDescending(r => r.GeneratedAt)
             .ToListAsync();
 
         return _mapper.Map<List<DepartmentReportResponse>>(reports);
     }
 
-    public async Task<DepartmentReportResponse> GenerateReportAsync(Guid userId, string reportType, string title)
+    private async Task<DepartmentProfile> GetDepartmentProfileAsync(Guid userId)
     {
         var deptProfile = await _context.Set<DepartmentProfile>().AsNoTracking()
             .FirstOrDefaultAsync(d => d.HodUserId == userId && !d.IsDeleted)
             ?? throw new InvalidOperationException("Department profile not found. Set up your HOD profile first.");
+
+        return deptProfile;
+    }
+
+    public async Task<DepartmentReportResponse> GenerateReportAsync(Guid userId, string reportType, string title)
+    {
+        var deptProfile = await GetDepartmentProfileAsync(userId);
+
+        var scope = await GetScopeAsync(userId);
 
         object reportData;
 
         switch (reportType.ToLower())
         {
             case "student-progress":
-                reportData = await GenerateStudentProgressReport();
+                reportData = await GenerateStudentProgressReport(scope);
                 break;
             case "guide-performance":
-                reportData = await GenerateGuidePerformanceReport();
+                reportData = await GenerateGuidePerformanceReport(scope);
                 break;
             case "department-analytics":
-                reportData = await GenerateDepartmentAnalytics();
+                reportData = await GenerateDepartmentAnalytics(scope);
                 break;
             case "project-completion":
-                reportData = await GenerateProjectCompletionReport();
+                reportData = await GenerateProjectCompletionReport(scope);
                 break;
             default:
                 throw new ArgumentException($"Unknown report type: {reportType}");
@@ -74,12 +85,25 @@ public class DepartmentReportService : IDepartmentReportService
         return _mapper.Map<DepartmentReportResponse>(report);
     }
 
-    private async Task<object> GenerateStudentProgressReport()
+    private async Task<ReportScope> GetScopeAsync(Guid userId)
+    {
+        var hod = await _context.Set<Hod>().AsNoTracking()
+            .FirstOrDefaultAsync(h => h.UserId == userId && !h.IsDeleted)
+            ?? throw new UnauthorizedAccessException("HOD profile not found");
+
+        return new ReportScope(hod.CollegeId, hod.DepartmentId);
+    }
+
+    private sealed record ReportScope(Guid CollegeId, Guid DepartmentId);
+
+    private async Task<object> GenerateStudentProgressReport(ReportScope scope)
     {
         var students = await _context.Set<StudentProfile>().AsNoTracking()
             .Include(s => s.User)
             .Include(s => s.Guide)
-            .Where(s => !s.IsDeleted)
+            .Where(s => !s.IsDeleted
+                && s.User.CollegeId == scope.CollegeId
+                && s.User.DepartmentId == scope.DepartmentId)
             .Select(s => new
             {
                 StudentName = s.User.FullName,
@@ -93,11 +117,13 @@ public class DepartmentReportService : IDepartmentReportService
         return new { ReportType = "Student Progress", GeneratedAt = DateTime.UtcNow, Data = students };
     }
 
-    private async Task<object> GenerateGuidePerformanceReport()
+    private async Task<object> GenerateGuidePerformanceReport(ReportScope scope)
     {
         var guides = await _context.Set<GuideProfile>().AsNoTracking()
             .Include(g => g.User)
-            .Where(g => !g.IsDeleted)
+            .Where(g => !g.IsDeleted
+                && g.User.CollegeId == scope.CollegeId
+                && g.User.DepartmentId == scope.DepartmentId)
             .Select(g => new
             {
                 GuideName = g.User.FullName,
@@ -111,12 +137,20 @@ public class DepartmentReportService : IDepartmentReportService
         return new { ReportType = "Guide Performance", GeneratedAt = DateTime.UtcNow, Data = guides };
     }
 
-    private async Task<object> GenerateDepartmentAnalytics()
+    private async Task<object> GenerateDepartmentAnalytics(ReportScope scope)
     {
-        var totalStudents = await _context.Set<StudentProfile>().AsNoTracking().CountAsync(s => !s.IsDeleted);
-        var totalGuides = await _context.Set<GuideProfile>().AsNoTracking().CountAsync(g => !g.IsDeleted);
-        var activeProjects = await _context.Projects.AsNoTracking().CountAsync(p => !p.IsDeleted && p.Status == ProjectStatus.InProgress);
-        var completedProjects = await _context.Projects.AsNoTracking().CountAsync(p => !p.IsDeleted && p.Status == ProjectStatus.Completed);
+        var totalStudents = await _context.Set<StudentProfile>().AsNoTracking()
+            .CountAsync(s => !s.IsDeleted && s.User.CollegeId == scope.CollegeId && s.User.DepartmentId == scope.DepartmentId);
+        var totalGuides = await _context.Set<GuideProfile>().AsNoTracking()
+            .CountAsync(g => !g.IsDeleted && g.User.CollegeId == scope.CollegeId && g.User.DepartmentId == scope.DepartmentId);
+        var activeProjects = await _context.Projects.AsNoTracking()
+            .Include(p => p.Student)
+            .CountAsync(p => !p.IsDeleted && p.Status == ProjectStatus.InProgress
+                && p.Student.CollegeId == scope.CollegeId && p.Student.DepartmentId == scope.DepartmentId);
+        var completedProjects = await _context.Projects.AsNoTracking()
+            .Include(p => p.Student)
+            .CountAsync(p => !p.IsDeleted && p.Status == ProjectStatus.Completed
+                && p.Student.CollegeId == scope.CollegeId && p.Student.DepartmentId == scope.DepartmentId);
 
         return new
         {
@@ -126,11 +160,13 @@ public class DepartmentReportService : IDepartmentReportService
         };
     }
 
-    private async Task<object> GenerateProjectCompletionReport()
+    private async Task<object> GenerateProjectCompletionReport(ReportScope scope)
     {
         var projects = await _context.Projects.AsNoTracking()
             .Include(p => p.Student)
-            .Where(p => !p.IsDeleted)
+            .Where(p => !p.IsDeleted
+                && p.Student.CollegeId == scope.CollegeId
+                && p.Student.DepartmentId == scope.DepartmentId)
             .Select(p => new
             {
                 ProjectTitle = p.Title,

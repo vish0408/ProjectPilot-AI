@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
-  BookOpen, Upload, FileText, Search, Filter, Trash2, Loader2,
-  Brain, Sparkles, Check, Copy, Download, X,
+  BookOpen, Upload, FileText, Search, Trash2, Loader2,
+  Brain, Copy, Download, X,
   ChevronDown, ChevronUp, GitCompare, Lightbulb, Tags, FileSearch,
   Clock, Eye,
 } from "lucide-react";
@@ -10,7 +10,7 @@ import SectionHead from "../../components/common/SectionHead";
 import Badge from "../../components/common/Badge";
 import { literatureService } from "../../services/LiteratureService";
 import type {
-  LiteratureReviewResponse, UploadedDocumentResponse,
+  LiteratureReviewResponse,
 } from "../../types/Literature";
 import { RESEARCH_AREAS } from "../../types/Literature";
 
@@ -23,11 +23,9 @@ export default function LiteratureReviewPage() {
   const [fileName, setFileName] = useState("");
   const [reviews, setReviews] = useState<LiteratureReviewResponse[]>([]);
   const [currentReview, setCurrentReview] = useState<LiteratureReviewResponse | null>(null);
-  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [compareDocIds, setCompareDocIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState<string | null>(null);
-  const [summarizing, setSummarizing] = useState<string | null>(null);
   const [extracting, setExtracting] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -57,7 +55,7 @@ export default function LiteratureReviewPage() {
     }, 200);
 
     try {
-      const doc = await literatureService.upload({
+      await literatureService.upload({
         fileName: fileName || "document.txt",
         fileType: fileName?.split(".").pop() || "txt",
         content: documentText,
@@ -66,7 +64,6 @@ export default function LiteratureReviewPage() {
       clearInterval(progressInterval);
       setUploadProgress(100);
       setTimeout(() => setUploadProgress(0), 500);
-      setSelectedDocId(doc.id);
       setDocumentText("");
       setFileName("");
 
@@ -210,14 +207,6 @@ export default function LiteratureReviewPage() {
     r.title.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
     r.researchArea.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
   ), [reviews, debouncedSearchQuery]);
-
-  const getSelectedDocs = () => {
-    const docs: UploadedDocumentResponse[] = [];
-    reviews.forEach(r => r.documents.forEach(d => {
-      if (compareDocIds.includes(d.id)) docs.push(d);
-    }));
-    return docs;
-  };
 
   const renderUploadTab = () => (
     <div className="flex flex-col gap-5">

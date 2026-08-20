@@ -92,6 +92,9 @@ public class AdminDashboardService : IAdminDashboardService
 
         var departmentStats = await GetDepartmentStatsAsync(collegeId);
 
+        var (courseworkInProgress, courseworkCompleted, researchInProgress, thesisSubmitted, completedScholars) =
+            await GetPhdMetricsAsync(collegeId);
+
         return new AdminDashboardResponse
         {
             TotalUsers = totalUsers,
@@ -105,11 +108,69 @@ public class AdminDashboardService : IAdminDashboardService
             TotalColleges = totalColleges,
             TotalDepartments = totalDepartments,
             ActiveAcademicYears = activeAcademicYears,
+            CourseworkInProgress = courseworkInProgress,
+            CourseworkCompleted = courseworkCompleted,
+            ResearchInProgress = researchInProgress,
+            ThesisSubmitted = thesisSubmitted,
+            CompletedScholars = completedScholars,
             RecentLogs = recentLogs,
             UsersByRole = usersByRole,
             MonthlyActivity = monthlyActivity,
             DepartmentStats = departmentStats,
         };
+    }
+
+    private async Task<(int InProgress, int Completed, int ResearchInProgress, int ThesisSubmitted, int CompletedScholars)>
+        GetPhdMetricsAsync(Guid? collegeId = null)
+    {
+        var isScoped = collegeId.HasValue;
+
+        var students = await _context.Set<StudentProfile>().AsNoTracking()
+            .Include(s => s.User)
+            .Where(s => !s.IsDeleted && (!isScoped || s.User != null && s.User.CollegeId == collegeId.Value))
+            .ToListAsync();
+
+        if (students.Count == 0)
+            return (0, 0, 0, 0, 0);
+
+        var studentIds = students.Select(s => s.Id).ToList();
+        var coursework = await _context.Set<ScholarCoursework>().AsNoTracking()
+            .Where(c => !c.IsDeleted && studentIds.Contains(c.StudentProfileId))
+            .ToListAsync();
+        var courseworkLookup = coursework.ToLookup(c => c.StudentProfileId);
+
+        var stageIds = students.Where(s => s.ResearchStageId.HasValue).Select(s => s.ResearchStageId!.Value).Distinct().ToList();
+        var stageNames = new Dictionary<Guid, string>();
+        if (stageIds.Count > 0)
+        {
+            stageNames = await _context.Set<ResearchStage>().AsNoTracking()
+                .Where(rs => stageIds.Contains(rs.Id))
+                .ToDictionaryAsync(rs => rs.Id, rs => rs.Name);
+        }
+
+        var inProgress = 0;
+        var completed = 0;
+        var researchInProgress = 0;
+        var thesisSubmitted = 0;
+        var completedScholars = 0;
+
+        foreach (var student in students)
+        {
+            var items = courseworkLookup[student.Id].ToList();
+            var earned = items.Where(UserManagementService.IsCourseworkPassed).Sum(c => c.Credits);
+            var status = UserManagementService.DeriveCourseworkStatus(student.RequiredCredits, earned, items);
+            if (status == "Completed" || status == "Eligible for Completion")
+                completed++;
+            else if (status == "In Progress" || status == "Not Started")
+                inProgress++;
+
+            var stageName = student.ResearchStageId.HasValue && stageNames.TryGetValue(student.ResearchStageId.Value, out var sn) ? sn : null;
+            if (stageName == "Research in Progress") researchInProgress++;
+            if (stageName == "Thesis Submitted" || stageName == "Viva") thesisSubmitted++;
+            if (stageName == "Completed") completedScholars++;
+        }
+
+        return (inProgress, completed, researchInProgress, thesisSubmitted, completedScholars);
     }
 
     private async Task<List<MonthlyActivity>> GetMonthlyActivityAsync(Guid? collegeId = null)

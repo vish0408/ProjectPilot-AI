@@ -1,6 +1,7 @@
 import { apiClient } from "../api/client";
-import type { PagedRequest, PagedResponse } from "../types/Pagination";
-import { StudentProfileDto, Project, TaskItem, Milestone, ProjectDocument, AppNotification, DashboardData, DocumentComment } from "../types/Student";
+import { StudentProfileDto, Project, TaskItem, Milestone, ProjectDocument, AppNotification, DashboardData } from "../types/Student";
+import type { Chapter, Meeting } from "../types/Guide";
+import type { PagedResponse } from "../types/Pagination";
 
 export class StudentService {
   // Profile
@@ -24,12 +25,8 @@ export class StudentService {
   }
 
   // Projects
-  async getMyProjects(request?: PagedRequest): Promise<PagedResponse<Project>> {
-    const qp = new URLSearchParams();
-    if (request?.pageNumber) qp.set("pageNumber", String(request.pageNumber));
-    if (request?.pageSize) qp.set("pageSize", String(request.pageSize));
-    const qs = qp.toString();
-    const res = await apiClient.get<PagedResponse<Project>>(`/projects/my${qs ? `?${qs}` : ""}`);
+  async getMyProjects(): Promise<PagedResponse<Project>> {
+    const res = await apiClient.get<PagedResponse<Project>>("/projects/my");
     if (!res.success || !res.data) throw new Error(res.message || "Failed to get projects");
     return res.data;
   }
@@ -133,58 +130,65 @@ export class StudentService {
     if (!res.success) throw new Error(res.message || "Failed to delete document");
   }
 
-  // Document Comments
-  async getDocumentComments(documentId: string): Promise<DocumentComment[]> {
-    const res = await apiClient.get<DocumentComment[]>(`/documents/${documentId}/comments`);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed to get comments");
+  async uploadDocument(projectId: string, file: File): Promise<ProjectDocument> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await apiClient.upload<ProjectDocument>(`/projects/${projectId}/documents/upload`, formData);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to upload document");
     return res.data;
   }
 
-  // Authenticated Blob Fetch
-  private async fetchBlob(path: string): Promise<Blob> {
-    const token = localStorage.getItem("accessToken");
-    const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "/api";
-    const response = await fetch(`${baseUrl}${path}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (!response.ok) throw new Error(`Failed to fetch document: ${response.status}`);
-    return response.blob();
+  async downloadDocument(projectId: string, documentId: string): Promise<{ data: Blob; fileName: string; contentType: string }> {
+    return apiClient.downloadBlob(`/projects/${projectId}/documents/${documentId}/download`);
   }
 
-  async openDocument(projectId: string, documentId: string): Promise<void> {
-    const blob = await this.fetchBlob(`/projects/${projectId}/documents/${documentId}/download`);
-    const url = URL.createObjectURL(blob);
-    window.open(url, "_blank");
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  async previewDocument(projectId: string, documentId: string): Promise<{ data: Blob; fileName: string; contentType: string }> {
+    return apiClient.downloadBlob(`/projects/${projectId}/documents/${documentId}/preview`);
   }
 
-  async downloadDocument(projectId: string, documentId: string, fileName: string): Promise<void> {
-    const blob = await this.fetchBlob(`/projects/${projectId}/documents/${documentId}/download`);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-  }
-
-  async submitFinalThesis(projectId: string): Promise<Project> {
-    const res = await apiClient.post<Project>(`/projects/${projectId}/submit-final`, {});
-    if (!res.success || !res.data) throw new Error(res.message || "Failed to submit final thesis");
+  // Chapters
+  async getProjectChapters(projectId: string): Promise<Chapter[]> {
+    const res = await apiClient.get<Chapter[]>(`/projects/${projectId}/chapters`);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to get chapters");
     return res.data;
+  }
+
+  async addChapterComment(chapterId: string, data: { content: string; lineNumber?: number }): Promise<void> {
+    const res = await apiClient.post(`/chapters/${chapterId}/comments`, data);
+    if (!res.success) throw new Error(res.message || "Failed to add comment");
+  }
+
+  // Meetings
+  async getMyMeetings(): Promise<Meeting[]> {
+    const res = await apiClient.get<PagedResponse<Meeting>>("/meetings");
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to get meetings");
+    return res.data.items;
+  }
+
+  async createMeeting(data: {
+    title: string;
+    description?: string;
+    scheduledAt: string;
+    durationMinutes?: number;
+    agenda?: string;
+    meetingLink?: string;
+    participantIds?: string[];
+  }): Promise<Meeting> {
+    const res = await apiClient.post<Meeting>("/meetings", data);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to create meeting");
+    return res.data;
+  }
+
+  async deleteMeeting(id: string): Promise<void> {
+    const res = await apiClient.delete(`/meetings/${id}`);
+    if (!res.success) throw new Error(res.message || "Failed to delete meeting");
   }
 
   // Notifications
-  async getNotifications(request?: PagedRequest): Promise<PagedResponse<AppNotification>> {
-    const qp = new URLSearchParams();
-    if (request?.pageNumber) qp.set("pageNumber", String(request.pageNumber));
-    if (request?.pageSize) qp.set("pageSize", String(request.pageSize));
-    const qs = qp.toString();
-    const res = await apiClient.get<PagedResponse<AppNotification>>(`/notifications${qs ? `?${qs}` : ""}`);
+  async getNotifications(): Promise<AppNotification[]> {
+    const res = await apiClient.get<AppNotification[] | PagedResponse<AppNotification>>("/notifications");
     if (!res.success || !res.data) throw new Error(res.message || "Failed to get notifications");
-    return res.data;
+    return Array.isArray(res.data) ? res.data : res.data.items;
   }
 
   async getUnreadCount(): Promise<number> {

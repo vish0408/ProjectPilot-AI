@@ -6,6 +6,7 @@ using TechGalaxySolutions.ResearchHub.Application.DTOs.Common;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.UserManagement;
 using TechGalaxySolutions.ResearchHub.Application.Exceptions;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
+using TechGalaxySolutions.ResearchHub.Domain.Constants;
 using TechGalaxySolutions.ResearchHub.Domain.Entities;
 using TechGalaxySolutions.ResearchHub.Infrastructure.Persistence;
 
@@ -83,10 +84,17 @@ public class UserManagementService : IUserManagementService
                 .Select(s => s.Id)
                 .ToListAsync();
 
+            var researchStageIds = await _context.Set<ResearchStage>().AsNoTracking()
+                .Where(rs => !rs.IsDeleted && rs.Name.ToLower().Contains(term))
+                .Select(rs => rs.Id)
+                .ToListAsync();
+
             var academicMatchedUserIds = await _context.Set<StudentProfile>().AsNoTracking()
                 .Where(sp => !sp.IsDeleted &&
                     ((sp.AcademicYearId.HasValue && academicYearIds.Contains(sp.AcademicYearId.Value)) ||
-                     (sp.SemesterId.HasValue && semesterIds.Contains(sp.SemesterId.Value))))
+                     (sp.SemesterId.HasValue && semesterIds.Contains(sp.SemesterId.Value)) ||
+                     (sp.ResearchStageId.HasValue && researchStageIds.Contains(sp.ResearchStageId.Value)) ||
+                     (sp.PhdMode != null && sp.PhdMode.ToLower().Contains(term))))
                 .Select(sp => sp.UserId)
                 .ToListAsync();
 
@@ -156,6 +164,60 @@ public class UserManagementService : IUserManagementService
                 .Select(sp => sp.UserId)
                 .ToListAsync();
             query = query.Where(u => studentUserIds.Contains(u.Id));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.ResearchStageFilter) && Guid.TryParse(request.ResearchStageFilter, out var researchStageId))
+        {
+            var studentUserIds = await _context.Set<StudentProfile>().AsNoTracking()
+                .Where(sp => sp.ResearchStageId == researchStageId && !sp.IsDeleted)
+                .Select(sp => sp.UserId)
+                .ToListAsync();
+            query = query.Where(u => studentUserIds.Contains(u.Id));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.PhdModeFilter))
+        {
+            var modeTerm = request.PhdModeFilter.ToLower();
+            var studentUserIds = await _context.Set<StudentProfile>().AsNoTracking()
+                .Where(sp => sp.PhdMode != null && sp.PhdMode.ToLower() == modeTerm && !sp.IsDeleted)
+                .Select(sp => sp.UserId)
+                .ToListAsync();
+            query = query.Where(u => studentUserIds.Contains(u.Id));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.CourseworkStatusFilter))
+        {
+            var statusTerm = request.CourseworkStatusFilter.ToLower();
+            var courseworks = await _context.Set<ScholarCoursework>().AsNoTracking()
+                .Where(c => !c.IsDeleted)
+                .ToListAsync();
+            var studentIdsByCoursework = courseworks.GroupBy(c => c.StudentProfileId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            var matchedStudentIds = new List<Guid>();
+            foreach (var kvp in studentIdsByCoursework)
+            {
+                var profile = await _context.Set<StudentProfile>().AsNoTracking()
+                    .Where(sp => sp.Id == kvp.Key && !sp.IsDeleted)
+                    .Select(sp => new { sp.Id, sp.UserId, sp.RequiredCredits })
+                    .FirstOrDefaultAsync();
+                if (profile == null)
+                    continue;
+
+                var status = DeriveCourseworkStatus(profile.RequiredCredits, kvp.Value.Where(IsCourseworkPassed).Sum(c => c.Credits), kvp.Value);
+                if (status.Equals(statusTerm, StringComparison.OrdinalIgnoreCase))
+                    matchedStudentIds.Add(profile.UserId);
+            }
+
+            var allStudentUserIds = await _context.Set<StudentProfile>().AsNoTracking()
+                .Where(sp => !sp.IsDeleted && !studentIdsByCoursework.ContainsKey(sp.Id))
+                .Select(sp => sp.UserId)
+                .ToListAsync();
+
+            if (statusTerm == "not started")
+                matchedStudentIds.AddRange(allStudentUserIds);
+
+            query = query.Where(u => matchedStudentIds.Contains(u.Id));
         }
 
         query = (request.SortField?.ToLower()) switch
@@ -272,6 +334,24 @@ public class UserManagementService : IUserManagementService
             .Select(g => new { GuideId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(g => g.GuideId, g => g.Count);
 
+        var researchStageNames = new Dictionary<Guid, string>();
+        var studentResearchStageIds = studentProfiles.Values
+            .Where(sp => sp.ResearchStageId.HasValue)
+            .Select(sp => sp.ResearchStageId!.Value)
+            .Distinct()
+            .ToList();
+        if (studentResearchStageIds.Count > 0)
+        {
+            researchStageNames = await _context.Set<ResearchStage>().AsNoTracking()
+                .Where(rs => studentResearchStageIds.Contains(rs.Id))
+                .ToDictionaryAsync(rs => rs.Id, rs => rs.Name);
+        }
+
+        var courseworkByStudent = await _context.Set<ScholarCoursework>().AsNoTracking()
+            .Where(c => studentProfiles.Keys.Contains(c.StudentProfileId) && !c.IsDeleted)
+            .ToListAsync();
+        var courseworkLookup = courseworkByStudent.ToLookup(c => c.StudentProfileId);
+
         var studentUserIds = studentProfiles.Keys.ToList();
         var researchStatus = new Dictionary<Guid, string>();
         if (studentUserIds.Count > 0)
@@ -306,14 +386,27 @@ public class UserManagementService : IUserManagementService
                 user.Section = student.Section;
                 user.AcademicYearId = student.AcademicYearId;
                 user.SemesterId = student.SemesterId;
+                user.JoiningCohort = student.JoiningCohort;
+                user.RegistrationDate = student.RegistrationDate;
+                user.PhdMode = student.PhdMode;
+                user.RequiredCredits = student.RequiredCredits;
+                user.ResearchStageId = student.ResearchStageId;
                 if (student.GuideId.HasValue && guideNames.TryGetValue(student.GuideId.Value, out var guideName))
                     user.GuideName = guideName;
                 if (user.SemesterId.HasValue && semesterNames.TryGetValue(user.SemesterId.Value, out var semesterName))
                     user.SemesterName = semesterName;
                 if (user.AcademicYearId.HasValue && academicYears.TryGetValue(user.AcademicYearId.Value, out var academicYearName))
                     user.AcademicYearName = academicYearName;
+                if (student.ResearchStageId.HasValue && researchStageNames.TryGetValue(student.ResearchStageId.Value, out var stageName))
+                    user.ResearchStageName = stageName;
                 user.Designation ??= "Student";
                 user.ResearchStatus = researchStatus.TryGetValue(user.Id, out var status) ? status : "No Project";
+
+                var coursework = courseworkLookup[student.Id].ToList();
+                user.EarnedCredits = coursework.Where(c => IsCourseworkPassed(c)).Sum(c => c.Credits);
+                user.PassedPapers = coursework.Count(IsCourseworkPassed);
+                user.PendingPapers = coursework.Count(c => !IsCourseworkPassed(c) && !c.IsCompleted);
+                user.CourseworkStatus = DeriveCourseworkStatus(student.RequiredCredits, user.EarnedCredits ?? 0, coursework);
             }
 
             if (guideProfiles.TryGetValue(user.Id, out var guide))
@@ -387,10 +480,14 @@ public class UserManagementService : IUserManagementService
                 throw new InvalidOperationException("Student ID is required for the Student role");
             if (!request.GuideId.HasValue)
                 throw new InvalidOperationException("Assigned guide is required for the Student role");
-            if (!request.AcademicYearId.HasValue)
-                throw new InvalidOperationException("Academic Year is required for the Student role");
-            if (!request.SemesterId.HasValue)
-                throw new InvalidOperationException("Semester is required for the Student role");
+            if (!request.JoiningCohort.HasValue)
+                throw new InvalidOperationException("Joining month & year is required for the Student role");
+            if (!request.RegistrationDate.HasValue)
+                throw new InvalidOperationException("Registration date is required for the Student role");
+            if (string.IsNullOrWhiteSpace(request.PhdMode))
+                throw new InvalidOperationException("PhD mode is required for the Student role");
+            if (!request.ResearchStageId.HasValue)
+                throw new InvalidOperationException("Research stage is required for the Student role");
         }
 
         if (isStudent && request.AcademicYearId.HasValue)
@@ -407,6 +504,14 @@ public class UserManagementService : IUserManagementService
                 .AnyAsync(s => s.Id == request.SemesterId.Value && !s.IsDeleted);
             if (!semesterExists)
                 throw new KeyNotFoundException("Selected semester not found");
+        }
+
+        if (isStudent && request.ResearchStageId.HasValue)
+        {
+            var stageExists = await _context.Set<ResearchStage>().AsNoTracking()
+                .AnyAsync(rs => rs.Id == request.ResearchStageId.Value && !rs.IsDeleted);
+            if (!stageExists)
+                throw new KeyNotFoundException("Selected research stage not found");
         }
 
         if (effectiveCollegeId.HasValue)
@@ -479,7 +584,12 @@ public class UserManagementService : IUserManagementService
                 GuideId = request.GuideId,
                 AcademicYearId = request.AcademicYearId,
                 SemesterId = request.SemesterId,
-                Section = request.Section
+                Section = request.Section,
+                JoiningCohort = request.JoiningCohort,
+                RegistrationDate = request.RegistrationDate,
+                PhdMode = request.PhdMode,
+                RequiredCredits = request.RequiredCredits,
+                ResearchStageId = request.ResearchStageId
             });
             await _context.SaveChangesAsync();
         }
@@ -600,10 +710,14 @@ public class UserManagementService : IUserManagementService
                 throw new InvalidOperationException("Student ID is required for the Student role");
             if (!request.GuideId.HasValue)
                 throw new InvalidOperationException("Assigned guide is required for the Student role");
-            if (!request.AcademicYearId.HasValue)
-                throw new InvalidOperationException("Academic Year is required for the Student role");
-            if (!request.SemesterId.HasValue)
-                throw new InvalidOperationException("Semester is required for the Student role");
+            if (!request.JoiningCohort.HasValue)
+                throw new InvalidOperationException("Joining month & year is required for the Student role");
+            if (!request.RegistrationDate.HasValue)
+                throw new InvalidOperationException("Registration date is required for the Student role");
+            if (string.IsNullOrWhiteSpace(request.PhdMode))
+                throw new InvalidOperationException("PhD mode is required for the Student role");
+            if (!request.ResearchStageId.HasValue)
+                throw new InvalidOperationException("Research stage is required for the Student role");
         }
 
         if (isStudent && request.AcademicYearId.HasValue)
@@ -620,6 +734,14 @@ public class UserManagementService : IUserManagementService
                 .AnyAsync(s => s.Id == request.SemesterId.Value && !s.IsDeleted);
             if (!semesterExists)
                 throw new KeyNotFoundException("Selected semester not found");
+        }
+
+        if (isStudent && request.ResearchStageId.HasValue)
+        {
+            var stageExists = await _context.Set<ResearchStage>().AsNoTracking()
+                .AnyAsync(rs => rs.Id == request.ResearchStageId.Value && !rs.IsDeleted);
+            if (!stageExists)
+                throw new KeyNotFoundException("Selected research stage not found");
         }
 
         var effectiveEmployeeId = isStudent
@@ -658,6 +780,11 @@ public class UserManagementService : IUserManagementService
             student.AcademicYearId = request.AcademicYearId;
             student.SemesterId = request.SemesterId;
             student.Section = request.Section;
+            student.JoiningCohort = request.JoiningCohort;
+            student.RegistrationDate = request.RegistrationDate;
+            student.PhdMode = request.PhdMode;
+            student.RequiredCredits = request.RequiredCredits;
+            student.ResearchStageId = request.ResearchStageId;
             student.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
         }
@@ -913,5 +1040,35 @@ public class UserManagementService : IUserManagementService
             .Where(c => c.Id == collegeId && !c.IsDeleted)
             .Select(c => c.Name)
             .FirstOrDefaultAsync() ?? "";
+    }
+
+    internal static bool IsCourseworkPassed(ScholarCoursework coursework)
+    {
+        return coursework.ExamStatus.Equals(PhdConstants.ExamStatusPassed, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(coursework.Result, PhdConstants.ExamStatusPassed, StringComparison.OrdinalIgnoreCase);
+    }
+
+    internal static string DeriveCourseworkStatus(int? requiredCredits, int earnedCredits, List<ScholarCoursework> coursework)
+    {
+        if (coursework.Count == 0)
+            return "Not Started";
+
+        var allResolved = coursework.All(c => c.IsCompleted
+            || c.ExamStatus.Equals(PhdConstants.ExamStatusPassed, StringComparison.OrdinalIgnoreCase)
+            || c.ExamStatus.Equals(PhdConstants.ExamStatusFailed, StringComparison.OrdinalIgnoreCase));
+
+        if (requiredCredits.HasValue && requiredCredits.Value > 0)
+        {
+            if (earnedCredits >= requiredCredits.Value && allResolved)
+                return "Completed";
+            if (earnedCredits >= requiredCredits.Value)
+                return "Eligible for Completion";
+        }
+        else if (allResolved)
+        {
+            return "Completed";
+        }
+
+        return "In Progress";
     }
 }

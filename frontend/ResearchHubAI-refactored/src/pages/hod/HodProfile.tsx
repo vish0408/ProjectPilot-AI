@@ -12,12 +12,11 @@ export default function HodProfile() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Partial<HodProfileDto>>({});
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     hodService.getProfile()
       .then(p => { setProfile(p); setForm(p); })
-      .catch((e) => { if (e instanceof Error) setError(e.message); })
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
@@ -29,7 +28,7 @@ export default function HodProfile() {
       setProfile(updated);
       setForm(updated);
       setEditing(false);
-    } catch (e) { if (e instanceof Error) setError(e.message); }
+    } catch {}
     finally { setSaving(false); }
   };
 
@@ -43,11 +42,6 @@ export default function HodProfile() {
 
   return (
     <div className="flex flex-col gap-6">
-      {error && (
-        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 mb-4">
-          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
-        </div>
-      )}
       <div className="bg-gradient-to-r from-cyan-600 to-blue-700 rounded-2xl p-6 text-white">
         <div className="flex items-center gap-5">
           <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center text-2xl font-bold">
@@ -56,9 +50,13 @@ export default function HodProfile() {
           <div className="flex-1">
             <h2 className="text-2xl font-bold">{profile?.fullName}</h2>
             <p className="text-cyan-100">Head of Department · {profile?.departmentName}</p>
-            <p className="text-cyan-100 mt-0.5">{profile?.institution}</p>
+            <p className="text-cyan-100 mt-0.5">{profile?.collegeName || profile?.institution}</p>
             <div className="flex gap-2 mt-3">
               <Badge className="bg-white/20 text-white border-0">HOD</Badge>
+              {profile?.designation && <Badge className="bg-white/20 text-white border-0">{profile.designation}</Badge>}
+              <Badge className={`border-0 ${profile?.accountStatus === "Active" ? "bg-green-500/40 text-white" : "bg-red-500/40 text-white"}`}>
+                {profile?.accountStatus}
+              </Badge>
             </div>
           </div>
           <button onClick={() => setEditing(!editing)}
@@ -87,7 +85,7 @@ export default function HodProfile() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
-              {[{l:"Name",v:profile?.fullName},{l:"Email",v:profile?.email},{l:"Department",v:profile?.departmentName},{l:"Institution",v:profile?.institution},{l:"Contact Email",v:profile?.contactEmail},{l:"Location",v:profile?.location}].map(f => (
+              {[{l:"Name",v:profile?.fullName},{l:"Email",v:profile?.email},{l:"Employee ID",v:profile?.employeeId},{l:"Phone",v:profile?.phoneNumber},{l:"Department",v:profile?.departmentName},{l:"College",v:profile?.collegeName || profile?.institution},{l:"Designation",v:profile?.designation},{l:"Contact Email",v:profile?.contactEmail},{l:"Location",v:profile?.location}].map(f => (
                 <div key={f.l}>
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">{f.l}</label>
                   <p className="text-sm font-medium text-foreground mt-1">{f.v || "—"}</p>
@@ -110,9 +108,21 @@ export default function HodProfile() {
               <p className="text-xs text-muted-foreground">Department</p>
             </div>
             <div className="bg-muted/60 rounded-xl p-3 text-center">
-              <p className="text-lg font-bold text-cyan-600">{profile?.institution || "—"}</p>
-              <p className="text-xs text-muted-foreground">Institution</p>
+              <p className="text-lg font-bold text-cyan-600">{profile?.collegeName || profile?.institution || "—"}</p>
+              <p className="text-xs text-muted-foreground">College</p>
             </div>
+            {profile?.employeeId && (
+              <div className="bg-muted/60 rounded-xl p-3 text-center">
+                <p className="text-lg font-bold text-cyan-600">{profile.employeeId}</p>
+                <p className="text-xs text-muted-foreground">Employee ID</p>
+              </div>
+            )}
+            {profile?.phoneNumber && (
+              <div className="bg-muted/60 rounded-xl p-3 text-center">
+                <p className="text-lg font-bold text-cyan-600">{profile.phoneNumber}</p>
+                <p className="text-xs text-muted-foreground">Phone</p>
+              </div>
+            )}
           </div>
         </Card>
       </div>

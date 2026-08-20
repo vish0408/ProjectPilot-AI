@@ -36,6 +36,7 @@ public class ThesisDocumentSummary
 public class AssignedStudentSummary
 {
     public Guid UserId { get; set; }
+    public Guid? ProjectId { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string Enrollment { get; set; } = string.Empty;
@@ -46,6 +47,12 @@ public class AssignedStudentSummary
     public double CompletionPercentage { get; set; }
     public int TotalChapters { get; set; }
     public int ApprovedChapters { get; set; }
+    public DateTime? JoiningCohort { get; set; }
+    public string? ResearchStageName { get; set; }
+    public int? RequiredCredits { get; set; }
+    public int? EarnedCredits { get; set; }
+    public int? PendingPapers { get; set; }
+    public string? CourseworkStatus { get; set; }
 }
 
 public class PendingReviewSummary

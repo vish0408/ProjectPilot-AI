@@ -3,6 +3,9 @@ namespace TechGalaxySolutions.ResearchHub.Application.DTOs.ResearchCategory;
 public class UpdateResearchCategoryRequest
 {
     public string Name { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public string DisciplineGroup { get; set; } = string.Empty;
+    public int SortOrder { get; set; }
     public bool IsActive { get; set; } = true;
 }

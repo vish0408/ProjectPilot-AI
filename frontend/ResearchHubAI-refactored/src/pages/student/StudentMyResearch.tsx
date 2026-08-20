@@ -18,26 +18,26 @@ export default function StudentMyResearch() {
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", targetEndDate: "" });
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     studentService.getMyProjects()
-      .then((p) => {
-        setProjects(p.items);
-        if (p.items.length > 0) setSelectedProject(p.items[0]);
+      .then((paged) => {
+        const items = paged.items;
+        setProjects(items);
+        if (items.length > 0) setSelectedProject(items[0]);
       })
-      .catch((e) => { if (e instanceof Error) setError(e.message); })
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
     if (!selectedProject) return;
     if (tab === "tasks") {
-      studentService.getTasks(selectedProject.id).then(setTasks).catch((e) => { if (e instanceof Error) setError(e.message); });
+      studentService.getTasks(selectedProject.id).then(setTasks).catch(() => {});
     } else if (tab === "milestones") {
-      studentService.getMilestones(selectedProject.id).then(setMilestones).catch((e) => { if (e instanceof Error) setError(e.message); });
+      studentService.getMilestones(selectedProject.id).then(setMilestones).catch(() => {});
     } else if (tab === "documents") {
-      studentService.getDocuments(selectedProject.id).then(setDocuments).catch((e) => { if (e instanceof Error) setError(e.message); });
+      studentService.getDocuments(selectedProject.id).then(setDocuments).catch(() => {});
     }
   }, [selectedProject, tab]);
 
@@ -52,7 +52,7 @@ export default function StudentMyResearch() {
       setSelectedProject(p);
       setShowCreate(false);
       setForm({ title: "", description: "", targetEndDate: "" });
-    } catch (e) { if (e instanceof Error) setError(e.message); }
+    } catch { }
   };
 
   const handleDeleteProject = async (id: string) => {
@@ -60,7 +60,7 @@ export default function StudentMyResearch() {
       await studentService.deleteProject(id);
       setProjects(projects.filter((p) => p.id !== id));
       if (selectedProject?.id === id) setSelectedProject(projects[0] || null);
-    } catch (e) { if (e instanceof Error) setError(e.message); }
+    } catch { }
   };
 
   const tabs: { key: Tab; label: string; icon: typeof ListChecks }[] = [
@@ -80,11 +80,6 @@ export default function StudentMyResearch() {
 
   return (
     <div className="flex flex-col gap-6">
-      {error && (
-        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 mb-4">
-          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
-        </div>
-      )}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-foreground">My Research Projects</h1>
         <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all">
@@ -171,7 +166,6 @@ function TaskTab({ projectId, tasks }: { projectId: string; tasks: TaskItem[] })
   const [items, setItems] = useState(tasks);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", priority: "Medium" });
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { setItems(tasks); }, [tasks]);
 
@@ -181,7 +175,7 @@ function TaskTab({ projectId, tasks }: { projectId: string; tasks: TaskItem[] })
       setItems([t, ...items]);
       setShowForm(false);
       setForm({ title: "", description: "", priority: "Medium" });
-    } catch (e) { if (e instanceof Error) setError(e.message); }
+    } catch { }
   };
 
   const handleToggleStatus = async (task: TaskItem) => {
@@ -189,7 +183,7 @@ function TaskTab({ projectId, tasks }: { projectId: string; tasks: TaskItem[] })
     try {
       const updated = await studentService.updateTask(projectId, task.id, { ...task, status: newStatus });
       setItems(items.map((i) => (i.id === task.id ? updated : i)));
-    } catch (e) { if (e instanceof Error) setError(e.message); }
+    } catch { }
   };
 
   const priorityColor = (p: string) => {
@@ -252,7 +246,6 @@ function MilestoneTab({ projectId, milestones }: { projectId: string; milestones
   const [items, setItems] = useState(milestones);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", targetDate: "" });
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { setItems(milestones); }, [milestones]);
 
@@ -262,14 +255,14 @@ function MilestoneTab({ projectId, milestones }: { projectId: string; milestones
       setItems([...items, m]);
       setShowForm(false);
       setForm({ title: "", description: "", targetDate: "" });
-    } catch (e) { if (e instanceof Error) setError(e.message); }
+    } catch { }
   };
 
   const handleToggle = async (milestone: Milestone) => {
     try {
       const updated = await studentService.updateMilestone(projectId, milestone.id, { ...milestone, isCompleted: !milestone.isCompleted });
       setItems(items.map((m) => (m.id === milestone.id ? updated : m)));
-    } catch (e) { if (e instanceof Error) setError(e.message); }
+    } catch { }
   };
 
   return (
@@ -318,7 +311,6 @@ function DocumentTab({ projectId, documents }: { projectId: string; documents: P
   const [items, setItems] = useState(documents);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ fileName: "", fileType: "", fileSize: 0 });
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { setItems(documents); }, [documents]);
 
@@ -328,14 +320,14 @@ function DocumentTab({ projectId, documents }: { projectId: string; documents: P
       setItems([d, ...items]);
       setShowForm(false);
       setForm({ fileName: "", fileType: "", fileSize: 0 });
-    } catch (e) { if (e instanceof Error) setError(e.message); }
+    } catch { }
   };
 
   const handleDelete = async (docId: string) => {
     try {
       await studentService.deleteDocument(projectId, docId);
       setItems(items.filter((d) => d.id !== docId));
-    } catch (e) { if (e instanceof Error) setError(e.message); }
+    } catch { }
   };
 
   return (

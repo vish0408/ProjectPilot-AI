@@ -1,35 +1,49 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { ClipboardList, Plus, Trash2 } from "lucide-react";
 import Badge from "../../components/common/Badge";
 import Card from "../../components/common/Card";
 import SectionHead from "../../components/common/SectionHead";
 import { hodService } from "../../services/HodService";
-import { ProjectAllocation } from "../../types/Hod";
+import { HodGuideSummary, HodStudentSummary, ProjectAllocation } from "../../types/Hod";
 
 export default function HodAllocations() {
   const [allocations, setAllocations] = useState<ProjectAllocation[]>([]);
+  const [students, setStudents] = useState<HodStudentSummary[]>([]);
+  const [guides, setGuides] = useState<HodGuideSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ studentId: "", guideId: "", remarks: "" });
-  const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState("");
 
   const fetch = async () => {
     try {
-      const data = await hodService.getAllocations();
-      setAllocations(data);
-    } catch (e) { if (e instanceof Error) setError(e.message); }
+      const [allocData, studentData, guideData] = await Promise.all([
+        hodService.getAllocations(),
+        hodService.getStudents({ pageSize: 100 }),
+        hodService.getGuides(),
+      ]);
+      setAllocations(allocData);
+      setStudents(studentData.items.filter(s => !s.guideId));
+      setGuides(guideData);
+    } catch {}
     finally { setLoading(false); }
   };
 
   useEffect(() => { fetch(); }, []);
 
   const handleCreate = async () => {
+    if (!form.studentId || !form.guideId) { setError("Select a student and a guide"); return; }
     try {
+      setCreating(true);
+      setError("");
       await hodService.createAllocation(form);
       setShowForm(false);
       setForm({ studentId: "", guideId: "", remarks: "" });
       fetch();
-    } catch (e) { if (e instanceof Error) setError(e.message); }
+    } catch (e: any) {
+      setError(e?.message || "Failed to create allocation");
+    } finally { setCreating(false); }
   };
 
   const handleRevoke = async (id: string) => {
@@ -45,13 +59,16 @@ export default function HodAllocations() {
     );
   }
 
+  const statusVariant = (status: string): "success" | "warning" | "outline" => {
+    switch (status) {
+      case "Active": return "success";
+      case "Changed": return "warning";
+      default: return "outline";
+    }
+  };
+
   return (
     <div className="flex flex-col gap-5">
-      {error && (
-        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 mb-4">
-          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
-        </div>
-      )}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-foreground">Project Allocations</h2>
         <button onClick={() => setShowForm(!showForm)}
@@ -64,16 +81,37 @@ export default function HodAllocations() {
         <Card>
           <SectionHead title="Create Allocation" />
           <div className="flex flex-col gap-3 mt-3">
-            <input value={form.studentId} onChange={e => setForm({...form, studentId: e.target.value})} placeholder="Student User ID"
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground">Student</label>
+              <select value={form.studentId} onChange={e => setForm({...form, studentId: e.target.value})}
+                className="bg-input-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary">
+                <option value="">Select unassigned student</option>
+                {students.map(s => (
+                  <option key={s.userId} value={s.userId}>{s.fullName} — {s.enrollment || s.email}</option>
+                ))}
+              </select>
+              {!students.length && <p className="text-xs text-muted-foreground">No unassigned students available</p>}
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground">Guide</label>
+              <select value={form.guideId} onChange={e => setForm({...form, guideId: e.target.value})}
+                className="bg-input-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary">
+                <option value="">Select guide</option>
+                {guides.filter(g => g.isAvailable).map(g => (
+                  <option key={g.userId} value={g.userId}>{g.fullName} — {g.designation || g.employeeId || g.email}</option>
+                ))}
+              </select>
+              {!guides.filter(g => g.isAvailable).length && <p className="text-xs text-muted-foreground">No available guides</p>}
+            </div>
+            <input value={form.remarks} onChange={e => setForm({...form, remarks: e.target.value})} placeholder="Remarks (optional)"
               className="bg-input-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary" />
-            <input value={form.guideId} onChange={e => setForm({...form, guideId: e.target.value})} placeholder="Guide User ID"
-              className="bg-input-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary" />
-            <input value={form.remarks} onChange={e => setForm({...form, remarks: e.target.value})} placeholder="Remarks"
-              className="bg-input-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary" />
+            {error && <p className="text-xs text-red-600">{error}</p>}
             <div className="flex gap-2">
-              <button onClick={handleCreate}
-                className="bg-blue-600 text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-blue-700">Create</button>
-              <button onClick={() => setShowForm(false)}
+              <button onClick={handleCreate} disabled={creating}
+                className="bg-blue-600 text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-blue-700 disabled:opacity-50">
+                {creating ? "Creating..." : "Create"}
+              </button>
+              <button onClick={() => { setShowForm(false); setError(""); }}
                 className="border border-border text-sm px-4 py-2 rounded-xl hover:bg-muted">Cancel</button>
             </div>
           </div>
@@ -87,12 +125,12 @@ export default function HodAllocations() {
               <div className="flex-1 grid grid-cols-1 sm:grid-cols-5 gap-2">
                 <div><p className="text-xs text-muted-foreground">Student</p><p className="text-sm font-medium text-foreground">{a.studentName}</p></div>
                 <div><p className="text-xs text-muted-foreground">Guide</p><p className="text-sm font-medium text-foreground">{a.guideName}</p></div>
-                <div><p className="text-xs text-muted-foreground">Project</p><p className="text-sm font-medium text-foreground">{a.projectTitle || "-"}</p></div>
-                <div><p className="text-xs text-muted-foreground">Status</p><Badge variant={a.status === "Active" ? "success" : "outline"}>{a.status}</Badge></div>
+                <div><p className="text-xs text-muted-foreground">Project</p><p className="text-sm font-medium text-foreground">{a.projectTitle || "—"}</p></div>
+                <div><p className="text-xs text-muted-foreground">Status</p><Badge variant={statusVariant(a.status)}>{a.status}</Badge></div>
                 <div><p className="text-xs text-muted-foreground">Allocated By</p><p className="text-sm font-medium text-foreground">{a.allocatedByName}</p></div>
               </div>
               {a.status === "Active" && (
-                <button onClick={() => handleRevoke(a.id)} className="text-red-500 hover:text-red-700 p-1">
+                <button onClick={() => handleRevoke(a.id)} className="text-red-500 hover:text-red-700 p-1" title="Revoke allocation">
                   <Trash2 className="w-4 h-4" />
                 </button>
               )}

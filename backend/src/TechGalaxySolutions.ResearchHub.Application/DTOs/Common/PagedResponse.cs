@@ -11,6 +11,9 @@ public class PagedRequest
     public string? GuideFilter { get; set; }
     public string? AcademicYearFilter { get; set; }
     public string? SemesterFilter { get; set; }
+    public string? ResearchStageFilter { get; set; }
+    public string? PhdModeFilter { get; set; }
+    public string? CourseworkStatusFilter { get; set; }
     public string? StatusFilter { get; set; }
     public string? SortField { get; set; }
     public string? SortDirection { get; set; } = "desc";

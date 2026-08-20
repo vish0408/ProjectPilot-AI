@@ -47,6 +47,8 @@ public class ChapterService : IChapterService
             .FirstOrDefaultAsync(c => c.Id == chapterId && !c.IsDeleted)
             ?? throw new KeyNotFoundException("Chapter not found");
 
+        await EnsureGuideForProjectAsync(chapter.ProjectId, userId);
+
         chapter.Status = Enum.Parse<ChapterStatus>(request.Status);
 
         if (!string.IsNullOrEmpty(request.Comment))
@@ -63,5 +65,27 @@ public class ChapterService : IChapterService
         await _context.SaveChangesAsync();
 
         return _mapper.Map<ChapterResponse>(chapter);
+    }
+
+    private async Task EnsureGuideForProjectAsync(Guid projectId, Guid userId)
+    {
+        var project = await _context.Projects.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == projectId && !p.IsDeleted)
+            ?? throw new KeyNotFoundException("Project not found");
+
+        var studentProfile = await _context.Set<StudentProfile>().AsNoTracking()
+            .FirstOrDefaultAsync(s => s.UserId == project.StudentId && !s.IsDeleted);
+
+        var activeAllocation = await _context.Set<ProjectAllocation>().AsNoTracking()
+            .Where(a => !a.IsDeleted
+                && a.Status == AllocationStatus.Active
+                && a.StudentId == project.StudentId)
+            .OrderByDescending(a => a.AllocatedAt)
+            .FirstOrDefaultAsync();
+
+        var effectiveGuideId = activeAllocation?.GuideId ?? studentProfile?.GuideId;
+
+        if (effectiveGuideId != userId)
+            throw new UnauthorizedAccessException("Only the assigned guide can update this chapter");
     }
 }

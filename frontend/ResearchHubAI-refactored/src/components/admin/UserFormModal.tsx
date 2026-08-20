@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { X, Loader2, AlertCircle, Check, ChevronDown, Search } from "lucide-react";
 import { adminService } from "../../services/AdminService";
-import AcademicYearSelect from "./AcademicYearSelect";
-import SemesterSelect from "./SemesterSelect";
+import ResearchStageSelect from "./ResearchStageSelect";
 import type { UserResponse, CreateUserRequest, UpdateUserRequest, RoleResponse, CollegeResponse, DepartmentResponse } from "../../types/Admin";
+
+export const PHD_MODES = ["Full-Time", "Part-Time"];
 
 interface UserFormModalProps {
   open: boolean;
@@ -53,14 +54,17 @@ export default function UserFormModal({ open, user, onClose, onSaved, lockedRole
     sendWelcomeEmail: false,
     enrollment: "",
     guideId: "",
-    academicYearId: "",
-    semesterId: "",
     section: "",
     researchTopic: "",
     specialization: "",
     bio: "",
     qualification: "",
     yearsOfExperience: "",
+    joiningCohort: "",
+    registrationDate: "",
+    phdMode: "",
+    requiredCredits: "",
+    researchStageId: "",
   });
 
   useEffect(() => {
@@ -92,14 +96,17 @@ export default function UserFormModal({ open, user, onClose, onSaved, lockedRole
         sendWelcomeEmail: false,
         enrollment: user.enrollment || "",
         guideId: user.guideId || "",
-        academicYearId: user.academicYearId || "",
-        semesterId: user.semesterId || "",
         section: user.section || "",
         researchTopic: user.researchTopic || "",
         specialization: user.specialization || "",
         bio: user.bio || "",
         qualification: user.qualification || "",
         yearsOfExperience: user.yearsOfExperience != null ? String(user.yearsOfExperience) : "",
+        joiningCohort: user.joiningCohort ? user.joiningCohort.slice(0, 10) : "",
+        registrationDate: user.registrationDate ? user.registrationDate.slice(0, 10) : "",
+        phdMode: user.phdMode || "",
+        requiredCredits: user.requiredCredits != null ? String(user.requiredCredits) : "",
+        researchStageId: user.researchStageId || "",
       });
       if (user.collegeId) loadDepartments(user.collegeId);
     } else {
@@ -117,14 +124,17 @@ export default function UserFormModal({ open, user, onClose, onSaved, lockedRole
         sendWelcomeEmail: false,
         enrollment: "",
         guideId: "",
-        academicYearId: "",
-        semesterId: "",
         section: "",
         researchTopic: "",
         specialization: "",
         bio: "",
         qualification: "",
         yearsOfExperience: "",
+        joiningCohort: "",
+        registrationDate: "",
+        phdMode: "",
+        requiredCredits: "",
+        researchStageId: "",
       });
       setDepartments([]);
     }
@@ -201,8 +211,10 @@ export default function UserFormModal({ open, user, onClose, onSaved, lockedRole
     if (requireDepartment && !form.departmentId) errors.departmentId = "Please select a department.";
     if (isStudentRole && !form.employeeId.trim() && !form.enrollment.trim()) errors.employeeId = "Student ID is required";
     if (isStudentRole && !form.guideId) errors.guideId = "Assigned guide is required";
-    if (isStudentRole && !form.academicYearId) errors.academicYearId = "Academic year is required";
-    if (isStudentRole && !form.semesterId) errors.semesterId = "Semester is required";
+    if (isStudentRole && !form.joiningCohort) errors.joiningCohort = "Joining cohort is required";
+    if (isStudentRole && !form.registrationDate) errors.registrationDate = "Registration date is required";
+    if (isStudentRole && !form.phdMode) errors.phdMode = "PhD mode is required";
+    if (isStudentRole && !form.researchStageId) errors.researchStageId = "Research stage is required";
     if (isHodRole && !form.qualification.trim()) errors.qualification = "Qualification is required";
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -225,14 +237,17 @@ export default function UserFormModal({ open, user, onClose, onSaved, lockedRole
         designation: form.designation || undefined,
         enrollment: form.enrollment || undefined,
         guideId: form.guideId || undefined,
-        academicYearId: form.academicYearId || undefined,
-        semesterId: form.semesterId || undefined,
         section: form.section || undefined,
         researchTopic: form.researchTopic || undefined,
         specialization: form.specialization || undefined,
         bio: form.bio || undefined,
         qualification: form.qualification || undefined,
         yearsOfExperience: form.yearsOfExperience ? Number(form.yearsOfExperience) : undefined,
+        joiningCohort: form.joiningCohort || undefined,
+        registrationDate: form.registrationDate || undefined,
+        phdMode: form.phdMode || undefined,
+        requiredCredits: form.requiredCredits ? Number(form.requiredCredits) : undefined,
+        researchStageId: form.researchStageId || undefined,
       };
       if (isEdit) {
         const data: UpdateUserRequest = {
@@ -291,10 +306,6 @@ export default function UserFormModal({ open, user, onClose, onSaved, lockedRole
     setGuideOpen(false);
     setGuideSearch("");
     setFieldErrors((prev) => ({ ...prev, guideId: "" }));
-  };
-
-  const handleAcademicYearSelect = (academicYearId: string) => {
-    setForm((prev) => ({ ...prev, academicYearId, semesterId: "" }));
   };
 
   const inputCls = (hasError?: string) =>
@@ -658,29 +669,59 @@ export default function UserFormModal({ open, user, onClose, onSaved, lockedRole
                   )}
                 </div>
                 <div>
-                  <AcademicYearSelect
-                    value={form.academicYearId}
-                    onChange={handleAcademicYearSelect}
-                    required
-                    error={fieldErrors.academicYearId}
-                  />
-                </div>
-                <div>
-                  <SemesterSelect
-                    value={form.semesterId}
-                    academicYearId={form.academicYearId}
-                    onChange={(v) => update("semesterId", v)}
-                    required
-                    error={fieldErrors.semesterId}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Section</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Joining Cohort <span className="text-red-500">*</span></label>
                   <input
-                    value={form.section}
-                    onChange={(e) => update("section", e.target.value)}
+                    type="date"
+                    value={form.joiningCohort}
+                    onChange={(e) => update("joiningCohort", e.target.value)}
+                    className={inputCls(fieldErrors.joiningCohort)}
+                  />
+                  {fieldErrors.joiningCohort && <p className="text-xs text-red-500 mt-1">{fieldErrors.joiningCohort}</p>}
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Registration Date <span className="text-red-500">*</span></label>
+                  <input
+                    type="date"
+                    value={form.registrationDate}
+                    onChange={(e) => update("registrationDate", e.target.value)}
+                    className={inputCls(fieldErrors.registrationDate)}
+                  />
+                  {fieldErrors.registrationDate && <p className="text-xs text-red-500 mt-1">{fieldErrors.registrationDate}</p>}
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">PhD Mode <span className="text-red-500">*</span></label>
+                  <select
+                    value={form.phdMode}
+                    onChange={(e) => update("phdMode", e.target.value)}
+                    className={selectCls(fieldErrors.phdMode)}
+                  >
+                    <option value="">Select mode...</option>
+                    {PHD_MODES.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                  {fieldErrors.phdMode && <p className="text-xs text-red-500 mt-1">{fieldErrors.phdMode}</p>}
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Required Credits</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.requiredCredits}
+                    onChange={(e) => update("requiredCredits", e.target.value)}
                     className={inputCls()}
-                    placeholder="e.g. A"
+                    placeholder="e.g. 12"
+                  />
+                </div>
+                <div>
+                  <ResearchStageSelect
+                    value={form.researchStageId}
+                    onChange={(v) => {
+                      update("researchStageId", v);
+                      setFieldErrors((prev) => ({ ...prev, researchStageId: "" }));
+                    }}
+                    required
+                    error={fieldErrors.researchStageId}
                   />
                 </div>
                 <div className="md:col-span-2">

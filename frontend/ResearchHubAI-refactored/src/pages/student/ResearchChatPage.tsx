@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   MessageSquare, Plus, Trash2, Copy, Download, Search,
   PanelLeftClose, PanelLeft, Send, Loader2, Sparkles,
-  BookOpen, FileText, FileCode2, Hash, AlertCircle,
-  Pencil, Check, X, ChevronDown, ChevronRight,
+  BookOpen, FileCode2, Pencil,
+  ChevronDown, ChevronRight,
 } from "lucide-react";
 import { chatService } from "../../services/ChatService";
 import type {
@@ -22,7 +22,7 @@ function formatDate(dateStr: string): string {
 
 function MarkdownRenderer({ content }: { content: string }) {
   const lines = content.split("\n");
-  const elements: JSX.Element[] = [];
+  const elements: React.ReactElement[] = [];
   let inCodeBlock = false;
   let codeContent = "";
   let codeLang = "";
@@ -205,7 +205,7 @@ function renderInline(text: string): React.ReactNode {
   const parts: React.ReactNode[] = [];
   let remaining = text;
 
-  const patterns: { regex: RegExp; render: (match: string, content: string) => React.ReactNode }[] = [
+  const patterns: { regex: RegExp; render: (match: string, content: string, url?: string) => React.ReactNode }[] = [
     { regex: /`([^`]+)`/, render: (_m, c) => <code key={parts.length} className="bg-gray-100 text-red-600 px-1.5 py-0.5 rounded text-sm font-mono">{c}</code> },
     { regex: /\*\*([^*]+)\*\*/, render: (_m, c) => <strong key={parts.length} className="font-semibold text-gray-900">{c}</strong> },
     { regex: /\*([^*]+)\*/, render: (_m, c) => <em key={parts.length} className="italic text-gray-700">{c}</em> },
@@ -554,10 +554,6 @@ export default function ResearchChatPage() {
   const stopStreaming = () => {
     abortRef.current?.abort();
     setIsStreaming(false);
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
   };
 
   const exportConversation = () => {

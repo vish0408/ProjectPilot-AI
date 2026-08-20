@@ -1,713 +1,226 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import {
-  GraduationCap, Search, Users, X, Eye, UserPlus, Loader2,
-  Mail, Phone, Building, BookOpen, UserCheck, Activity, Shield, AlertTriangle,
-  CheckCircle, XCircle, Hash, ChevronRight
-} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Eye, GraduationCap, RefreshCw, Search, Users, X } from "lucide-react";
 import StatCard from "../../components/cards/StatCard";
-import Avatar from "../../components/common/Avatar";
+import AccountStatusBadge from "../../components/common/AccountStatusBadge";
 import Badge from "../../components/common/Badge";
 import Card from "../../components/common/Card";
-import ProgressBar from "../../components/common/ProgressBar";
+import SectionHead from "../../components/common/SectionHead";
 import Pagination from "../../components/common/Pagination";
+import ProgressBar from "../../components/common/ProgressBar";
+import HodStudentViewDrawer from "../../components/hod/HodStudentViewDrawer";
 import { hodService } from "../../services/HodService";
-import { HodStudentSummary, StudentDetail, HodGuideSummary } from "../../types/Hod";
+import type { HodStudentSummary } from "../../types/Hod";
 
-const FILTERS = [
-  { key: "all", label: "All" },
-  { key: "withGuide", label: "With Guide" },
-  { key: "withoutGuide", label: "Without Guide" },
-  { key: "active", label: "Active" },
-  { key: "inactive", label: "Inactive" },
-] as const;
+const PAGE_SIZE = 10;
 
-const statusBadgeVariant = (status: string | null) => {
-  if (!status) return "outline" as const;
-  if (status === "Completed") return "success" as const;
-  if (status === "InProgress") return "warning" as const;
-  return "outline" as const;
-};
-
-const statusLabel = (status: string | null) => {
-  if (!status) return "No Project";
-  if (status === "NotStarted") return "Not Started";
-  return status.replace(/([A-Z])/g, " $1").trim();
+const statusVariant = (status?: string | null): "success" | "warning" | "danger" | "outline" | "info" => {
+  switch (status) {
+    case "Completed": return "success";
+    case "InProgress": return "warning";
+    case "OnHold": return "danger";
+    case "NotStarted": return "info";
+    default: return "outline";
+  }
 };
 
 export default function HodStudents() {
   const [students, setStudents] = useState<HodStudentSummary[]>([]);
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [activeFilter, setActiveFilter] = useState("all");
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState("name");
+  const [filterStatus, setFilterStatus] = useState("");
   const [pageNumber, setPageNumber] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [hasNextPage, setHasNextPage] = useState(false);
-  const [hasPreviousPage, setHasPreviousPage] = useState(false);
-  const [pageSize, setPageSize] = useState(20);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewStudentId, setViewStudentId] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [studentDetail, setStudentDetail] = useState<StudentDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-
-  const [assignOpen, setAssignOpen] = useState(false);
-  const [assignStudentId, setAssignStudentId] = useState<string | null>(null);
-  const [assignStudentName, setAssignStudentName] = useState("");
-  const [guides, setGuides] = useState<HodGuideSummary[]>([]);
-  const [guidesLoading, setGuidesLoading] = useState(false);
-  const [selectedGuideId, setSelectedGuideId] = useState("");
-  const [assignRemarks, setAssignRemarks] = useState("");
-  const [assigning, setAssigning] = useState(false);
-  const [assignError, setAssignError] = useState<string | null>(null);
-
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmStudent, setConfirmStudent] = useState<HodStudentSummary | null>(null);
-  const [confirmAction, setConfirmAction] = useState<"activate" | "deactivate">("activate");
-  const [confirmLoading, setConfirmLoading] = useState(false);
-
-  const abortRef = useRef<AbortController | null>(null);
-
-  const fetchStudents = useCallback(async (
-    term: string | undefined,
-    filter: string,
-    page: number,
-    size: number,
-  ) => {
-    if (abortRef.current) abortRef.current.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setError(null);
+  const fetchStudents = useCallback(async (page?: number, term?: string, status?: string, sort?: string) => {
     try {
-      const data = await hodService.getStudents(term, {
-        pageNumber: page,
-        pageSize: size,
-        statusFilter: filter === "all" ? undefined : filter,
-      });
-      if (controller.signal.aborted) return;
+      setLoading(true);
+      setError(null);
+      const query: Record<string, string | number> = {
+        pageNumber: page ?? pageNumber,
+        pageSize: PAGE_SIZE,
+      };
+      const s = sort ?? sortBy;
+      if (s !== "createdAt") query.sortBy = s;
+      const t = term ?? search;
+      if (t) query.search = t;
+      const st = status ?? filterStatus;
+      if (st) query.filterStatus = st;
+      const data = await hodService.getStudents(query);
       setStudents(data.items);
-      setPageNumber(data.pageNumber);
-      setTotalPages(data.totalPages);
       setTotalCount(data.totalCount);
-      setHasNextPage(data.hasNextPage);
-      setHasPreviousPage(data.hasPreviousPage);
+      setTotalPages(data.totalPages);
     } catch (e) {
-      if (controller.signal.aborted) return;
       if (e instanceof Error) setError(e.message);
-    } finally {
-      if (!controller.signal.aborted) {
-        setInitialLoading(false);
-      }
     }
-  }, []);
+    finally { setLoading(false); }
+  }, [pageNumber, sortBy, search, filterStatus]);
 
   useEffect(() => {
-    return () => {
-      if (abortRef.current) abortRef.current.abort();
-    };
+    fetchStudents();
   }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
+  const handleSearch = (term: string) => {
+    setSearch(term);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
       setPageNumber(1);
-      fetchStudents(debouncedSearch || undefined, activeFilter, 1, pageSize);
+      fetchStudents(1, term);
     }, 300);
-    return () => clearTimeout(timer);
-  }, [debouncedSearch, activeFilter]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  const handlePageChange = (page: number) => {
-    fetchStudents(debouncedSearch || undefined, activeFilter, page, pageSize);
   };
 
-  const handlePageSizeChange = (size: number) => {
-    setPageSize(size);
-    fetchStudents(debouncedSearch || undefined, activeFilter, 1, size);
+  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
+
+  const openView = (studentUserId: string) => {
+    setViewStudentId(studentUserId);
+    setViewOpen(true);
   };
 
-  const handleViewDetail = async (userId: string) => {
-    setSelectedUserId(userId);
-    setDrawerOpen(true);
-    setDetailLoading(true);
-    setStudentDetail(null);
-    try {
-      const detail = await hodService.getStudentDetail(userId);
-      setStudentDetail(detail);
-    } catch (_) {
-      setStudentDetail(null);
-    } finally {
-      setDetailLoading(false);
-    }
-  };
-
-  const handleOpenAssign = async (student: HodStudentSummary) => {
-    setAssignStudentId(student.userId);
-    setAssignStudentName(student.fullName);
-    setAssignOpen(true);
-    setSelectedGuideId("");
-    setAssignRemarks("");
-    setAssignError(null);
-    setGuidesLoading(true);
-    try {
-      const g = await hodService.getGuides();
-      setGuides(g);
-    } catch (e) {
-      setAssignError(e instanceof Error ? e.message : "Failed to load guides");
-    } finally {
-      setGuidesLoading(false);
-    }
-  };
-
-  const handleAssignGuide = async () => {
-    if (!assignStudentId || !selectedGuideId) return;
-    setAssigning(true);
-    setAssignError(null);
-    try {
-      await hodService.assignStudentGuide(assignStudentId, selectedGuideId, assignRemarks || undefined);
-      setAssignOpen(false);
-      fetchStudents(debouncedSearch || undefined, activeFilter, pageNumber, pageSize);
-      if (drawerOpen && selectedUserId === assignStudentId) {
-        const detail = await hodService.getStudentDetail(assignStudentId);
-        setStudentDetail(detail);
-      }
-    } catch (e) {
-      setAssignError(e instanceof Error ? e.message : "Failed to assign guide");
-    } finally {
-      setAssigning(false);
-    }
-  };
-
-  const handleToggleStatus = (student: HodStudentSummary, action: "activate" | "deactivate") => {
-    setConfirmStudent(student);
-    setConfirmAction(action);
-    setConfirmOpen(true);
-  };
-
-  const handleConfirmToggle = async () => {
-    if (!confirmStudent) return;
-    setConfirmLoading(true);
-    try {
-      await hodService.toggleStudentStatus(confirmStudent.userId, confirmAction === "activate");
-      setConfirmOpen(false);
-      setConfirmStudent(null);
-      fetchStudents(debouncedSearch || undefined, activeFilter, pageNumber, pageSize);
-      if (drawerOpen && selectedUserId === confirmStudent.userId) {
-        const detail = await hodService.getStudentDetail(confirmStudent.userId);
-        setStudentDetail(detail);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to update status");
-    } finally {
-      setConfirmLoading(false);
-    }
-  };
-
-  if (initialLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  const withGuideCount = useMemo(() => students.filter((s) => s.guideName).length, [students]);
-  const hasProjectCount = useMemo(() => students.filter((s) => s.projectTitle).length, [students]);
-  const avgProgress = useMemo(() => students.length
+  const totalWithGuide = students.filter(s => s.guideName).length;
+  const totalWithProject = students.filter(s => s.projectTitle).length;
+  const avgProgress = students.length
     ? Math.round(students.reduce((a, s) => a + s.completionPercentage, 0) / students.length)
-    : 0, [students]);
+    : 0;
 
   return (
     <div className="flex flex-col gap-5">
       {error && (
-        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800">
+        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 flex items-center justify-between">
           <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+          <button onClick={() => setError(null)}><X className="w-4 h-4 text-red-500" /></button>
         </div>
       )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard label="Total Students" value={`${totalCount}`} icon={GraduationCap} color="bg-blue-500" />
-        <StatCard label="With Guide" value={`${withGuideCount}`} icon={Users} color="bg-green-500" />
-        <StatCard label="Has Project" value={`${hasProjectCount}`} icon={GraduationCap} color="bg-amber-500" />
-        <StatCard label="Avg Progress" value={avgProgress + "%"} icon={GraduationCap} color="bg-indigo-500" />
+        <StatCard label="With Guide" value={`${totalWithGuide}`} icon={Users} color="bg-green-500" />
+        <StatCard label="Has Project" value={`${totalWithProject}`} icon={GraduationCap} color="bg-amber-500" />
+        <StatCard label="Avg Progress" value={`${avgProgress}%`} icon={GraduationCap} color="bg-indigo-500" />
       </div>
 
-      <Card p={false}>
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
-          <Search className="w-4 h-4 text-muted-foreground" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search students by name, email, or enrollment..."
-            className="flex-1 bg-transparent text-sm outline-none text-foreground placeholder:text-muted-foreground"
-          />
+      <SectionHead title="Students" desc="Manage PhD scholars in your department" />
+
+      <Card>
+        <div className="flex items-center gap-3 px-1 pb-4 flex-wrap">
+          <div className="flex items-center gap-2 flex-1 min-w-[220px]">
+            <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+            <input value={search} onChange={e => handleSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && fetchStudents(1)}
+              placeholder="Search by name, email, enrollment, or research topic..."
+              className="flex-1 bg-transparent text-sm outline-none text-foreground placeholder:text-muted-foreground min-w-0" />
+            {search && <button onClick={() => { setSearch(""); setPageNumber(1); fetchStudents(1, ""); }}><X className="w-4 h-4 text-muted-foreground" /></button>}
+          </div>
+          <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPageNumber(1); fetchStudents(1, undefined, e.target.value); }}
+            className="bg-input-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none focus:border-primary">
+            <option value="">All Students</option>
+            <option value="assigned">With Guide</option>
+            <option value="unassigned">Without Guide</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+          <select value={sortBy} onChange={e => { setSortBy(e.target.value); setPageNumber(1); fetchStudents(1, undefined, undefined, e.target.value); }}
+            className="bg-input-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none focus:border-primary">
+            <option value="name">Name</option>
+            <option value="email">Email</option>
+            <option value="enrollment">Enrollment</option>
+            <option value="progress">Progress</option>
+            <option value="createdAt">Created Date</option>
+          </select>
         </div>
 
-        <div className="flex items-center gap-1 px-5 py-3 border-b border-border overflow-x-auto">
-          {FILTERS.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setActiveFilter(f.key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
-                activeFilter === f.key
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex flex-col">
-          {students.map((s) => (
-            <div
-              key={s.userId}
-              className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-0 hover:bg-muted/40 transition-colors"
-            >
-              <Avatar name={s.fullName} />
-              <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-5 gap-3 items-start">
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-foreground truncate">{s.fullName}</p>
-                  <p className="text-xs text-muted-foreground truncate">{s.email}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Enrollment</p>
-                  <p className="text-xs font-medium text-foreground">{s.enrollment}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Department</p>
-                  <p className="text-xs font-medium text-foreground truncate">{s.department}</p>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground">Guide</p>
-                  {s.guideName ? (
-                    <button
-                      onClick={() => handleViewDetail(s.userId)}
-                      className="text-xs font-medium text-primary hover:underline truncate flex items-center gap-1"
-                    >
-                      {s.guideName}
-                      <ChevronRight className="w-3 h-3" />
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[860px]">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap">Student ID</th>
+                <th className="text-left py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap">Student</th>
+                <th className="text-left py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap">Guide</th>
+                <th className="text-left py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap">Research Topic / Project</th>
+                <th className="text-left py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap">Progress</th>
+                <th className="text-left py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap">Status</th>
+                <th className="text-right py-3 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {students.map((s) => (
+                <tr key={s.userId} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                  <td className="py-3 px-3 text-xs font-mono text-foreground font-semibold whitespace-nowrap">
+                    {s.enrollment || s.employeeId || "—"}
+                  </td>
+                  <td className="py-3 px-3">
+                    <div className="flex items-center gap-2 min-w-0 max-w-[260px]">
+                      <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0">
+                        {s.fullName.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm text-foreground whitespace-nowrap truncate" title={s.fullName}>{s.fullName}</p>
+                        <p className="text-[11px] text-muted-foreground truncate" title={s.email}>{s.email || "—"}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-3 px-3 text-xs text-muted-foreground max-w-[180px]">
+                    <p className="truncate" title={s.guideName || "Not assigned"}>{s.guideName || "Not assigned"}</p>
+                    {s.guideEmployeeId && (
+                      <p className="text-[11px] text-muted-foreground truncate" title={s.guideEmployeeId}>{s.guideEmployeeId}</p>
+                    )}
+                  </td>
+                  <td className="py-3 px-3 text-xs text-muted-foreground max-w-[220px]">
+                    <p className="truncate" title={s.projectTitle || s.researchTopic || "—"}>{s.projectTitle || s.researchTopic || "—"}</p>
+                    {s.projectStatus && <Badge variant={statusVariant(s.projectStatus)} className="mt-1">{s.projectStatus}</Badge>}
+                  </td>
+                  <td className="py-3 px-3">
+                    <div className="flex items-center gap-2 min-w-[100px]">
+                      <div className="flex-1"><ProgressBar value={s.completionPercentage} /></div>
+                      <span className="text-xs font-bold whitespace-nowrap">{s.completionPercentage}%</span>
+                    </div>
+                  </td>
+                  <td className="py-3 px-3 whitespace-nowrap">
+                    <AccountStatusBadge status={s.accountStatus} />
+                  </td>
+                  <td className="py-2 px-3 text-right whitespace-nowrap">
+                    <button onClick={() => openView(s.userId)}
+                      className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/20 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-950/40 hover:scale-105 transition-all flex items-center justify-center touch-target"
+                      title="View details">
+                      <Eye className="w-4 h-4" />
                     </button>
-                  ) : (
-                    <p className="text-xs text-muted-foreground italic">Not assigned</p>
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-muted-foreground">Progress</span>
-                    <span className="text-xs font-bold">{s.completionPercentage}%</span>
-                  </div>
-                  <ProgressBar value={s.completionPercentage} />
-                </div>
-              </div>
-
-              <div className="hidden md:flex flex-col items-end gap-1.5 flex-shrink-0">
-                <Badge variant={statusBadgeVariant(s.projectStatus)}>
-                  {statusLabel(s.projectStatus)}
-                </Badge>
-              </div>
-
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <button
-                  onClick={() => handleViewDetail(s.userId)}
-                  title="View Profile"
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                >
-                  <Eye className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleOpenAssign(s)}
-                  title="Assign Guide"
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                >
-                  <UserPlus className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleToggleStatus(s, "activate")}
-                  title="Activate"
-                  className="p-1.5 rounded-lg text-green-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-950/20 transition-colors"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleToggleStatus(s, "deactivate")}
-                  title="Deactivate"
-                  className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
-                >
-                  <XCircle className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          ))}
-          {!students.length && (
-            <p className="text-sm text-muted-foreground text-center py-8">No students found</p>
-          )}
+                  </td>
+                </tr>
+              ))}
+              {loading && (
+                <tr>
+                  <td colSpan={7} className="py-4 text-center">
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                      <RefreshCw className="w-4 h-4 animate-spin" /> Loading...
+                    </div>
+                  </td>
+                </tr>
+              )}
+              {!loading && !students.length && (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                    {search || filterStatus ? "No students match your filters" : "No students found"}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-
         <Pagination
           pageNumber={pageNumber}
           totalPages={totalPages}
           totalCount={totalCount}
-          hasNextPage={hasNextPage}
-          hasPreviousPage={hasPreviousPage}
-          onPageChange={handlePageChange}
-          pageSize={pageSize}
-          onPageSizeChange={handlePageSizeChange}
+          hasNextPage={pageNumber < totalPages}
+          hasPreviousPage={pageNumber > 1}
+          onPageChange={p => fetchStudents(p)}
+          pageSize={PAGE_SIZE}
         />
       </Card>
 
-      {/* Detail Drawer */}
-      {drawerOpen && (
-        <div
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setDrawerOpen(false);
-          }}
-          className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
-        >
-          <div className="w-full max-w-lg bg-card border-l border-border h-full overflow-y-auto shadow-2xl animate-in slide-in-from-right duration-300">
-            <div className="sticky top-0 bg-card z-10 flex items-center justify-between px-6 py-4 border-b border-border">
-              <h2 className="text-lg font-bold text-foreground">Student Profile</h2>
-              <button
-                onClick={() => setDrawerOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {detailLoading ? (
-              <div className="flex items-center justify-center h-64">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              </div>
-            ) : !studentDetail ? (
-              <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
-                Student not found
-              </div>
-            ) : (
-              <div className="p-6 space-y-6">
-                <div className="flex flex-col items-center text-center gap-3 pb-4 border-b border-border">
-                  <Avatar name={studentDetail.fullName} size="lg" />
-                  <div>
-                    <h3 className="text-lg font-bold text-foreground">{studentDetail.fullName}</h3>
-                    <p className="text-sm text-muted-foreground">{studentDetail.email}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Badge variant={studentDetail.isActive ? "success" : "danger"}>
-                      {studentDetail.isActive ? "Active" : "Inactive"}
-                    </Badge>
-                    {studentDetail.roles.map((r) => (
-                      <Badge key={r} variant="info">{r}</Badge>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Contact</h4>
-                  <div className="grid grid-cols-1 gap-2">
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 border border-border">
-                      <Mail className="w-4 h-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-[10px] text-muted-foreground">Email</p>
-                        <p className="text-sm font-medium text-foreground">{studentDetail.email}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 border border-border">
-                      <Phone className="w-4 h-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-[10px] text-muted-foreground">Phone</p>
-                        <p className="text-sm font-medium text-foreground">{studentDetail.phoneNumber || "Not provided"}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Academic Info</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="p-3 rounded-xl bg-muted/50 border border-border">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Hash className="w-3 h-3 text-muted-foreground" />
-                        <p className="text-[10px] text-muted-foreground">Enrollment</p>
-                      </div>
-                      <p className="text-sm font-medium text-foreground">{studentDetail.enrollment}</p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-muted/50 border border-border">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Building className="w-3 h-3 text-muted-foreground" />
-                        <p className="text-[10px] text-muted-foreground">Department</p>
-                      </div>
-                      <p className="text-sm font-medium text-foreground">{studentDetail.department}</p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-muted/50 border border-border">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Building className="w-3 h-3 text-muted-foreground" />
-                        <p className="text-[10px] text-muted-foreground">College</p>
-                      </div>
-                      <p className="text-sm font-medium text-foreground">{studentDetail.college}</p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-muted/50 border border-border">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <BookOpen className="w-3 h-3 text-muted-foreground" />
-                        <p className="text-[10px] text-muted-foreground">Research Topic</p>
-                      </div>
-                      <p className="text-sm font-medium text-foreground truncate" title={studentDetail.researchTopic}>
-                        {studentDetail.researchTopic || "Not specified"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Guide Information</h4>
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 border border-border">
-                    <UserCheck className="w-4 h-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-[10px] text-muted-foreground">Guide</p>
-                      <p className="text-sm font-medium text-foreground">
-                        {studentDetail.guideName || "Not assigned"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Project</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="col-span-2 p-3 rounded-xl bg-muted/50 border border-border">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <BookOpen className="w-3 h-3 text-muted-foreground" />
-                        <p className="text-[10px] text-muted-foreground">Title</p>
-                      </div>
-                      <p className="text-sm font-medium text-foreground">
-                        {studentDetail.projectTitle || "No project"}
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-muted/50 border border-border">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Shield className="w-3 h-3 text-muted-foreground" />
-                        <p className="text-[10px] text-muted-foreground">Status</p>
-                      </div>
-                      <Badge variant={statusBadgeVariant(studentDetail.projectStatus)}>
-                        {statusLabel(studentDetail.projectStatus)}
-                      </Badge>
-                    </div>
-                    <div className="p-3 rounded-xl bg-muted/50 border border-border">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Activity className="w-3 h-3 text-muted-foreground" />
-                        <p className="text-[10px] text-muted-foreground">Completion</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1">
-                          <ProgressBar value={studentDetail.completionPercentage} />
-                        </div>
-                        <span className="text-xs font-bold text-foreground">{studentDetail.completionPercentage}%</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Account</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="p-3 rounded-xl bg-muted/50 border border-border">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Activity className="w-3 h-3 text-muted-foreground" />
-                        <p className="text-[10px] text-muted-foreground">Status</p>
-                      </div>
-                      <Badge variant={studentDetail.isActive ? "success" : "danger"}>
-                        {studentDetail.isActive ? "Active" : "Inactive"}
-                      </Badge>
-                    </div>
-                    <div className="p-3 rounded-xl bg-muted/50 border border-border">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Shield className="w-3 h-3 text-muted-foreground" />
-                        <p className="text-[10px] text-muted-foreground">Roles</p>
-                      </div>
-                      <p className="text-sm font-medium text-foreground">{studentDetail.roles.join(", ") || "-"}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Assign Guide Modal */}
-      {assignOpen && (
-        <div
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setAssignOpen(false);
-          }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-        >
-          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-md border border-border animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-              <h2 className="text-lg font-bold text-foreground">Assign Guide</h2>
-              <button
-                onClick={() => setAssignOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Assign a guide to <span className="font-bold text-foreground">{assignStudentName}</span>
-              </p>
-
-              {assignError && (
-                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800">
-                  <p className="text-xs text-red-600 dark:text-red-400">{assignError}</p>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Select Guide</label>
-                {guidesLoading ? (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Loading guides...
-                  </div>
-                ) : (
-                  <select
-                    value={selectedGuideId}
-                    onChange={(e) => setSelectedGuideId(e.target.value)}
-                    className="w-full bg-muted border border-border rounded-xl px-3 py-2.5 text-sm outline-none text-foreground"
-                  >
-                    <option value="">-- Choose a guide --</option>
-                    {guides.map((g) => (
-                      <option key={g.userId} value={g.userId}>
-                        {g.fullName} ({g.department}){!g.isAvailable ? " [Unavailable]" : ""}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Remarks (optional)</label>
-                <textarea
-                  value={assignRemarks}
-                  onChange={(e) => setAssignRemarks(e.target.value)}
-                  rows={2}
-                  placeholder="Any additional remarks..."
-                  className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-sm outline-none text-foreground placeholder:text-muted-foreground resize-none"
-                />
-              </div>
-
-              <div className="flex gap-3 justify-end pt-2">
-                <button
-                  onClick={() => setAssignOpen(false)}
-                  className="px-5 py-2.5 text-sm font-medium rounded-xl border border-border text-muted-foreground hover:bg-muted transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAssignGuide}
-                  disabled={assigning || !selectedGuideId}
-                  className="px-6 py-2.5 text-sm font-bold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all shadow-lg shadow-primary/20"
-                >
-                  {assigning && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {assigning ? "Assigning..." : "Assign Guide"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Confirm Dialog */}
-      {confirmOpen && confirmStudent && (
-        <div
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setConfirmOpen(false);
-              setConfirmStudent(null);
-            }
-          }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-        >
-          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-md border border-border animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-              <h2 className="text-lg font-bold text-foreground">
-                {confirmAction === "activate" ? "Activate Student" : "Deactivate Student"}
-              </h2>
-              <button
-                onClick={() => {
-                  setConfirmOpen(false);
-                  setConfirmStudent(null);
-                }}
-                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6">
-              <div className="flex flex-col items-center text-center gap-3 mb-5">
-                <div
-                  className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    confirmAction === "deactivate"
-                      ? "bg-red-100 dark:bg-red-900/30"
-                      : "bg-green-100 dark:bg-green-900/30"
-                  }`}
-                >
-                  {confirmAction === "deactivate" ? (
-                    <AlertTriangle className="w-6 h-6 text-red-500" />
-                  ) : (
-                    <CheckCircle className="w-6 h-6 text-green-500" />
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground mb-1">
-                    {confirmAction === "activate" ? "Activate Student" : "Deactivate Student"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Are you sure you want to {confirmAction}{" "}
-                    <span className="font-bold text-foreground">{confirmStudent.fullName}</span>?
-                    {confirmAction === "deactivate"
-                      ? " They will not be able to log in until reactivated."
-                      : " They will regain access to the system."}
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={() => {
-                    setConfirmOpen(false);
-                    setConfirmStudent(null);
-                  }}
-                  className="px-5 py-2.5 text-sm font-medium rounded-xl border border-border text-muted-foreground hover:bg-muted transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleConfirmToggle}
-                  disabled={confirmLoading}
-                  className={`px-6 py-2.5 text-sm font-bold rounded-xl text-white flex items-center gap-2 transition-all shadow-lg ${
-                    confirmAction === "deactivate"
-                      ? "bg-red-600 hover:bg-red-700 disabled:bg-red-400 shadow-red-600/20"
-                      : "bg-green-600 hover:bg-green-700 disabled:bg-green-400 shadow-green-600/20"
-                  }`}
-                >
-                  {confirmLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {confirmLoading
-                    ? "Updating..."
-                    : confirmAction === "activate"
-                      ? "Activate"
-                      : "Deactivate"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <HodStudentViewDrawer open={viewOpen} studentUserId={viewStudentId} onClose={() => { setViewOpen(false); setViewStudentId(null); }} />
     </div>
   );
 }

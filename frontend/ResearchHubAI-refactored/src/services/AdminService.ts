@@ -1,68 +1,73 @@
 import { apiClient } from "../api/client";
 import type { PagedRequest, PagedResponse } from "../types/Pagination";
+import type { ResearchCategory } from "../types/Hod";
 import type {
-  CollegeResponse, CollegeAnalyticsResponse, CreateCollegeRequest, UpdateCollegeRequest,
+  CollegeResponse, CreateCollegeRequest, UpdateCollegeRequest, CollegeAnalyticsResponse,
   DepartmentResponse, CreateDepartmentRequest, UpdateDepartmentRequest,
   AcademicYearResponse, CreateAcademicYearRequest, UpdateAcademicYearRequest,
   SemesterResponse, CreateSemesterRequest, UpdateSemesterRequest,
   FacultyResponse, CreateFacultyRequest, UpdateFacultyRequest,
   UserResponse, CreateUserRequest, UpdateUserRequest,
+  HodResponse, CreateHodRequest, UpdateHodRequest,
   RoleResponse, CreateRoleRequest, UpdateRoleRequest,
   PermissionResponse, CreatePermissionRequest, UpdatePermissionRequest,
+  ResearchStageResponse, CreateResearchStageRequest, UpdateResearchStageRequest,
+  ResearchTopicResponse, CreateResearchTopicRequest, UpdateResearchTopicRequest,
+  ResearchCategoryResponse, CreateResearchCategoryRequest, UpdateResearchCategoryRequest,
   AdminDashboardResponse,
   GlobalAnnouncementResponse, CreateGlobalAnnouncementRequest, UpdateGlobalAnnouncementRequest,
   AuditLogResponse,
   SystemSettingResponse, UpdateSystemSettingRequest,
-  ResearchTopicResponse, CreateResearchTopicRequest, UpdateResearchTopicRequest,
-  BackupRecordResponse,
-  HodResponse, CreateHodRequest, UpdateHodRequest,
+  CourseworkResponse, CourseworkSummaryResponse, CreateCourseworkRequest, UpdateCourseworkRequest,
 } from "../types/Admin";
+
+function unwrap<T>(res: { success: boolean; data?: T | null; message?: string }, fallbackMsg: string): T {
+  if (!res.success || res.data === undefined || res.data === null) {
+    throw new Error(res.message || fallbackMsg);
+  }
+  return res.data;
+}
 
 export class AdminService {
   // Dashboard
   async getDashboard(): Promise<AdminDashboardResponse> {
     const res = await apiClient.get<AdminDashboardResponse>("/admin/dashboard");
-    if (!res.success || !res.data) throw new Error(res.message || "Failed to get dashboard");
-    return res.data;
+    return unwrap(res, "Failed to get dashboard");
   }
 
   // Colleges
-  async getColleges(): Promise<CollegeResponse[]> {
+  async getAllColleges(): Promise<CollegeResponse[]> {
     const res = await apiClient.get<CollegeResponse[]>("/admin/colleges/all");
-    if (!res.success || !res.data) throw new Error(res.message || "Failed to get colleges");
-    return Array.isArray(res.data) ? res.data : [];
+    return unwrap(res, "Failed to get colleges");
   }
 
-  async getCollegesPaged(request?: PagedRequest): Promise<PagedResponse<CollegeResponse>> {
-    const params = new URLSearchParams();
-    if (request?.pageNumber) params.set("pageNumber", String(request.pageNumber));
-    if (request?.pageSize) params.set("pageSize", String(request.pageSize));
-    if (request?.searchTerm) params.set("searchTerm", request.searchTerm);
-    if (request?.sortField) params.set("sortField", request.sortField);
-    if (request?.sortDirection) params.set("sortDirection", request.sortDirection);
-    if (request?.statusFilter) params.set("statusFilter", request.statusFilter);
-    const qs = params.toString();
-    const res = await apiClient.get<PagedResponse<CollegeResponse>>(`/admin/colleges${qs ? `?${qs}` : ""}`);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed to get colleges");
-    return res.data;
+  async getColleges(): Promise<CollegeResponse[]> {
+    return this.getAllColleges();
+  }
+
+  async getCollegesPaged(req: PagedRequest = {}, signal?: AbortSignal): Promise<PagedResponse<CollegeResponse>> {
+    const res = await apiClient.get<PagedResponse<CollegeResponse>>("/admin/colleges", { params: req, signal });
+    return unwrap(res, "Failed to get colleges");
+  }
+
+  async getCollegeAnalytics(): Promise<CollegeAnalyticsResponse[]> {
+    const res = await apiClient.get<CollegeAnalyticsResponse[]>("/admin/colleges/analytics");
+    return unwrap(res, "Failed to get college analytics");
   }
 
   async getCollege(id: string): Promise<CollegeResponse> {
     const res = await apiClient.get<CollegeResponse>(`/admin/colleges/${id}`);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed to get college");
-    return res.data;
+    return unwrap(res, "Failed to get college");
   }
 
   async createCollege(data: CreateCollegeRequest): Promise<CollegeResponse> {
     const res = await apiClient.post<CollegeResponse>("/admin/colleges", data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed to create college");
-    return res.data;
+    return unwrap(res, "Failed to create college");
   }
 
   async updateCollege(id: string, data: UpdateCollegeRequest): Promise<CollegeResponse> {
     const res = await apiClient.put<CollegeResponse>(`/admin/colleges/${id}`, data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed to update college");
-    return res.data;
+    return unwrap(res, "Failed to update college");
   }
 
   async deleteCollege(id: string): Promise<void> {
@@ -70,81 +75,62 @@ export class AdminService {
     if (!res.success) throw new Error(res.message || "Failed to delete college");
   }
 
-  async getCollegeAnalytics(): Promise<CollegeAnalyticsResponse[]> {
-    const res = await apiClient.get<CollegeAnalyticsResponse[]>("/admin/colleges/analytics");
-    if (!res.success || !res.data) throw new Error(res.message || "Failed to get college analytics");
-    return res.data;
-  }
-
   // Departments
-  async getDepartmentsPaged(request?: PagedRequest, collegeId?: string, signal?: AbortSignal): Promise<PagedResponse<DepartmentResponse>> {
-    const params = new URLSearchParams();
-    if (request?.pageNumber) params.set("pageNumber", String(request.pageNumber));
-    if (request?.pageSize) params.set("pageSize", String(request.pageSize));
-    if (request?.searchTerm) params.set("searchTerm", request.searchTerm);
-    if (request?.sortField) params.set("sortField", request.sortField);
-    if (request?.sortDirection) params.set("sortDirection", request.sortDirection);
-    if (request?.statusFilter) params.set("statusFilter", request.statusFilter);
-    if (collegeId) params.set("collegeId", collegeId);
-    const qs = params.toString();
-    const res = await apiClient.get<PagedResponse<DepartmentResponse>>(`/admin/departments${qs ? `?${qs}` : ""}`, signal);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+  async getAllDepartments(collegeId?: string): Promise<DepartmentResponse[]> {
+    const res = await apiClient.get<DepartmentResponse[]>("/admin/departments/all", {
+      params: collegeId ? { collegeId } : undefined,
+    });
+    return unwrap(res, "Failed to get departments");
   }
 
-  async getAllDepartments(collegeId?: string): Promise<DepartmentResponse[]> {
-    const path = collegeId ? `/admin/departments/all?collegeId=${collegeId}` : "/admin/departments/all";
-    const res = await apiClient.get<DepartmentResponse[]>(path);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+  async getDepartments(): Promise<DepartmentResponse[]> {
+    return this.getAllDepartments();
+  }
+
+  async getDepartmentsPaged(req: PagedRequest = {}, signal?: AbortSignal): Promise<PagedResponse<DepartmentResponse>> {
+    const res = await apiClient.get<PagedResponse<DepartmentResponse>>("/admin/departments", { params: req, signal });
+    return unwrap(res, "Failed to get departments");
   }
 
   async getDepartment(id: string): Promise<DepartmentResponse> {
     const res = await apiClient.get<DepartmentResponse>(`/admin/departments/${id}`);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed to get department");
   }
 
   async createDepartment(data: CreateDepartmentRequest): Promise<DepartmentResponse> {
     const res = await apiClient.post<DepartmentResponse>("/admin/departments", data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed to create department");
   }
 
   async updateDepartment(id: string, data: UpdateDepartmentRequest): Promise<DepartmentResponse> {
     const res = await apiClient.put<DepartmentResponse>(`/admin/departments/${id}`, data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed to update department");
   }
 
   async deleteDepartment(id: string): Promise<void> {
     const res = await apiClient.delete(`/admin/departments/${id}`);
-    if (!res.success) throw new Error(res.message || "Failed");
+    if (!res.success) throw new Error(res.message || "Failed to delete department");
   }
 
   // Academic Years
   async getAcademicYears(): Promise<AcademicYearResponse[]> {
     const res = await apiClient.get<AcademicYearResponse[]>("/admin/academic-years");
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed to get academic years");
   }
 
   async getAcademicYear(id: string): Promise<AcademicYearResponse> {
     const res = await apiClient.get<AcademicYearResponse>(`/admin/academic-years/${id}`);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async createAcademicYear(data: CreateAcademicYearRequest): Promise<AcademicYearResponse> {
     const res = await apiClient.post<AcademicYearResponse>("/admin/academic-years", data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async updateAcademicYear(id: string, data: UpdateAcademicYearRequest): Promise<AcademicYearResponse> {
     const res = await apiClient.put<AcademicYearResponse>(`/admin/academic-years/${id}`, data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async deleteAcademicYear(id: string): Promise<void> {
@@ -160,32 +146,27 @@ export class AdminService {
   // Semesters
   async getSemesters(): Promise<SemesterResponse[]> {
     const res = await apiClient.get<SemesterResponse[]>("/admin/semesters");
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async getSemester(id: string): Promise<SemesterResponse> {
     const res = await apiClient.get<SemesterResponse>(`/admin/semesters/${id}`);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async getSemestersByAcademicYear(academicYearId: string): Promise<SemesterResponse[]> {
     const res = await apiClient.get<SemesterResponse[]>(`/admin/semesters/by-academic-year/${academicYearId}`);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async createSemester(data: CreateSemesterRequest): Promise<SemesterResponse> {
     const res = await apiClient.post<SemesterResponse>("/admin/semesters", data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async updateSemester(id: string, data: UpdateSemesterRequest): Promise<SemesterResponse> {
     const res = await apiClient.put<SemesterResponse>(`/admin/semesters/${id}`, data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async deleteSemester(id: string): Promise<void> {
@@ -201,26 +182,22 @@ export class AdminService {
   // Faculties
   async getFaculties(): Promise<FacultyResponse[]> {
     const res = await apiClient.get<FacultyResponse[]>("/admin/faculties");
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async getFaculty(id: string): Promise<FacultyResponse> {
     const res = await apiClient.get<FacultyResponse>(`/admin/faculties/${id}`);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async createFaculty(data: CreateFacultyRequest): Promise<FacultyResponse> {
     const res = await apiClient.post<FacultyResponse>("/admin/faculties", data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async updateFaculty(id: string, data: UpdateFacultyRequest): Promise<FacultyResponse> {
     const res = await apiClient.put<FacultyResponse>(`/admin/faculties/${id}`, data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async deleteFaculty(id: string): Promise<void> {
@@ -229,78 +206,100 @@ export class AdminService {
   }
 
   // Users
-  async getUsers(): Promise<UserResponse[]> {
-    const res = await apiClient.get<UserResponse[]>("/admin/users/all");
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return Array.isArray(res.data) ? res.data : [];
+  async getUsersPaged(req: PagedRequest = {}, signal?: AbortSignal): Promise<PagedResponse<UserResponse>> {
+    const res = await apiClient.get<PagedResponse<UserResponse>>("/admin/users", { params: req, signal });
+    return unwrap(res, "Failed to get users");
   }
 
-  async getUsersPaged(request?: PagedRequest, signal?: AbortSignal): Promise<PagedResponse<UserResponse>> {
-    const params = new URLSearchParams();
-    if (request?.pageNumber) params.set("pageNumber", String(request.pageNumber));
-    if (request?.pageSize) params.set("pageSize", String(request.pageSize));
-    if (request?.searchTerm) params.set("searchTerm", request.searchTerm);
-    if (request?.sortField) params.set("sortField", request.sortField);
-    if (request?.sortDirection) params.set("sortDirection", request.sortDirection);
-  if (request?.roleFilter) params.set("roleFilter", request.roleFilter);
-  if (request?.statusFilter) params.set("statusFilter", request.statusFilter);
-  if (request?.departmentFilter) params.set("departmentFilter", request.departmentFilter);
-  if (request?.collegeFilter) params.set("collegeFilter", request.collegeFilter);
-  if (request?.guideFilter) params.set("guideFilter", request.guideFilter);
-  if (request?.academicYearFilter) params.set("academicYearFilter", request.academicYearFilter);
-  if (request?.semesterFilter) params.set("semesterFilter", request.semesterFilter);
-    const qs = params.toString();
-    const res = await apiClient.get<PagedResponse<UserResponse>>(`/admin/users${qs ? `?${qs}` : ""}`, signal);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+  async getAllUsers(): Promise<UserResponse[]> {
+    const res = await apiClient.get<UserResponse[]>("/admin/users/all");
+    return unwrap(res, "Failed to get users");
+  }
+
+  async getUsers(): Promise<UserResponse[]> {
+    return this.getAllUsers();
   }
 
   async getUser(id: string): Promise<UserResponse> {
     const res = await apiClient.get<UserResponse>(`/admin/users/${id}`);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed to get user");
   }
 
   async createUser(data: CreateUserRequest): Promise<UserResponse> {
     const res = await apiClient.post<UserResponse>("/admin/users", data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed to create user");
   }
 
   async updateUser(id: string, data: UpdateUserRequest): Promise<UserResponse> {
     const res = await apiClient.put<UserResponse>(`/admin/users/${id}`, data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed to update user");
   }
 
   async deleteUser(id: string): Promise<void> {
     const res = await apiClient.delete(`/admin/users/${id}`);
-    if (!res.success) throw new Error(res.message || "Failed");
+    if (!res.success) throw new Error(res.message || "Failed to delete user");
+  }
+
+  async sendInvitation(id: string): Promise<void> {
+    const res = await apiClient.post(`/admin/users/${id}/send-invitation`);
+    if (!res.success) throw new Error(res.message || "Failed to send invitation");
+  }
+
+  async resendInvitation(id: string): Promise<void> {
+    const res = await apiClient.post(`/admin/users/${id}/resend-invitation`);
+    if (!res.success) throw new Error(res.message || "Failed to resend invitation");
+  }
+
+  // HODs
+  async getHodsPaged(req: PagedRequest = {}, collegeId?: string, departmentId?: string, signal?: AbortSignal): Promise<PagedResponse<HodResponse>> {
+    const res = await apiClient.get<PagedResponse<HodResponse>>("/admin/hods", {
+      params: { ...req, collegeId: collegeId || undefined, departmentId: departmentId || undefined },
+      signal,
+    });
+    return unwrap(res, "Failed to get HODs");
+  }
+
+  async getAllHods(collegeId?: string, departmentId?: string): Promise<HodResponse[]> {
+    const res = await apiClient.get<HodResponse[]>("/admin/hods/all", {
+      params: { collegeId: collegeId || undefined, departmentId: departmentId || undefined },
+    });
+    return unwrap(res, "Failed to get HODs");
+  }
+
+  async createHod(data: CreateHodRequest): Promise<HodResponse> {
+    const res = await apiClient.post<HodResponse>("/admin/hods", data);
+    return unwrap(res, "Failed to create HOD");
+  }
+
+  async updateHod(id: string, data: UpdateHodRequest): Promise<HodResponse> {
+    const res = await apiClient.put<HodResponse>(`/admin/hods/${id}`, data);
+    return unwrap(res, "Failed to update HOD");
+  }
+
+  async deleteHod(id: string): Promise<void> {
+    const res = await apiClient.delete(`/admin/hods/${id}`);
+    if (!res.success) throw new Error(res.message || "Failed to delete HOD");
   }
 
   // Roles
   async getRoles(): Promise<RoleResponse[]> {
     const res = await apiClient.get<RoleResponse[]>("/admin/roles");
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed to get roles");
   }
 
   async getRole(id: string): Promise<RoleResponse> {
     const res = await apiClient.get<RoleResponse>(`/admin/roles/${id}`);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async createRole(data: CreateRoleRequest): Promise<RoleResponse> {
     const res = await apiClient.post<RoleResponse>("/admin/roles", data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async updateRole(id: string, data: UpdateRoleRequest): Promise<RoleResponse> {
     const res = await apiClient.put<RoleResponse>(`/admin/roles/${id}`, data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async deleteRole(id: string): Promise<void> {
@@ -311,56 +310,48 @@ export class AdminService {
   // Permissions
   async getPermissions(): Promise<PermissionResponse[]> {
     const res = await apiClient.get<PermissionResponse[]>("/admin/permissions");
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async getPermission(id: string): Promise<PermissionResponse> {
     const res = await apiClient.get<PermissionResponse>(`/admin/permissions/${id}`);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async createPermission(data: CreatePermissionRequest): Promise<PermissionResponse> {
     const res = await apiClient.post<PermissionResponse>("/admin/permissions", data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed to create permission");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async updatePermission(id: string, data: UpdatePermissionRequest): Promise<PermissionResponse> {
     const res = await apiClient.put<PermissionResponse>(`/admin/permissions/${id}`, data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed to update permission");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async deletePermission(id: string): Promise<void> {
     const res = await apiClient.delete(`/admin/permissions/${id}`);
-    if (!res.success) throw new Error(res.message || "Failed to delete permission");
+    if (!res.success) throw new Error(res.message || "Failed");
   }
 
   // Announcements
   async getAnnouncements(): Promise<GlobalAnnouncementResponse[]> {
     const res = await apiClient.get<GlobalAnnouncementResponse[]>("/admin/announcements");
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async getAnnouncement(id: string): Promise<GlobalAnnouncementResponse> {
     const res = await apiClient.get<GlobalAnnouncementResponse>(`/admin/announcements/${id}`);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async createAnnouncement(data: CreateGlobalAnnouncementRequest): Promise<GlobalAnnouncementResponse> {
     const res = await apiClient.post<GlobalAnnouncementResponse>("/admin/announcements", data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async updateAnnouncement(id: string, data: UpdateGlobalAnnouncementRequest): Promise<GlobalAnnouncementResponse> {
     const res = await apiClient.put<GlobalAnnouncementResponse>(`/admin/announcements/${id}`, data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async publishAnnouncement(id: string): Promise<void> {
@@ -374,79 +365,99 @@ export class AdminService {
   }
 
   // Audit Logs
-  async getAuditLogs(): Promise<AuditLogResponse[]> {
+  async getAllAuditLogs(): Promise<AuditLogResponse[]> {
     const res = await apiClient.get<AuditLogResponse[]>("/admin/audit-logs/all");
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return Array.isArray(res.data) ? res.data : [];
+    return unwrap(res, "Failed to get audit logs");
   }
 
-  async getAuditLogsPaged(request?: PagedRequest, signal?: AbortSignal): Promise<PagedResponse<AuditLogResponse>> {
-    const params = new URLSearchParams();
-    if (request?.pageNumber) params.set("pageNumber", String(request.pageNumber));
-    if (request?.pageSize) params.set("pageSize", String(request.pageSize));
-    if (request?.searchTerm) params.set("searchTerm", request.searchTerm);
-    if (request?.statusFilter) params.set("statusFilter", request.statusFilter);
-    const qs = params.toString();
-    const res = await apiClient.get<PagedResponse<AuditLogResponse>>(`/admin/audit-logs${qs ? `?${qs}` : ""}`, signal);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+  async getAuditLogs(): Promise<AuditLogResponse[]> {
+    return this.getAllAuditLogs();
+  }
+
+  async getAuditLogsPaged(req: PagedRequest = {}, signal?: AbortSignal): Promise<PagedResponse<AuditLogResponse>> {
+    const res = await apiClient.get<PagedResponse<AuditLogResponse>>("/admin/audit-logs", { params: req, signal });
+    return unwrap(res, "Failed to get audit logs");
   }
 
   async getAuditLog(id: string): Promise<AuditLogResponse> {
     const res = await apiClient.get<AuditLogResponse>(`/admin/audit-logs/${id}`);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed to get audit log");
   }
 
   // Settings
   async getSettings(): Promise<SystemSettingResponse[]> {
     const res = await apiClient.get<SystemSettingResponse[]>("/admin/settings");
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed to get settings");
   }
 
   async getSetting(id: string): Promise<SystemSettingResponse> {
     const res = await apiClient.get<SystemSettingResponse>(`/admin/settings/${id}`);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async getSettingByKey(key: string): Promise<SystemSettingResponse> {
     const res = await apiClient.get<SystemSettingResponse>(`/admin/settings/by-key/${key}`);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
   }
 
   async updateSetting(id: string, data: UpdateSystemSettingRequest): Promise<SystemSettingResponse> {
     const res = await apiClient.put<SystemSettingResponse>(`/admin/settings/${id}`, data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
+    return unwrap(res, "Failed");
+  }
+
+  // Research Stages
+  async getResearchStages(): Promise<ResearchStageResponse[]> {
+    const res = await apiClient.get<ResearchStageResponse[]>("/admin/research-stages");
+    return unwrap(res, "Failed to get research stages");
+  }
+
+  async createResearchStage(data: CreateResearchStageRequest): Promise<ResearchStageResponse> {
+    const res = await apiClient.post<ResearchStageResponse>("/admin/research-stages", data);
+    return unwrap(res, "Failed to create research stage");
+  }
+
+  async updateResearchStage(id: string, data: UpdateResearchStageRequest): Promise<ResearchStageResponse> {
+    const res = await apiClient.put<ResearchStageResponse>(`/admin/research-stages/${id}`, data);
+    return unwrap(res, "Failed to update research stage");
+  }
+
+  async deleteResearchStage(id: string): Promise<void> {
+    const res = await apiClient.delete(`/admin/research-stages/${id}`);
+    if (!res.success) throw new Error(res.message || "Failed to delete research stage");
+  }
+
+  // Research Categories (shared with HOD workspace)
+  async getResearchCategories(): Promise<ResearchCategory[]> {
+    const res = await apiClient.get<ResearchCategory[]>("/hod/research-categories");
+    return unwrap(res, "Failed to get research categories");
+  }
+
+  async createResearchCategory(data: CreateResearchCategoryRequest): Promise<ResearchCategoryResponse> {
+    const res = await apiClient.post<ResearchCategoryResponse>("/hod/research-categories", data);
+    return unwrap(res, "Failed to create research category");
+  }
+
+  async updateResearchCategory(id: string, data: UpdateResearchCategoryRequest): Promise<ResearchCategoryResponse> {
+    const res = await apiClient.put<ResearchCategoryResponse>(`/hod/research-categories/${id}`, data);
+    return unwrap(res, "Failed to update research category");
   }
 
   // Research Topics
-  async getResearchCategories(): Promise<import("../types/Hod").ResearchCategory[]> {
-    const res = await apiClient.get<import("../types/Hod").ResearchCategory[]>("/hod/research-categories");
-    if (!res.success || !res.data) throw new Error(res.message || "Failed to get research categories");
-    return res.data;
-  }
-
-  async getResearchTopics(categoryId?: string): Promise<ResearchTopicResponse[]> {
-    const path = categoryId ? `/hod/research-topics?categoryId=${categoryId}` : "/hod/research-topics";
-    const res = await apiClient.get<ResearchTopicResponse[]>(path);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed to get research topics");
-    return res.data;
+  async getResearchTopics(categoryId?: string, search?: string, departmentId?: string): Promise<ResearchTopicResponse[]> {
+    const res = await apiClient.get<ResearchTopicResponse[]>("/hod/research-topics", {
+      params: { categoryId: categoryId || undefined, search: search || undefined, departmentId: departmentId || undefined },
+    });
+    return unwrap(res, "Failed to get research topics");
   }
 
   async createResearchTopic(data: CreateResearchTopicRequest): Promise<ResearchTopicResponse> {
     const res = await apiClient.post<ResearchTopicResponse>("/hod/research-topics", data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed to create research topic");
-    return res.data;
+    return unwrap(res, "Failed to create research topic");
   }
 
   async updateResearchTopic(id: string, data: UpdateResearchTopicRequest): Promise<ResearchTopicResponse> {
     const res = await apiClient.put<ResearchTopicResponse>(`/hod/research-topics/${id}`, data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed to update research topic");
-    return res.data;
+    return unwrap(res, "Failed to update research topic");
   }
 
   async deleteResearchTopic(id: string): Promise<void> {
@@ -454,79 +465,30 @@ export class AdminService {
     if (!res.success) throw new Error(res.message || "Failed to delete research topic");
   }
 
-  // Backup (stub - no backend implementation)
-  async getBackupHistory(): Promise<BackupRecordResponse[]> {
-    return [];
+  // Coursework
+  async getCoursework(studentUserId: string): Promise<CourseworkResponse[]> {
+    const res = await apiClient.get<CourseworkResponse[]>(`/students/${studentUserId}/coursework`);
+    return unwrap(res, "Failed to get coursework");
   }
 
-  async createBackup(): Promise<void> {
-    throw new Error("Backup feature is not implemented in this version");
+  async getCourseworkSummary(studentUserId: string): Promise<CourseworkSummaryResponse> {
+    const res = await apiClient.get<CourseworkSummaryResponse>(`/students/${studentUserId}/coursework/summary`);
+    return unwrap(res, "Failed to get coursework summary");
   }
 
-  async deleteBackup(id: string): Promise<void> {
-    throw new Error("Backup feature is not implemented in this version");
+  async createCoursework(studentUserId: string, data: CreateCourseworkRequest): Promise<CourseworkResponse> {
+    const res = await apiClient.post<CourseworkResponse>(`/students/${studentUserId}/coursework`, data);
+    return unwrap(res, "Failed to create coursework");
   }
 
-  // Resend Invitation
-  async resendInvitation(userId: string): Promise<void> {
-    const res = await apiClient.post(`/admin/users/${userId}/resend-invitation`);
-    if (!res.success) throw new Error(res.message || "Failed to resend invitation");
+  async updateCoursework(studentUserId: string, courseworkId: string, data: UpdateCourseworkRequest): Promise<CourseworkResponse> {
+    const res = await apiClient.put<CourseworkResponse>(`/students/${studentUserId}/coursework/${courseworkId}`, data);
+    return unwrap(res, "Failed to update coursework");
   }
 
-  // Send Invitation (new endpoint)
-  async sendInvitation(userId: string): Promise<void> {
-    const res = await apiClient.post(`/admin/users/${userId}/send-invitation`);
-    if (!res.success) throw new Error(res.message || "Failed to send invitation");
-  }
-
-  // HOD Management
-  async getHodsPaged(request?: PagedRequest, collegeId?: string, departmentId?: string, signal?: AbortSignal): Promise<PagedResponse<HodResponse>> {
-    const params = new URLSearchParams();
-    if (request?.pageNumber) params.set("pageNumber", String(request.pageNumber));
-    if (request?.pageSize) params.set("pageSize", String(request.pageSize));
-    if (request?.searchTerm) params.set("searchTerm", request.searchTerm);
-    if (request?.sortField) params.set("sortField", request.sortField);
-    if (request?.sortDirection) params.set("sortDirection", request.sortDirection);
-    if (request?.statusFilter) params.set("statusFilter", request.statusFilter);
-    if (collegeId) params.set("collegeId", collegeId);
-    if (departmentId) params.set("departmentId", departmentId);
-    const qs = params.toString();
-    const res = await apiClient.get<PagedResponse<HodResponse>>(`/admin/hods${qs ? `?${qs}` : ""}`, signal);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
-  }
-
-  async getAllHods(collegeId?: string, departmentId?: string): Promise<HodResponse[]> {
-    const params = new URLSearchParams();
-    if (collegeId) params.set("collegeId", collegeId);
-    if (departmentId) params.set("departmentId", departmentId);
-    const qs = params.toString();
-    const res = await apiClient.get<HodResponse[]>(`/admin/hods/all${qs ? `?${qs}` : ""}`);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
-  }
-
-  async getHod(id: string): Promise<HodResponse> {
-    const res = await apiClient.get<HodResponse>(`/admin/hods/${id}`);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
-  }
-
-  async createHod(data: CreateHodRequest): Promise<HodResponse> {
-    const res = await apiClient.post<HodResponse>("/admin/hods", data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
-  }
-
-  async updateHod(id: string, data: UpdateHodRequest): Promise<HodResponse> {
-    const res = await apiClient.put<HodResponse>(`/admin/hods/${id}`, data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed");
-    return res.data;
-  }
-
-  async deleteHod(id: string): Promise<void> {
-    const res = await apiClient.delete(`/admin/hods/${id}`);
-    if (!res.success) throw new Error(res.message || "Failed");
+  async deleteCoursework(studentUserId: string, courseworkId: string): Promise<void> {
+    const res = await apiClient.delete(`/students/${studentUserId}/coursework/${courseworkId}`);
+    if (!res.success) throw new Error(res.message || "Failed to delete coursework");
   }
 }
 

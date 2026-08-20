@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { X, Mail, Phone, Building, Calendar, Shield, Hash, MapPin, Activity, UserCheck, Loader2, BadgeCheck, Clock } from "lucide-react";
 import Badge from "../common/Badge";
 import AccountStatusBadge from "../common/AccountStatusBadge";
+import CourseworkManager from "./CourseworkManager";
 import { adminService } from "../../services/AdminService";
 import type { UserResponse } from "../../types/Admin";
 
@@ -162,9 +163,15 @@ export default function UserViewDrawer({ open, userId, user: initialUser, onClos
               if (r === "student") {
                 cells.push({ label: "Roll Number", value: user.employeeId });
                 cells.push({ label: "Enrollment", value: user.enrollment || user.employeeId });
-                cells.push({ label: "Academic Year", value: user.academicYearName });
-                cells.push({ label: "Semester", value: user.semesterName });
-                cells.push({ label: "Section", value: user.section });
+                cells.push({ label: "Joining Cohort", value: user.joiningCohort ? new Date(user.joiningCohort).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : null });
+                cells.push({ label: "Registration Date", value: user.registrationDate ? new Date(user.registrationDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : null });
+                cells.push({ label: "PhD Mode", value: user.phdMode });
+                cells.push({ label: "Required Credits", value: user.requiredCredits != null ? `${user.requiredCredits}` : null });
+                cells.push({ label: "Research Stage", value: user.researchStageName });
+                cells.push({ label: "Coursework Status", value: user.courseworkStatus });
+                cells.push({ label: "Earned Credits", value: user.earnedCredits != null ? `${user.earnedCredits}` : null });
+                cells.push({ label: "Passed Papers", value: user.passedPapers != null ? `${user.passedPapers}` : null });
+                cells.push({ label: "Pending Papers", value: user.pendingPapers != null ? `${user.pendingPapers}` : null });
                 cells.push({ label: "Research Topic", value: user.researchTopic });
                 cells.push({ label: "Guide", value: user.guideName });
               } else if (r === "guide") {
@@ -194,6 +201,13 @@ export default function UserViewDrawer({ open, userId, user: initialUser, onClos
                 </div>
               );
             })()}
+
+            {user.roleName.toLowerCase() === "student" && (
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Coursework & Credits</h4>
+                <CourseworkManager studentUserId={user.id} />
+              </div>
+            )}
 
             <div className="space-y-3">
               <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Account</h4>

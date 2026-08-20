@@ -1,5 +1,4 @@
 import { apiClient } from "../api/client";
-import type { PagedRequest, PagedResponse } from "../types/Pagination";
 import {
   GuideProfileDto,
   GuideDashboardData,
@@ -9,9 +8,10 @@ import {
   Meeting,
   ApprovalHistoryEntry,
   ThesisDocumentSummary,
-  DocumentComment,
-  AppNotification,
+  ThesisReviewResponse,
 } from "../types/Guide";
+import type { AppNotification } from "../types/Student";
+import type { PagedResponse } from "../types/Pagination";
 
 export class GuideService {
   // Profile
@@ -49,6 +49,16 @@ export class GuideService {
     if (!res.success || !res.data) throw new Error(res.message || "Failed to create review");
     return res.data;
   }
+  async getThesisReviews(): Promise<ThesisDocumentSummary[]> {
+    const res = await apiClient.get<ThesisDocumentSummary[]>("/guide/thesis-reviews");
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to get thesis reviews");
+    return res.data;
+  }
+  async reviewThesisDocument(documentId: string, data: { status: string; comment?: string; score?: number }): Promise<ThesisReviewResponse> {
+    const res = await apiClient.post<ThesisReviewResponse>(`/guide/thesis-reviews/${documentId}/review`, data);
+    if (!res.success || !res.data) throw new Error(res.message || "Failed to submit thesis review");
+    return res.data;
+  }
 
   // Chapters
   async getProjectChapters(projectId: string): Promise<Chapter[]> {
@@ -84,14 +94,10 @@ export class GuideService {
   }
 
   // Meetings
-  async getMyMeetings(request?: PagedRequest): Promise<PagedResponse<Meeting>> {
-    const qp = new URLSearchParams();
-    if (request?.pageNumber) qp.set("pageNumber", String(request.pageNumber));
-    if (request?.pageSize) qp.set("pageSize", String(request.pageSize));
-    const qs = qp.toString();
-    const res = await apiClient.get<PagedResponse<Meeting>>(`/meetings${qs ? `?${qs}` : ""}`);
+  async getMyMeetings(): Promise<Meeting[]> {
+    const res = await apiClient.get<PagedResponse<Meeting>>("/meetings");
     if (!res.success || !res.data) throw new Error(res.message || "Failed to get meetings");
-    return res.data;
+    return res.data.items;
   }
   async getMeeting(id: string): Promise<Meeting> {
     const res = await apiClient.get<Meeting>(`/meetings/${id}`);
@@ -133,107 +139,11 @@ export class GuideService {
     return res.data;
   }
 
-  // Thesis Reviews
-  async getThesisReviews(): Promise<ThesisDocumentSummary[]> {
-    const res = await apiClient.get<ThesisDocumentSummary[]>("/guide/thesis-reviews");
-    if (!res.success || !res.data) throw new Error(res.message || "Failed to get thesis reviews");
-    return res.data;
-  }
-  async getStudentDocuments(studentId: string): Promise<ThesisDocumentSummary[]> {
-    const res = await apiClient.get<ThesisDocumentSummary[]>(`/guide/thesis-reviews/student/${studentId}`);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed to get student documents");
-    return res.data;
-  }
-  async reviewDocument(documentId: string, data: { status: string; comment?: string; score?: number }): Promise<void> {
-    const res = await apiClient.post(`/guide/thesis-reviews/${documentId}/review`, data);
-    if (!res.success) throw new Error(res.message || "Failed to submit review");
-  }
-  async getDocumentVersions(projectId: string, documentId: string): Promise<ThesisDocumentSummary[]> {
-    const res = await apiClient.get<ThesisDocumentSummary[]>(`/guide/thesis-reviews/project/${projectId}/versions/${documentId}`);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed to get document versions");
-    return res.data;
-  }
-
-  // Document Comments
-  async getDocumentComments(documentId: string): Promise<DocumentComment[]> {
-    const res = await apiClient.get<DocumentComment[]>(`/documents/${documentId}/comments`);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed to get comments");
-    return res.data;
-  }
-  async addDocumentComment(documentId: string, data: { content: string; parentCommentId?: string }): Promise<DocumentComment> {
-    const res = await apiClient.post<DocumentComment>(`/documents/${documentId}/comments`, data);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed to add comment");
-    return res.data;
-  }
-  async updateDocumentComment(documentId: string, commentId: string, content: string): Promise<DocumentComment> {
-    const res = await apiClient.put<DocumentComment>(`/documents/${documentId}/comments/${commentId}`, content);
-    if (!res.success || !res.data) throw new Error(res.message || "Failed to update comment");
-    return res.data;
-  }
-  async deleteDocumentComment(documentId: string, commentId: string): Promise<void> {
-    const res = await apiClient.delete(`/documents/${documentId}/comments/${commentId}`);
-    if (!res.success) throw new Error(res.message || "Failed to delete comment");
-  }
-
-  // Document File - Authenticated Blob Fetch
-  private async fetchDocumentBlobInternal(path: string): Promise<Blob> {
-    const token = localStorage.getItem("accessToken");
-    const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "/api";
-    const response = await fetch(`${baseUrl}${path}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (!response.ok) throw new Error(`Failed to fetch document: ${response.status}`);
-    return response.blob();
-  }
-
-  async fetchDocumentBlob(projectId: string, documentId: string, mode: "download" | "preview" = "preview"): Promise<{ blob: Blob; url: string; contentType: string }> {
-    const path = `/projects/${projectId}/documents/${documentId}/${mode}`;
-    const blob = await this.fetchDocumentBlobInternal(path);
-    const url = URL.createObjectURL(blob);
-    return { blob, url, contentType: blob.type };
-  }
-
-  async downloadDocument(projectId: string, documentId: string, fileName: string): Promise<void> {
-    const { blob } = await this.fetchDocumentBlob(projectId, documentId, "download");
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(a.href);
-  }
-
-  async fetchDocumentText(projectId: string, documentId: string): Promise<string> {
-    const path = `/projects/${projectId}/documents/${documentId}/preview`;
-    const token = localStorage.getItem("accessToken");
-    const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "/api";
-    const response = await fetch(`${baseUrl}${path}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (!response.ok) throw new Error(`Failed to fetch document: ${response.status}`);
-    return response.text();
-  }
-
-  getDocumentDownloadUrl(projectId: string, documentId: string): string {
-    return `/api/projects/${projectId}/documents/${documentId}/download`;
-  }
-  getDocumentPreviewUrl(projectId: string, documentId: string): string {
-    return `/api/projects/${projectId}/documents/${documentId}/preview`;
-  }
-  getDocumentUploadUrl(projectId: string): string {
-    return `/api/projects/${projectId}/documents/upload`;
-  }
-
   // Notifications (shared)
-  async getNotifications(request?: PagedRequest): Promise<PagedResponse<AppNotification>> {
-    const qp = new URLSearchParams();
-    if (request?.pageNumber) qp.set("pageNumber", String(request.pageNumber));
-    if (request?.pageSize) qp.set("pageSize", String(request.pageSize));
-    const qs = qp.toString();
-    const res = await apiClient.get<PagedResponse<AppNotification>>(`/notifications${qs ? `?${qs}` : ""}`);
+  async getNotifications(): Promise<AppNotification[]> {
+    const res = await apiClient.get<AppNotification[] | PagedResponse<AppNotification>>("/notifications");
     if (!res.success || !res.data) throw new Error(res.message || "Failed to get notifications");
-    return res.data;
+    return Array.isArray(res.data) ? res.data : res.data.items;
   }
   async getUnreadCount(): Promise<number> {
     const res = await apiClient.get<{ count: number }>("/notifications/unread-count");

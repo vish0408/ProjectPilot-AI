@@ -3,52 +3,19 @@ import { Save } from "lucide-react";
 import Card from "../../components/common/Card";
 import SectionHead from "../../components/common/SectionHead";
 import { studentService } from "../../services/StudentService";
-import { referenceDataService } from "../../services/ReferenceDataService";
 import { StudentProfileDto } from "../../types/Student";
-import type { CollegeResponse, DepartmentResponse } from "../../types/Admin";
 
 export default function StudentProfile() {
   const [profile, setProfile] = useState<StudentProfileDto | null>(null);
-  const [colleges, setColleges] = useState<CollegeResponse[]>([]);
-  const [departments, setDepartments] = useState<DepartmentResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedCollegeId, setSelectedCollegeId] = useState("");
 
   useEffect(() => {
-    Promise.all([
-      studentService.getProfile(),
-      referenceDataService.getColleges().catch(() => []),
-    ]).then(([prof, colls]) => {
-      setProfile(prof);
-      setColleges(colls);
-      const matchedCollege = colls.find(c => c.name === prof.institution);
-      if (matchedCollege) {
-        setSelectedCollegeId(matchedCollege.id);
-        referenceDataService.getDepartments(matchedCollege.id)
-          .then(setDepartments)
-          .catch(() => {});
-      }
-    }).catch((e) => { if (e instanceof Error) setError(e.message); })
-    .finally(() => setLoading(false));
+    studentService.getProfile()
+      .then(setProfile)
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
-
-  const handleCollegeChange = (collegeId: string) => {
-    setSelectedCollegeId(collegeId);
-    const college = colleges.find(c => c.id === collegeId);
-    setProfile(profile ? { ...profile, institution: college?.name || "", department: "" } : null);
-    setDepartments([]);
-    if (collegeId) {
-      referenceDataService.getDepartments(collegeId)
-        .then(setDepartments)
-        .catch(() => {});
-    }
-  };
-
-  const handleDepartmentChange = (deptName: string) => {
-    setProfile(profile ? { ...profile, department: deptName } : null);
-  };
 
   const handleSave = async () => {
     if (!profile) return;
@@ -59,9 +26,9 @@ export default function StudentProfile() {
         department: profile.department,
         institution: profile.institution,
         researchTopic: profile.researchTopic,
-      });
+      } as any);
       setProfile(updated);
-    } catch (e) { if (e instanceof Error) setError(e.message); }
+    } catch { }
     finally { setSaving(false); }
   };
 
@@ -75,11 +42,6 @@ export default function StudentProfile() {
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-6">
-      {error && (
-        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 mb-4">
-          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
-        </div>
-      )}
       <div className="flex items-center gap-4">
         <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-xl font-bold text-white">
           {profile?.fullName?.charAt(0) || "?"}
@@ -99,20 +61,14 @@ export default function StudentProfile() {
               className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-foreground mb-1">College / University</label>
-            <select value={selectedCollegeId} onChange={e => handleCollegeChange(e.target.value)}
-              className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary">
-              <option value="">Select College</option>
-              {colleges.filter(c => c.isActive).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <label className="block text-xs font-semibold text-foreground mb-1">Department</label>
+            <input value={profile?.department || ""} onChange={(e) => setProfile(profile ? { ...profile, department: e.target.value } : null)}
+              className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-foreground mb-1">Department</label>
-            <select value={profile?.department || ""} onChange={e => handleDepartmentChange(e.target.value)}
-              className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary" disabled={!selectedCollegeId}>
-              <option value="">{selectedCollegeId ? "Select Department" : "Select a college first"}</option>
-              {departments.filter(d => d.isActive).map(d => <option key={d.id} value={d.departmentName}>{d.departmentName} ({d.departmentCode})</option>)}
-            </select>
+            <label className="block text-xs font-semibold text-foreground mb-1">Institution</label>
+            <input value={profile?.institution || ""} onChange={(e) => setProfile(profile ? { ...profile, institution: e.target.value } : null)}
+              className="w-full bg-input-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary" />
           </div>
           <div>
             <label className="block text-xs font-semibold text-foreground mb-1">Research Topic</label>

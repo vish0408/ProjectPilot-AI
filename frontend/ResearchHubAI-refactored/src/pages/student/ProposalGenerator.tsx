@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  Brain, Send, Loader2, FileDown, Save, Trash2, RefreshCw,
+  Brain, Loader2, FileDown, Save, Trash2, RefreshCw,
   WandSparkles, Shrink, Expand, SpellCheck, Quote, Pencil,
-  Check, X, ChevronLeft, ChevronRight, BookOpen, Sparkles,
+  ChevronLeft, Sparkles,
   ClipboardList, FileText,
 } from "lucide-react";
 import Card from "../../components/common/Card";
@@ -27,14 +27,12 @@ export default function ProposalGenerator() {
   const [additionalContext, setAdditionalContext] = useState("");
   const [proposal, setProposal] = useState<ProposalResponse | null>(null);
   const [savedProposals, setSavedProposals] = useState<ProposalResponse[]>([]);
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [activeSection, setActiveSection] = useState<string>("title");
   const [improvingSection, setImprovingSection] = useState<string | null>(null);
   const [improvementType, setImprovementType] = useState("Improve");
   const [viewMode, setViewMode] = useState<"saved" | "new">("new");
-  const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
 
   const IMPROVEMENT_OPTIONS = [
     { value: "Improve", label: "Improve", icon: WandSparkles },
@@ -46,8 +44,8 @@ export default function ProposalGenerator() {
   ];
 
   useEffect(() => {
-    proposalService.getTemplates().then(setTemplates).catch((e) => { if (e instanceof Error) setError(e.message); });
-    proposalService.getMyProposals().then(setSavedProposals).catch((e) => { if (e instanceof Error) setError(e.message); });
+    proposalService.getTemplates().then(setTemplates).catch(() => {});
+    proposalService.getMyProposals().then(setSavedProposals).catch(() => {});
   }, []);
 
   const applyTemplate = (t: ProposalTemplate) => {
@@ -90,7 +88,6 @@ export default function ProposalGenerator() {
 
   const handleGenerate = useCallback(async () => {
     setError("");
-    setLoading(true);
     setStep("generating");
     try {
       const result = await proposalService.generate({
@@ -101,8 +98,6 @@ export default function ProposalGenerator() {
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Generation failed");
       setStep("configure");
-    } finally {
-      setLoading(false);
     }
   }, [researchArea, keywords, difficulty, duration, additionalContext]);
 
@@ -195,7 +190,6 @@ export default function ProposalGenerator() {
     try {
       const p = await proposalService.getById(id);
       setProposal(p);
-      setSelectedProposalId(id);
       setResearchArea(p.researchArea);
       setKeywords(p.keywords);
       setDifficulty(p.difficulty);
@@ -210,7 +204,7 @@ export default function ProposalGenerator() {
     try {
       await proposalService.delete(id);
       setSavedProposals(prev => prev.filter(p => p.id !== id));
-    } catch (e) { if (e instanceof Error) setError(e.message); }
+    } catch {}
   };
 
   const renderStep1 = () => (

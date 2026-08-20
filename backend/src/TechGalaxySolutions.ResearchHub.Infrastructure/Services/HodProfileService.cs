@@ -1,6 +1,7 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.HodProfile;
+using TechGalaxySolutions.ResearchHub.Application.DTOs.UserManagement;
 using TechGalaxySolutions.ResearchHub.Application.Interfaces;
 using TechGalaxySolutions.ResearchHub.Domain.Entities;
 using TechGalaxySolutions.ResearchHub.Infrastructure.Persistence;
@@ -20,6 +21,12 @@ public class HodProfileService : IHodProfileService
 
     public async Task<HodProfileResponse> GetProfileAsync(Guid userId)
     {
+        var hod = await _context.Set<Hod>().AsNoTracking()
+            .Include(h => h.User)
+            .Include(h => h.Department)
+            .Include(h => h.College)
+            .FirstOrDefaultAsync(h => h.UserId == userId && !h.IsDeleted);
+
         var profile = await _context.Set<DepartmentProfile>()
             .Include(d => d.HodUser)
             .FirstOrDefaultAsync(d => d.HodUserId == userId && !d.IsDeleted);
@@ -37,22 +44,23 @@ public class HodProfileService : IHodProfileService
             }
             else
             {
-                var user = await _context.Users.FindAsync(userId)
+                var profileUser = await _context.Users.FindAsync(userId)
                     ?? throw new KeyNotFoundException("User not found");
 
-                var deptName = $"{user.FullName}'s Department";
+                var deptName = hod?.Department?.DepartmentName
+                    ?? $"{profileUser.FullName}'s Department";
                 var existingNames = await _context.Set<DepartmentProfile>()
                     .IgnoreQueryFilters()
                     .Where(d => d.DepartmentName!.StartsWith(deptName))
                     .Select(d => d.DepartmentName)
                     .ToListAsync();
                 if (existingNames.Count > 0)
-                    deptName = $"{user.FullName}'s Department ({userId.ToString("N")[..8]})";
+                    deptName = $"{deptName} ({userId.ToString("N")[..8]})";
 
                 profile = new DepartmentProfile
                 {
                     DepartmentName = deptName,
-                    Institution = "",
+                    Institution = hod?.College?.Name ?? "",
                     HodUserId = userId,
                 };
                 _context.Set<DepartmentProfile>().Add(profile);
@@ -70,7 +78,38 @@ public class HodProfileService : IHodProfileService
                 profile.HodUser = await _context.Users.FindAsync(userId);
         }
 
-        return _mapper.Map<HodProfileResponse>(profile);
+        var response = _mapper.Map<HodProfileResponse>(profile);
+
+        // Fill in real identity + scope data from the Hod/User entities so the
+        // profile reflects the actual department/college, not a placeholder.
+        var user = await _context.Users.AsNoTracking()
+            .Include(u => u.DepartmentEntity)
+            .Include(u => u.CollegeEntity)
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (user != null)
+        {
+            response.EmployeeId = user.EmployeeId;
+            response.PhoneNumber = user.PhoneNumber;
+            response.Designation = user.Designation;
+            response.DepartmentId = user.DepartmentId;
+            response.CollegeId = user.CollegeId;
+            response.DepartmentName = user.DepartmentEntity?.DepartmentName ?? user.Department ?? response.DepartmentName;
+            response.CollegeName = user.CollegeEntity?.Name ?? user.College ?? "";
+            response.AccountStatus = UserResponse.ComputeAccountStatus(
+                user.Status, user.IsActive,
+                user.LockedUntil.HasValue && user.LockedUntil.Value > DateTime.UtcNow,
+                user.IsFirstLogin, user.TemporaryPasswordExpiresAt);
+        }
+        else if (hod != null)
+        {
+            response.DepartmentName = hod.Department?.DepartmentName ?? "";
+            response.CollegeName = hod.College?.Name ?? "";
+            response.DepartmentId = hod.DepartmentId;
+            response.CollegeId = hod.CollegeId;
+        }
+
+        return response;
     }
 
     public async Task<HodProfileResponse> UpdateProfileAsync(Guid userId, UpdateHodProfileRequest request)
@@ -87,6 +126,6 @@ public class HodProfileService : IHodProfileService
 
         await _context.SaveChangesAsync();
 
-        return _mapper.Map<HodProfileResponse>(profile);
+        return await GetProfileAsync(userId);
     }
 }

@@ -37,6 +37,7 @@ public static class DependencyInjection
         // Guide Workspace
         services.AddScoped<IGuideProfileService, GuideProfileService>();
         services.AddScoped<IGuideDashboardService, GuideDashboardService>();
+        services.AddScoped<IGuideStudentService, GuideStudentService>();
         services.AddScoped<IReviewService, ReviewService>();
         services.AddScoped<IChapterService, ChapterService>();
         services.AddScoped<IChapterCommentService, ChapterCommentService>();
@@ -60,6 +61,8 @@ public static class DependencyInjection
         services.AddScoped<IHodManagementService, HodManagementService>();
         services.AddScoped<IAcademicYearService, AcademicYearService>();
         services.AddScoped<ISemesterService, SemesterService>();
+        services.AddScoped<IResearchStageService, ResearchStageService>();
+        services.AddScoped<IScholarCourseworkService, ScholarCourseworkService>();
         services.AddScoped<IFacultyService, FacultyService>();
         services.AddScoped<IUserManagementService, UserManagementService>();
         services.AddScoped<IRoleService, RoleService>();

@@ -45,8 +45,13 @@ export default function GuidePendingApprovals() {
     }
   };
 
-  const pending = reviews.filter(r => r.status === "pending");
-  const approved = reviews.filter(r => r.status === "approved");
+  const pending = reviews.filter(r => (r.status || "").toLowerCase() === "pending");
+  const approved = reviews.filter(r => (r.status || "").toLowerCase() === "approved");
+  const approvedToday = approved.filter(r => {
+    if (!r.reviewedAt) return false;
+    return new Date(r.reviewedAt).toDateString() === new Date().toDateString();
+  }).length;
+  const overdue = pending.filter(r => r.createdAt && (Date.now() - new Date(r.createdAt).getTime()) > 7 * 24 * 60 * 60 * 1000).length;
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" /></div>;
@@ -56,8 +61,8 @@ export default function GuidePendingApprovals() {
     <div className="flex flex-col gap-5">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard label="Pending" value={pending.length.toString()} icon={Clock} color="bg-amber-500"/>
-        <StatCard label="Approved Today" value={approved.length.toString()} icon={CheckCircle} color="bg-green-500"/>
-        <StatCard label="Overdue" value="0" icon={AlertTriangle} color="bg-red-500"/>
+        <StatCard label="Approved Today" value={approvedToday.toString()} icon={CheckCircle} color="bg-green-500"/>
+        <StatCard label="Overdue" value={overdue.toString()} sub="Pending &gt; 7 days" icon={AlertTriangle} color="bg-red-500"/>
         <StatCard label="Total Reviews" value={reviews.length.toString()} icon={Activity} color="bg-blue-500"/>
       </div>
       <Card>
@@ -74,9 +79,9 @@ export default function GuidePendingApprovals() {
                 <Badge variant="warning">Pending</Badge>
               </div>
               <div className="flex gap-2">
-                <button disabled={actionLoading===item.projectId} onClick={()=>handleAction(item.projectId,"approved")} className="bg-green-600 text-white text-xs font-bold px-3.5 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5"/>{actionLoading===item.projectId?"...":"Approve"}</button>
-                <button disabled={actionLoading===item.projectId} onClick={()=>handleAction(item.projectId,"revision_required")} className="bg-amber-500 text-white text-xs font-bold px-3.5 py-2 rounded-lg hover:bg-amber-600 disabled:opacity-50 flex items-center gap-1.5"><Edit2 className="w-3.5 h-3.5"/>Request Revision</button>
-                <button disabled={actionLoading===item.projectId} onClick={()=>handleAction(item.projectId,"rejected")} className="bg-red-600 text-white text-xs font-bold px-3.5 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-1.5"><X className="w-3.5 h-3.5"/>Reject</button>
+                <button disabled={actionLoading===item.projectId} onClick={()=>handleAction(item.projectId,"Approved")} className="bg-green-600 text-white text-xs font-bold px-3.5 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5"/>{actionLoading===item.projectId?"...":"Approve"}</button>
+                <button disabled={actionLoading===item.projectId} onClick={()=>handleAction(item.projectId,"ChangesRequested")} className="bg-amber-500 text-white text-xs font-bold px-3.5 py-2 rounded-lg hover:bg-amber-600 disabled:opacity-50 flex items-center gap-1.5"><Edit2 className="w-3.5 h-3.5"/>Request Revision</button>
+                <button disabled={actionLoading===item.projectId} onClick={()=>handleAction(item.projectId,"Rejected")} className="bg-red-600 text-white text-xs font-bold px-3.5 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-1.5"><X className="w-3.5 h-3.5"/>Reject</button>
                 <button className="border border-border text-xs font-medium text-muted-foreground px-3.5 py-2 rounded-lg hover:bg-muted flex items-center gap-1.5"><Eye className="w-3.5 h-3.5"/>Preview</button>
               </div>
             </div>

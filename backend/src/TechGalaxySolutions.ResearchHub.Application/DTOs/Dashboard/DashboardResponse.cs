@@ -11,6 +11,16 @@ public class DashboardResponse
     public List<MilestoneSummary> UpcomingMilestones { get; set; } = new();
     public List<DocumentSummary> RecentDocuments { get; set; } = new();
     public List<NotificationResponse> Notifications { get; set; } = new();
+
+    // PhD scholar info
+    public DateTime? JoiningCohort { get; set; }
+    public string? ResearchStageName { get; set; }
+    public int? RequiredCredits { get; set; }
+    public int? EarnedCredits { get; set; }
+    public int PassedPapers { get; set; }
+    public int PendingPapers { get; set; }
+    public string? CourseworkStatus { get; set; }
+    public decimal CourseworkCompletionPercentage { get; set; }
 }
 
 public class ProjectSummary

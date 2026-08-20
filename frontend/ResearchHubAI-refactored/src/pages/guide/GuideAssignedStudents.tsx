@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import {
   Award,
   Calendar,
@@ -16,18 +16,12 @@ import Badge from "../../components/common/Badge";
 import Card from "../../components/common/Card";
 import ProgressBar from "../../components/common/ProgressBar";
 import { guideService } from "../../services/GuideService";
-import { GuideDashboardData, AssignedStudentSummary } from "../../types/Guide";
+import { GuideDashboardData } from "../../types/Guide";
 
 export default function GuideAssignedStudents() {
   const [data, setData] = useState<GuideDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300);
-    return () => clearTimeout(timer);
-  }, [search]);
 
   useEffect(() => {
     (async () => {
@@ -42,12 +36,10 @@ export default function GuideAssignedStudents() {
     })();
   }, []);
 
-  const filtered = useMemo(() =>
-    data?.assignedStudents.filter(s =>
-      s.fullName.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-      s.researchTopic.toLowerCase().includes(debouncedSearch.toLowerCase())
-    ) ?? [],
-  [data?.assignedStudents, debouncedSearch]);
+  const filtered = data?.assignedStudents.filter(s =>
+    s.fullName.toLowerCase().includes(search.toLowerCase()) ||
+    s.researchTopic.toLowerCase().includes(search.toLowerCase())
+  ) ?? [];
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" /></div>;
@@ -57,17 +49,19 @@ export default function GuideAssignedStudents() {
     return <div className="text-center text-muted-foreground py-10">Failed to load students.</div>;
   }
 
-  const activeCount = useMemo(() => data.assignedStudents.filter(s => s.completionPercentage > 0 && s.completionPercentage < 100).length, [data.assignedStudents]);
-  const avgProgress = useMemo(() => data.assignedStudents.length > 0 ? Math.round(data.assignedStudents.reduce((a, s) => a + s.completionPercentage, 0) / data.assignedStudents.length) : 0, [data.assignedStudents]);
-  const graduatingSoon = useMemo(() => data.assignedStudents.filter(s => s.completionPercentage >= 90).length, [data.assignedStudents]);
+  const activeCount = data.assignedStudents.filter(s => s.completionPercentage > 0 && s.completionPercentage < 100).length;
+  const avgProgress = data.assignedStudents.length
+    ? Math.round(data.assignedStudents.reduce((a, s) => a + s.completionPercentage, 0) / data.assignedStudents.length)
+    : 0;
+  const nearCompletionCount = data.assignedStudents.filter(s => s.completionPercentage >= 80).length;
 
   return (
     <div className="flex flex-col gap-5">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard label="Total Assigned" value={data.totalAssignedStudents.toString()} icon={GraduationCap} color="bg-indigo-500"/>
-        <StatCard label="Active" value={activeCount.toString()} change="+1 this month" icon={FlaskConical} color="bg-blue-500" trend="up"/>
+        <StatCard label="Active" value={activeCount.toString()} icon={FlaskConical} color="bg-blue-500"/>
         <StatCard label="Avg Progress" value={`${avgProgress}%`} icon={TrendingUp} color="bg-green-500"/>
-        <StatCard label="Graduating Soon" value={graduatingSoon.toString()} sub="Near 100% completion" icon={Award} color="bg-amber-500"/>
+        <StatCard label="Near Completion" value={nearCompletionCount.toString()} sub="≥ 80% progress" icon={Award} color="bg-amber-500"/>
       </div>
       <Card p={false}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">

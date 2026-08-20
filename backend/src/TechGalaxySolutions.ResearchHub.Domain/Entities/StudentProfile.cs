@@ -27,4 +27,18 @@ public class StudentProfile : BaseEntity
     public Semester? Semester { get; set; }
 
     public string? Section { get; set; }
+
+    public DateTime? JoiningCohort { get; set; }
+
+    public DateTime? RegistrationDate { get; set; }
+
+    public string? PhdMode { get; set; }
+
+    public int? RequiredCredits { get; set; }
+
+    public Guid? ResearchStageId { get; set; }
+
+    public ResearchStage? ResearchStage { get; set; }
+
+    public ICollection<ScholarCoursework> Coursework { get; set; } = new List<ScholarCoursework>();
 }

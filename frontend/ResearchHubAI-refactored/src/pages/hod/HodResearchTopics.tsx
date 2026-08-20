@@ -15,7 +15,6 @@ export default function HodResearchTopics() {
   const [showTopicForm, setShowTopicForm] = useState(false);
   const [catForm, setCatForm] = useState({ name: "", description: "" });
   const [topicForm, setTopicForm] = useState({ title: "", description: "", categoryId: "" });
-  const [error, setError] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
@@ -25,7 +24,7 @@ export default function HodResearchTopics() {
       ]);
       setCategories(cats);
       setTopics(tops);
-    } catch (e) { if (e instanceof Error) setError(e.message); }
+    } catch {}
     finally { setLoading(false); }
   };
 
@@ -37,7 +36,7 @@ export default function HodResearchTopics() {
       setShowCatForm(false);
       setCatForm({ name: "", description: "" });
       fetchData();
-    } catch (e) { if (e instanceof Error) setError(e.message); }
+    } catch {}
   };
 
   const handleCreateTopic = async () => {
@@ -46,7 +45,7 @@ export default function HodResearchTopics() {
       setShowTopicForm(false);
       setTopicForm({ title: "", description: "", categoryId: "" });
       fetchData();
-    } catch (e) { if (e instanceof Error) setError(e.message); }
+    } catch {}
   };
 
   if (loading) {
@@ -59,11 +58,6 @@ export default function HodResearchTopics() {
 
   return (
     <div className="flex flex-col gap-6">
-      {error && (
-        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 mb-4">
-          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
-        </div>
-      )}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-foreground">Research Topics</h2>
         <div className="flex gap-2">

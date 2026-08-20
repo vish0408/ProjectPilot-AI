@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Moon, Sun, Save, Loader2, Check } from "lucide-react";
+import { Moon, Sun, Save } from "lucide-react";
 import Card from "../../components/common/Card";
 import SectionHead from "../../components/common/SectionHead";
 import { useApp } from "../../context/AppContext";
@@ -9,34 +9,20 @@ import type { SystemSettingResponse } from "../../types/Admin";
 export default function AdminSystemSettings() {
   const { theme, setTheme } = useApp();
   const [settings, setSettings] = useState<SystemSettingResponse[]>([]);
-  const [dirtyValues, setDirtyValues] = useState<Record<string, string>>({});
+  const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState<string | null>(null);
-  const [saved, setSaved] = useState<string | null>(null);
-  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
 
   useEffect(() => {
     adminService.getSettings()
-      .then(setSettings)
-      .catch(() => setError("Failed to load settings"))
+      .then((s) => {
+        setSettings(s);
+        setValues(Object.fromEntries(s.map((x) => [x.id, x.value])));
+      })
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
-
-  const handleSave = async (id: string) => {
-    const value = dirtyValues[id];
-    if (value === undefined) return;
-    setSaving(id);
-    setError("");
-    try {
-      await adminService.updateSetting(id, { value, description: "", isActive: true });
-      setSaved(id);
-      setTimeout(() => setSaved(null), 2000);
-    } catch {
-      setError("Failed to save setting");
-    } finally {
-      setSaving(null);
-    }
-  };
 
   const grouped = settings.reduce<Record<string, SystemSettingResponse[]>>((acc, s) => {
     if (!acc[s.group]) acc[s.group] = [];
@@ -44,55 +30,60 @@ export default function AdminSystemSettings() {
     return acc;
   }, {});
 
+  async function saveSettings() {
+    setSaving(true);
+    try {
+      for (const s of settings) {
+        const next = values[s.id];
+        if (next !== undefined && next !== s.value) {
+          await adminService.updateSetting(s.id, { value: next, description: s.description, isActive: s.isActive });
+        }
+      }
+      const fresh = await adminService.getSettings();
+      setSettings(fresh);
+      setValues(Object.fromEntries(fresh.map((x) => [x.id, x.value])));
+      setSavedAt(Date.now());
+    } catch {
+      setSavedAt(null);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-5">
-      {error && (
-        <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>
-      )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {Object.entries(grouped).length === 0 ? (
-          <Card>
-            <p className="text-sm text-muted-foreground text-center py-8">No system settings available.</p>
+        {Object.entries(grouped).map(([group, items]) => (
+          <Card key={group}>
+            <SectionHead title={group} desc="Configure system settings" />
+            <div className="flex flex-col gap-4 mt-2">
+              {items.map((s) => (
+                <div key={s.id}>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+                    {s.description || s.key}
+                  </label>
+                  <input
+                    value={values[s.id] ?? ""}
+                    onChange={(e) => setValues((v) => ({ ...v, [s.id]: e.target.value }))}
+                    className="w-full bg-input-background border border-border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-primary text-foreground"
+                    placeholder={s.key}
+                  />
+                </div>
+              ))}
+              <button onClick={saveSettings} disabled={saving} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2">
+                <Save className="w-4 h-4" /> {saving ? "Saving…" : "Save Settings"}
+              </button>
+            </div>
           </Card>
-        ) : (
-          Object.entries(grouped).map(([group, items]) => (
-            <Card key={group}>
-              <SectionHead title={group} desc="Configure system settings" />
-              <div className="flex flex-col gap-4 mt-2">
-                {items.map((s) => (
-                  <div key={s.id}>
-                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1.5 block">
-                      {s.description || s.key}
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        defaultValue={s.value}
-                        onChange={e => setDirtyValues(prev => ({ ...prev, [s.id]: e.target.value }))}
-                        className="flex-1 bg-input-background border border-border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-primary text-foreground"
-                        placeholder={s.key}
-                      />
-                      <button
-                        onClick={() => handleSave(s.id)}
-                        disabled={saving === s.id || !dirtyValues[s.id]}
-                        className="px-3 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-xl flex items-center gap-1.5 text-sm font-semibold transition-colors"
-                      >
-                        {saving === s.id ? <Loader2 className="w-4 h-4 animate-spin" /> : saved === s.id ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          ))
-        )}
+        ))}
         <Card>
           <SectionHead title="Platform Settings" />
           <div className="flex flex-col gap-4 mt-2">
@@ -115,6 +106,9 @@ export default function AdminSystemSettings() {
           </div>
         </Card>
       </div>
+      {savedAt !== null && (
+        <p className="text-xs text-green-600 font-semibold">Settings saved successfully.</p>
+      )}
     </div>
   );
 }

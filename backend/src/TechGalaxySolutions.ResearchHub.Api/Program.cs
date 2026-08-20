@@ -4,6 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using TechGalaxySolutions.ResearchHub.Api.Middlewares;
 using TechGalaxySolutions.ResearchHub.Application;
+using TechGalaxySolutions.ResearchHub.Application.Interfaces;
 using TechGalaxySolutions.ResearchHub.Infrastructure;
 using TechGalaxySolutions.ResearchHub.Infrastructure.Persistence;
 
@@ -166,6 +167,7 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await DbInitializer.SeedAsync(context);
+    await scope.ServiceProvider.GetRequiredService<IResearchCategoryService>().EnsureProvisionedAsync();
 }
 
 app.Run();

@@ -6,10 +6,6 @@ export interface LoginPayload {
   accessToken: string;
   refreshToken: string;
   expiresAt: string;
-  requiresPasswordChange?: boolean;
-  fullName?: string;
-  email?: string;
-  role?: string;
 }
 
 export interface BackendCurrentUser {
@@ -18,14 +14,20 @@ export interface BackendCurrentUser {
   fullName: string;
   role: string;
   isActive: boolean;
-  isFirstLogin?: boolean;
-  emailVerified?: boolean;
-  accountStatus?: string;
-  phoneNumber?: string | null;
-  employeeId?: string | null;
-  collegeId?: string | null;
-  collegeName?: string | null;
-  departmentName?: string | null;
+  collegeId?: string;
+  collegeName?: string;
+  departmentId?: string;
+  departmentName?: string;
+  designation?: string;
+}
+
+export interface TokenValidationResult {
+  valid: boolean;
+  expired?: boolean;
+  used?: boolean;
+  fullName?: string;
+  email?: string;
+  userId?: string;
 }
 
 export class AuthService {
@@ -56,93 +58,75 @@ export class AuthService {
     return this.mapToCurrentUser(response.data);
   }
 
-  async changePassword(currentPassword: string, newPassword: string, confirmNewPassword: string): Promise<void> {
-    const response = await apiClient.post("/auth/change-password", {
-      currentPassword,
-      newPassword,
-      confirmNewPassword,
-    });
-    if (!response.success) {
-      throw new Error(response.message || "Failed to change password");
-    }
-  }
-
-  async activateAccount(token: string, password: string, confirmPassword: string): Promise<void> {
-    const response = await apiClient.post(ENDPOINTS.auth.activate, {
-      token,
+  async register(
+    fullName: string,
+    email: string,
+    password: string,
+    confirmPassword: string,
+    role: string
+  ): Promise<void> {
+    const response = await apiClient.post(ENDPOINTS.auth.register, {
+      fullName,
+      email,
       password,
       confirmPassword,
+      role,
     });
     if (!response.success) {
-      throw new Error(response.message || "Failed to activate account");
+      throw new Error(response.message || "Registration failed");
     }
-  }
-
-  async validateActivationToken(token: string): Promise<{ valid: boolean; expired?: boolean; used?: boolean; fullName?: string; email?: string; userId?: string }> {
-    const response = await apiClient.post<{ valid: boolean; expired?: boolean; used?: boolean; fullName?: string; email?: string; userId?: string }>(ENDPOINTS.auth.activateValidate, { token });
-    if (!response.success || !response.data) {
-      throw new Error(response.message || "Failed to validate token");
-    }
-    return response.data;
-  }
-
-  async validatePasswordResetToken(token: string): Promise<{ valid: boolean; expired?: boolean; used?: boolean; fullName?: string; email?: string; userId?: string }> {
-    const response = await apiClient.post<{ valid: boolean; expired?: boolean; used?: boolean; fullName?: string; email?: string; userId?: string }>(ENDPOINTS.auth.resetPasswordValidate, { token });
-    if (!response.success || !response.data) {
-      throw new Error(response.message || "Failed to validate reset token");
-    }
-    return response.data;
   }
 
   async forgotPassword(email: string): Promise<void> {
-    const response = await apiClient.post(ENDPOINTS.auth.forgotPassword, { email });
+    const response = await apiClient.post("/auth/forgot-password", { email });
     if (!response.success) {
-      throw new Error(response.message || "Failed to send reset email");
+      throw new Error(response.message || "Failed to send password reset email");
     }
   }
 
-  async resetPassword(token: string, email: string, newPassword: string, confirmNewPassword: string): Promise<void> {
-    const response = await apiClient.post(ENDPOINTS.auth.resetPassword, {
-      token,
-      email,
-      newPassword,
-      confirmNewPassword,
-    });
-    if (!response.success) {
-      throw new Error(response.message || "Failed to reset password");
-    }
+  async validateActivationToken(token: string): Promise<TokenValidationResult> {
+    const response = await apiClient.post<TokenValidationResult>("/auth/activate/validate", { token });
+    if (!response.success) throw new Error(response.message || "Invalid activation token");
+    return response.data ?? {} as TokenValidationResult;
   }
 
-  async resendInvitation(userId: string): Promise<void> {
-    const response = await apiClient.post(ENDPOINTS.auth.resendWelcome(userId));
-    if (!response.success) {
-      throw new Error(response.message || "Failed to resend invitation");
-    }
+  async activateAccount(token: string, password: string, confirmPassword: string): Promise<void> {
+    const response = await apiClient.post("/auth/activate", { token, password, confirmPassword });
+    if (!response.success) throw new Error(response.message || "Account activation failed");
   }
 
   async resendActivation(token: string): Promise<void> {
-    const response = await apiClient.post(ENDPOINTS.auth.activateResend, { token });
-    if (!response.success) {
-      throw new Error(response.message || "Failed to resend invitation");
-    }
+    const response = await apiClient.post("/auth/activate/resend", { token });
+    if (!response.success) throw new Error(response.message || "Failed to resend activation email");
+  }
+
+  async validatePasswordResetToken(token: string): Promise<TokenValidationResult> {
+    const response = await apiClient.post<TokenValidationResult>("/auth/reset-password/validate", { token });
+    if (!response.success) throw new Error(response.message || "Invalid password reset token");
+    return response.data ?? {} as TokenValidationResult;
+  }
+
+  async resetPassword(token: string, email: string, newPassword: string, confirmPassword: string): Promise<void> {
+    const response = await apiClient.post("/auth/reset-password", { token, email, newPassword, confirmPassword });
+    if (!response.success) throw new Error(response.message || "Failed to reset password");
   }
 
   async resendPasswordReset(token: string): Promise<void> {
-    const response = await apiClient.post(ENDPOINTS.auth.resetPasswordResend, { token });
-    if (!response.success) {
-      throw new Error(response.message || "Failed to resend password reset link");
-    }
+    const response = await apiClient.post("/auth/reset-password/resend", { token });
+    if (!response.success) throw new Error(response.message || "Failed to resend password reset email");
+  }
+
+  async changePassword(currentPassword: string, newPassword: string, confirmNewPassword: string): Promise<void> {
+    const response = await apiClient.post("/auth/change-password", { currentPassword, newPassword, confirmNewPassword });
+    if (!response.success) throw new Error(response.message || "Failed to change password");
+  }
+
+  clearRequiresPasswordChange(): void {
+    localStorage.removeItem("forcePasswordChange");
   }
 
   private mapToCurrentUser(backendUser: BackendCurrentUser): CurrentUser {
-    const roleMap: Record<string, CurrentUser["role"]> = {
-      superadmin: "superadmin",
-      admin: "collegeadmin",
-      guide: "guide",
-      student: "student",
-      hod: "hod",
-    };
-    const role = roleMap[backendUser.role.toLowerCase()] ?? "collegeadmin";
+    const role = backendUser.role.toLowerCase() as CurrentUser["role"];
     return {
       name: backendUser.fullName,
       email: backendUser.email,
@@ -155,38 +139,12 @@ export class AuthService {
         .join("")
         .toUpperCase()
         .slice(0, 2),
-      isFirstLogin: backendUser.isFirstLogin,
-      phoneNumber: backendUser.phoneNumber,
-      employeeId: backendUser.employeeId,
+      designation: backendUser.designation,
       collegeId: backendUser.collegeId,
       collegeName: backendUser.collegeName,
+      departmentId: backendUser.departmentId,
+      departmentName: backendUser.departmentName,
     };
-  }
-
-  saveRequiresPasswordChange(flag: boolean): void {
-    if (flag) {
-      localStorage.setItem("requiresPasswordChange", "true");
-    } else {
-      localStorage.removeItem("requiresPasswordChange");
-    }
-  }
-
-  getRequiresPasswordChange(): boolean {
-    return localStorage.getItem("requiresPasswordChange") === "true";
-  }
-
-  clearRequiresPasswordChange(): void {
-    localStorage.removeItem("requiresPasswordChange");
-  }
-
-  register(
-    fullName: string,
-    email: string,
-    password: string,
-    confirmPassword: string,
-    role: string
-  ): Promise<void> {
-    throw new Error("Registration is not available. Users are created by administrators.");
   }
 
   saveTokens(accessToken: string, refreshToken: string): void {
@@ -198,7 +156,6 @@ export class AuthService {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");
-    localStorage.removeItem("requiresPasswordChange");
   }
 
   getStoredAccessToken(): string | null {

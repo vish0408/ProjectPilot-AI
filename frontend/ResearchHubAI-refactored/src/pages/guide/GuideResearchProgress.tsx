@@ -1,73 +1,103 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Bar,
+  BarChart as RechartsBar,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart as RechartsPieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from "recharts";
+import Card from "../../components/common/Card";
+import SectionHead from "../../components/common/SectionHead";
 import { guideService } from "../../services/GuideService";
-import type { GuideDashboardData } from "../../types/Guide";
-
-const PIE_COLORS = ["#6366f1","#22c55e","#f59e0b","#ef4444","#8b5cf6","#06b6d4"];
+import { GuideDashboardData } from "../../types/Guide";
 
 export default function GuideResearchProgress() {
   const [data, setData] = useState<GuideDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    guideService.getDashboard()
-      .then(setData)
-      .catch((e) => { if (e instanceof Error) setError(e.message); })
-      .finally(() => setLoading(false));
+    (async () => {
+      try {
+        const d = await guideService.getDashboard();
+        setData(d);
+      } catch (e) {
+        console.error("Failed to load progress data", e);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
-
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" /></div>;
 
   const students = data?.assignedStudents ?? [];
 
+  const barData = useMemo(() =>
+    students.map(s => ({ name: s.fullName, progress: Math.round(s.completionPercentage) })),
+    [students]
+  );
+
+  const pieData = useMemo(() => {
+    const buckets = {
+      Completed: students.filter(s => s.projectStatus === "Completed").length,
+      "In Progress": students.filter(s => s.projectStatus === "InProgress").length,
+      "Under Review": students.filter(s => s.projectStatus === "OnHold").length,
+      "Not Started": students.filter(s => !s.projectStatus || s.projectStatus === "NotStarted").length,
+    };
+    const colors: Record<string, string> = {
+      Completed: "#22C55E",
+      "In Progress": "#2563EB",
+      "Under Review": "#F59E0B",
+      "Not Started": "#EF4444",
+    };
+    const total = students.length || 1;
+    return (Object.entries(buckets) as [string, number][]).map(([name, value]) => ({
+      name,
+      value: Math.round((value / total) * 100),
+      count: value,
+      color: colors[name],
+    }));
+  }, [students]);
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
   return (
-    <div className="flex flex-col gap-5">
-      {error && (
-        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 mb-4">
-          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
-        </div>
-      )}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <div className="bg-card border border-border rounded-2xl p-5">
-          <h3 className="font-bold text-foreground mb-4">Student Progress Overview</h3>
-          {students.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No students assigned yet.</p>
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <SectionHead title="Student Progress Distribution"/>
+          {barData.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-10">No assigned students yet.</p>
           ) : (
-            <div className="flex flex-col gap-3">
-              {students.map((s: any, i: number) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
-                  <span className="text-xs text-foreground flex-1 truncate">{s.fullName}</span>
-                  <span className="text-xs font-bold text-foreground">{s.completionPercentage}%</span>
-                </div>
-              ))}
-            </div>
+            <ResponsiveContainer width="100%" height={250}>
+              <RechartsBar data={barData} barSize={16}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)"/>
+                <XAxis dataKey="name" tick={{fontSize:9,fill:"var(--muted-foreground)"}} axisLine={false} tickLine={false} tickFormatter={n=>n.split(" ")[0]}/>
+                <YAxis tick={{fontSize:11,fill:"var(--muted-foreground)"}} axisLine={false} tickLine={false} domain={[0,100]}/>
+                <Tooltip contentStyle={{background:"var(--card)",border:"1px solid var(--border)",borderRadius:"12px",fontSize:12}} formatter={v=>[`${v}%`,"Progress"]}/>
+                <Bar dataKey="progress" radius={[6,6,0,0]}>{barData.map((s,i)=><Cell key={i} fill={s.progress>70?"#22C55E":s.progress>40?"#2563EB":"#F59E0B"}/>)}</Bar>
+              </RechartsBar>
+            </ResponsiveContainer>
           )}
-        </div>
-        <div className="bg-card border border-border rounded-2xl p-5">
-          <h3 className="font-bold text-foreground mb-4">Completion Distribution</h3>
-          {students.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No data available.</p>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {[{label:"Completed (>90%)",range:[90,100]},{label:"Advanced (70-89%)",range:[70,89]},{label:"Mid (40-69%)",range:[40,69]},{label:"Early (1-39%)",range:[1,39]},{label:"Not Started",range:[0,0]}].map(b => {
-                const count = b.range[0] === 0 && b.range[1] === 0
-                  ? students.filter((s: any) => s.completionPercentage === 0).length
-                  : students.filter((s: any) => s.completionPercentage >= b.range[0] && s.completionPercentage <= b.range[1]).length;
-                const pct = students.length > 0 ? Math.round((count / students.length) * 100) : 0;
-                return (
-                  <div key={b.label} className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground w-28">{b.label}</span>
-                    <div className="flex-1 bg-muted rounded-full h-2">
-                      <div className="h-2 rounded-full bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="text-xs font-bold text-foreground w-6 text-right">{count}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        </Card>
+        <Card>
+          <SectionHead title="Status Breakdown"/>
+          <ResponsiveContainer width="100%" height={250}>
+            <RechartsPieChart>
+              <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={3} dataKey="value">{pieData.map((e,i)=><Cell key={i} fill={e.color}/>)}</Pie>
+              <Tooltip contentStyle={{background:"var(--card)",border:"1px solid var(--border)",borderRadius:"12px",fontSize:12}} formatter={(v, name) => {
+                const entry = pieData.find(p => p.name === name);
+                return [`${v}% (${entry?.count ?? 0} student${(entry?.count ?? 0) === 1 ? "" : "s"})`, name as string];
+              }}/>
+            </RechartsPieChart>
+          </ResponsiveContainer>
+          <div className="flex flex-col gap-1.5 mt-2">{pieData.map((d,i)=><div key={i} className="flex items-center justify-between text-xs"><div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full" style={{backgroundColor:d.color}}/><span className="text-muted-foreground">{d.name}</span></div><span className="font-bold text-foreground">{d.value}% ({d.count})</span></div>)}</div>
+        </Card>
       </div>
     </div>
   );

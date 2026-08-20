@@ -9,9 +9,8 @@ export interface CurrentUser {
   avatar: string;
   enrollment?: string;
   designation?: string;
-  isFirstLogin?: boolean;
-  phoneNumber?: string | null;
-  employeeId?: string | null;
-  collegeId?: string | null;
-  collegeName?: string | null;
+  collegeId?: string;
+  collegeName?: string;
+  departmentId?: string;
+  departmentName?: string;
 }

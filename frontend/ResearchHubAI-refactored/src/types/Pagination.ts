@@ -8,6 +8,9 @@ export interface PagedRequest {
   guideFilter?: string;
   academicYearFilter?: string;
   semesterFilter?: string;
+  researchStageFilter?: string;
+  phdModeFilter?: string;
+  courseworkStatusFilter?: string;
   statusFilter?: string;
   sortField?: string;
   sortDirection?: string;

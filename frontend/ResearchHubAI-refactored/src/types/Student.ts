@@ -65,10 +65,6 @@ export interface ProjectDocument {
   uploaderId: string;
   uploaderName: string;
   uploadedAt: string;
-  status?: string;
-  reviewComment?: string;
-  reviewScore?: number;
-  reviewedAt?: string;
 }
 
 export interface AppNotification {
@@ -88,6 +84,14 @@ export interface DashboardData {
   upcomingMilestones: MilestoneSummary[];
   recentDocuments: DocumentSummary[];
   notifications: AppNotification[];
+  joiningCohort: string | null;
+  researchStageName: string | null;
+  requiredCredits: number | null;
+  earnedCredits: number | null;
+  passedPapers: number;
+  pendingPapers: number;
+  courseworkStatus: string | null;
+  courseworkCompletionPercentage: number;
 }
 
 export interface ProjectSummary {
@@ -110,17 +114,4 @@ export interface DocumentSummary {
   fileType: string;
   uploadedAt: string;
   uploaderName: string;
-}
-
-export interface DocumentComment {
-  id: string;
-  documentId: string;
-  userId: string;
-  userName: string;
-  content: string;
-  parentCommentId: string | null;
-  isEdited: boolean;
-  createdAt: string;
-  updatedAt: string | null;
-  replies: DocumentComment[];
 }

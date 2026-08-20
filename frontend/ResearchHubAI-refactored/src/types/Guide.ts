@@ -13,6 +13,7 @@ export interface GuideProfileDto {
 
 export interface AssignedStudentSummary {
   userId: string;
+  projectId: string | null;
   fullName: string;
   email: string;
   enrollment: string;
@@ -20,7 +21,6 @@ export interface AssignedStudentSummary {
   researchTopic: string;
   projectTitle: string | null;
   projectStatus: string | null;
-  projectId: string | null;
   completionPercentage: number;
   totalChapters: number;
   approvedChapters: number;
@@ -44,6 +44,18 @@ export interface UpcomingMeetingSummary {
   status: string;
 }
 
+export interface GuideDashboardData {
+  totalAssignedStudents: number;
+  projectsUnderReview: number;
+  pendingReviews: number;
+  upcomingMeetings: number;
+  assignedStudents: AssignedStudentSummary[];
+  pendingReviewList: PendingReviewSummary[];
+  upcomingMeetingsList: UpcomingMeetingSummary[];
+  recentNotifications: AppNotification[];
+  pendingThesisReviews: ThesisDocumentSummary[];
+}
+
 export interface ThesisDocumentSummary {
   documentId: string;
   projectId: string;
@@ -58,19 +70,24 @@ export interface ThesisDocumentSummary {
   department: string;
   researchTopic: string;
   reviewStatus: string | null;
+  reviewId: string | null;
+  reviewComment: string | null;
+  reviewScore: number | null;
+  reviewedAt: string | null;
   version: number;
 }
 
-export interface GuideDashboardData {
-  totalAssignedStudents: number;
-  projectsUnderReview: number;
-  pendingReviews: number;
-  upcomingMeetings: number;
-  assignedStudents: AssignedStudentSummary[];
-  pendingReviewList: PendingReviewSummary[];
-  upcomingMeetingsList: UpcomingMeetingSummary[];
-  recentNotifications: AppNotification[];
-  pendingThesisReviews: ThesisDocumentSummary[];
+export interface ThesisReviewResponse {
+  reviewId: string;
+  documentId: string;
+  projectId: string;
+  guideId: string;
+  status: string;
+  comment: string;
+  score: number | null;
+  reviewedAt: string | null;
+  studentName: string;
+  documentName: string;
 }
 
 export interface AppNotification {
@@ -135,19 +152,6 @@ export interface MeetingParticipant {
   userId: string;
   userName: string;
   email: string;
-}
-
-export interface DocumentComment {
-  id: string;
-  documentId: string;
-  userId: string;
-  userName: string;
-  content: string;
-  parentCommentId: string | null;
-  isEdited: boolean;
-  createdAt: string;
-  updatedAt: string | null;
-  replies: DocumentComment[];
 }
 
 export interface ApprovalHistoryEntry {

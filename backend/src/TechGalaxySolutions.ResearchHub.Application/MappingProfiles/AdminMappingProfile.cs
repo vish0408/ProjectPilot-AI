@@ -3,10 +3,12 @@ using TechGalaxySolutions.ResearchHub.Application.DTOs.AcademicYear;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.AdminDashboard;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.AuditLog;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.College;
+using TechGalaxySolutions.ResearchHub.Application.DTOs.Coursework;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.Department;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.Faculty;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.Notification;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.Permission;
+using TechGalaxySolutions.ResearchHub.Application.DTOs.ResearchStage;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.Role;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.Semester;
 using TechGalaxySolutions.ResearchHub.Application.DTOs.GlobalAnnouncement;
@@ -36,6 +38,10 @@ public class AdminMappingProfile : Profile
 
         CreateMap<Semester, SemesterResponse>()
             .ForMember(dest => dest.AcademicYearName, opt => opt.MapFrom(src => src.AcademicYear.Name));
+
+        CreateMap<ResearchStage, ResearchStageResponse>();
+
+        CreateMap<ScholarCoursework, CourseworkResponse>();
 
         CreateMap<FacultyMember, FacultyResponse>()
             .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.User.FullName))

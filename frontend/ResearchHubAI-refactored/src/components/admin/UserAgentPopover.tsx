@@ -34,7 +34,7 @@ export default function UserAgentPopover({ userAgent, open, onOpenChange }: User
   const [copied, setCopied] = useState(false);
   const { browser, os, deviceType } = parseUA(userAgent);
 
-  const deviceIcon = deviceType === "Mobile" ? Smartphone : deviceType === "Tablet" ? Tablet : Monitor;
+  const DeviceIcon = deviceType === "Mobile" ? Smartphone : deviceType === "Tablet" ? Tablet : Monitor;
 
   const handleCopy = async () => {
     try {
@@ -73,7 +73,7 @@ export default function UserAgentPopover({ userAgent, open, onOpenChange }: User
                   <span className="text-slate-800 dark:text-slate-200 ml-auto">{os}</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                  <deviceIcon className="w-3.5 h-3.5" />
+                  <DeviceIcon className="w-3.5 h-3.5" />
                   <span className="font-medium">Device Type</span>
                   <span className="text-slate-800 dark:text-slate-200 ml-auto">{deviceType}</span>
                 </div>

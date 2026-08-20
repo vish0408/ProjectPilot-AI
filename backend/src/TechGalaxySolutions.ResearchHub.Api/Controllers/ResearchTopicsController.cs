@@ -18,9 +18,11 @@ public class ResearchTopicsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetTopics([FromQuery] Guid? categoryId)
+    public async Task<IActionResult> GetTopics([FromQuery] Guid? categoryId, [FromQuery] string? search, [FromQuery] Guid? departmentId)
     {
-        var topics = await _topicService.GetTopicsAsync(categoryId);
+        var userId = User.GetUserId();
+        var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+        var topics = await _topicService.GetTopicsAsync(userId, role, categoryId, search, departmentId);
         return Ok(topics);
     }
 
@@ -28,21 +30,26 @@ public class ResearchTopicsController : ControllerBase
     public async Task<IActionResult> CreateTopic([FromBody] CreateResearchTopicRequest request)
     {
         var userId = User.GetUserId();
-        var topic = await _topicService.CreateTopicAsync(userId, request);
+        var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+        var topic = await _topicService.CreateTopicAsync(userId, role, request);
         return Ok(topic);
     }
 
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> UpdateTopic(Guid id, [FromBody] UpdateResearchTopicRequest request)
     {
-        var topic = await _topicService.UpdateTopicAsync(id, request);
+        var userId = User.GetUserId();
+        var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+        var topic = await _topicService.UpdateTopicAsync(id, userId, role, request);
         return Ok(topic);
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteTopic(Guid id)
     {
-        await _topicService.DeleteTopicAsync(id);
+        var userId = User.GetUserId();
+        var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+        await _topicService.DeleteTopicAsync(id, userId, role);
         return NoContent();
     }
 }

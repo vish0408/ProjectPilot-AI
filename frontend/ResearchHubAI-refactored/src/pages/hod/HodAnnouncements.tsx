@@ -11,13 +11,12 @@ export default function HodAnnouncements() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: "", content: "", priority: "Normal" });
-  const [error, setError] = useState<string | null>(null);
 
   const fetch = async () => {
     try {
       const data = await hodService.getAnnouncements();
       setAnnouncements(data);
-    } catch (e) { if (e instanceof Error) setError(e.message); }
+    } catch {}
     finally { setLoading(false); }
   };
 
@@ -29,21 +28,21 @@ export default function HodAnnouncements() {
       setShowForm(false);
       setForm({ title: "", content: "", priority: "Normal" });
       fetch();
-    } catch (e) { if (e instanceof Error) setError(e.message); }
+    } catch {}
   };
 
   const handlePublish = async (id: string) => {
     try {
       await hodService.publishAnnouncement(id);
       fetch();
-    } catch (e) { if (e instanceof Error) setError(e.message); }
+    } catch {}
   };
 
   const handleExpire = async (id: string) => {
     try {
       await hodService.expireAnnouncement(id);
       fetch();
-    } catch (e) { if (e instanceof Error) setError(e.message); }
+    } catch {}
   };
 
   if (loading) {
@@ -58,11 +57,6 @@ export default function HodAnnouncements() {
 
   return (
     <div className="flex flex-col gap-5">
-      {error && (
-        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 mb-4">
-          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
-        </div>
-      )}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-foreground">Announcements</h2>
         <button onClick={() => setShowForm(!showForm)}

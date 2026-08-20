@@ -84,6 +84,21 @@ public class ReviewService : IReviewService
         if (project.Status == ProjectStatus.Completed)
             throw new InvalidOperationException("Cannot review a completed project");
 
+        var studentProfile = await _context.Set<StudentProfile>().AsNoTracking()
+            .FirstOrDefaultAsync(s => s.UserId == project.StudentId && !s.IsDeleted);
+
+        var activeAllocation = await _context.Set<ProjectAllocation>().AsNoTracking()
+            .Where(a => !a.IsDeleted
+                && a.Status == AllocationStatus.Active
+                && a.StudentId == project.StudentId)
+            .OrderByDescending(a => a.AllocatedAt)
+            .FirstOrDefaultAsync();
+
+        var effectiveGuideId = activeAllocation?.GuideId ?? studentProfile?.GuideId;
+
+        if (effectiveGuideId != guideId)
+            throw new UnauthorizedAccessException("Only the assigned guide can review this project");
+
         var review = new Review
         {
             ProjectId = projectId,

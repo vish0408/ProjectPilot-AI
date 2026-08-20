@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import {
-  Brain,
   Check,
   Clock,
   FileText,
@@ -9,7 +8,6 @@ import {
 import StatCard from "../../components/cards/StatCard";
 import Badge from "../../components/common/Badge";
 import Card from "../../components/common/Card";
-import ProgressBar from "../../components/common/ProgressBar";
 import SectionHead from "../../components/common/SectionHead";
 import { useApp } from "../../context/AppContext";
 import { studentService } from "../../services/StudentService";
@@ -19,12 +17,11 @@ export default function StudentDashboard() {
   const { user } = useApp();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     studentService.getDashboard()
       .then(setData)
-      .catch((e) => { if (e instanceof Error) setError(e.message); })
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
@@ -40,11 +37,6 @@ export default function StudentDashboard() {
 
   return (
     <div className="flex flex-col gap-6">
-      {error && (
-        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 mb-4">
-          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
-        </div>
-      )}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 text-white relative overflow-hidden">
         <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-12 translate-x-12"/>
         <div className="relative">
